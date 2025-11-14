@@ -763,6 +763,7 @@ io.on('connection', (socket) => {
 
     // Send the player's answer history so they know which questions they've already answered
     const answeredQuestionIndices = Object.keys(room.players[socket.id].answers || {}).map(idx => parseInt(idx));
+    console.log(`[RESUME DEBUG] Sending answer history to ${playerName}:`, answeredQuestionIndices, 'Full answers:', room.players[socket.id].answers);
     socket.emit('answerHistoryRestored', { answeredQuestions: answeredQuestionIndices });
 
     // If there's a current question active, send it to the new player

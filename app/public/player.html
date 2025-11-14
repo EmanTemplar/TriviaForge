@@ -294,7 +294,7 @@
       // Populate the answeredQuestions Set with the indices the player has already answered
       answeredQuestions.clear();
       answeredIndices.forEach(idx => answeredQuestions.add(idx));
-      console.log(`Answer history restored: ${answeredIndices.length} question(s) already answered`);
+      console.log(`[RESUME DEBUG] Answer history restored:`, answeredIndices, 'Set now contains:', Array.from(answeredQuestions));
     });
 
     // ---------------------------
@@ -355,6 +355,7 @@
 
       // Check if this question was already answered
       const alreadyAnswered = answeredQuestions.has(questionIndex);
+      console.log(`[RESUME DEBUG] Question ${questionIndex} presented. Already answered?`, alreadyAnswered, 'Set contains:', Array.from(answeredQuestions));
 
       // Render choices
       choicesContainer.innerHTML = question.choices.map((choice, idx) => {
