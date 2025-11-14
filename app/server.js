@@ -330,6 +330,7 @@ app.get('/api/quiz-template', (req, res) => {
       ['Quiz Title', 'My Quiz Title'],
       ['Description', 'Description of the quiz'],
       [],
+      ['Index →', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '← Use these numbers'],
       ['Question Text', 'Choice A', 'Choice B', 'Choice C', 'Choice D', 'Choice E', 'Choice F', 'Choice G', 'Choice H', 'Choice I', 'Choice J', 'Correct Answer (0-based index)'],
       ['What is 2+2?', '3', '4', '5', '6', '', '', '', '', '', '', '1'],
       ['What color is the sky?', 'Red', 'Blue', 'Green', 'Yellow', '', '', '', '', '', '', '1'],
@@ -386,16 +387,16 @@ app.post('/api/import-quiz', upload.single('file'), async (req, res) => {
     const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
 
     // Extract quiz metadata (first 2 rows)
-    if (data.length < 5) {
+    if (data.length < 6) {
       return res.status(400).json({ error: 'Invalid template format. Please use the provided template.' });
     }
 
     const title = data[0][1] || 'Untitled Quiz';
     const description = data[1][1] || '';
 
-    // Extract questions (starting from row 4, after the header row at index 3)
+    // Extract questions (starting from row 5, after the index reference and header rows)
     const questions = [];
-    for (let i = 4; i < data.length; i++) {
+    for (let i = 5; i < data.length; i++) {
       const row = data[i];
 
       // Skip empty rows
