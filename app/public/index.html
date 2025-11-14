@@ -41,6 +41,23 @@
       <section id="quizSection" style="flex:1; max-width: 33%; padding-right:1rem;">
         <h2>Create / Select Quiz</h2>
         <button id="createQuizBtn">Create New Quiz</button>
+
+        <!-- Excel Import/Export -->
+        <div style="margin: 1rem 0; padding: 1rem; background: rgba(0,123,255,0.1); border-radius: 5px; border: 1px solid rgba(0,123,255,0.3);">
+          <h3 style="margin-top: 0; font-size: 1rem; color: #4fc3f7;">Import from Excel</h3>
+          <p style="font-size: 0.85rem; color: #aaa; margin: 0.5rem 0;">
+            Upload an Excel file to create a quiz
+          </p>
+          <button id="downloadTemplateBtn" style="width: 100%; margin-bottom: 0.5rem; background: rgba(0,200,0,0.2); border: 1px solid rgba(0,200,0,0.5);">
+            📥 Download Template
+          </button>
+          <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display: none;">
+          <button id="uploadExcelBtn" style="width: 100%; background: rgba(0,123,255,0.3); border: 1px solid rgba(0,123,255,0.5);">
+            📤 Upload Excel File
+          </button>
+          <div id="importStatus" style="margin-top: 0.5rem; font-size: 0.85rem;"></div>
+        </div>
+
         <div>
           <input type="text" id="quizTitle" placeholder="Quiz Title" style="flex:1; max-width: 100%; padding-right:1rem;">
           <textarea id="quizDescription" placeholder="Quiz Description" style="flex:1; max-width: 100%; padding-right:1rem;"></textarea>

@@ -7,6 +7,8 @@ import { Server } from 'socket.io';
 import QRCode from 'qrcode';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import xlsx from 'xlsx';
+import multer from 'multer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,7 +66,23 @@ dotenv.config();
 const PORT = process.env.APP_PORT || 3000;
 const QUIZ_FOLDER = path.join(process.cwd(), 'quizzes');
 const COMPLETED_FOLDER = path.join(QUIZ_FOLDER, 'completed');
+const TEMPLATES_FOLDER = path.join(process.cwd(), 'templates');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.xlsx', '.xls'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only Excel files (.xlsx, .xls) are allowed'));
+    }
+  }
+});
 
 // Use HOST_IP from environment (set by docker-compose), or auto-detect, or use SERVER_URL from .env
 const HOST_IP_ENV = process.env.HOST_IP;
@@ -294,6 +312,138 @@ app.delete('/api/quizzes/:filename', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete quiz' });
+  }
+});
+
+// --------------------
+// Routes: Excel Import/Export
+// --------------------
+
+// Download Excel template
+app.get('/api/quiz-template', (req, res) => {
+  try {
+    // Create a new workbook
+    const wb = xlsx.utils.book_new();
+
+    // Create sample data for the template
+    const templateData = [
+      ['Quiz Title', 'My Quiz Title'],
+      ['Description', 'Description of the quiz'],
+      [],
+      ['Question Text', 'Choice A', 'Choice B', 'Choice C', 'Choice D', 'Choice E', 'Choice F', 'Correct Answer (0-based index)'],
+      ['What is 2+2?', '3', '4', '5', '6', '', '', '1'],
+      ['What color is the sky?', 'Red', 'Blue', 'Green', 'Yellow', '', '', '1'],
+      ['Sample question with 6 choices', 'Choice 1', 'Choice 2', 'Choice 3', 'Choice 4', 'Choice 5', 'Choice 6', '3']
+    ];
+
+    // Create worksheet
+    const ws = xlsx.utils.aoa_to_sheet(templateData);
+
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 40 }, // Question Text
+      { wch: 20 }, // Choice A
+      { wch: 20 }, // Choice B
+      { wch: 20 }, // Choice C
+      { wch: 20 }, // Choice D
+      { wch: 20 }, // Choice E
+      { wch: 20 }, // Choice F
+      { wch: 30 }  // Correct Answer
+    ];
+
+    // Add worksheet to workbook
+    xlsx.utils.book_append_sheet(wb, ws, 'Quiz');
+
+    // Generate buffer
+    const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    // Send file
+    res.setHeader('Content-Disposition', 'attachment; filename="quiz_template.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) {
+    console.error('Error generating template:', err);
+    res.status(500).json({ error: 'Failed to generate template' });
+  }
+});
+
+// Import quiz from Excel
+app.post('/api/import-quiz', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Parse Excel file
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
+
+    // Extract quiz metadata (first 2 rows)
+    if (data.length < 5) {
+      return res.status(400).json({ error: 'Invalid template format. Please use the provided template.' });
+    }
+
+    const title = data[0][1] || 'Untitled Quiz';
+    const description = data[1][1] || '';
+
+    // Extract questions (starting from row 4, after the header row at index 3)
+    const questions = [];
+    for (let i = 4; i < data.length; i++) {
+      const row = data[i];
+
+      // Skip empty rows
+      if (!row || !row[0]) continue;
+
+      const questionText = row[0];
+      const choices = [];
+
+      // Collect all non-empty choices (columns 1-6)
+      for (let j = 1; j <= 6; j++) {
+        if (row[j] && row[j].toString().trim() !== '') {
+          choices.push(row[j].toString());
+        }
+      }
+
+      // Get correct answer index (column 7)
+      const correctChoice = parseInt(row[7]);
+
+      // Validate
+      if (!questionText || choices.length < 2 || isNaN(correctChoice) || correctChoice < 0 || correctChoice >= choices.length) {
+        return res.status(400).json({
+          error: `Invalid question at row ${i + 1}: Must have question text, at least 2 choices, and valid correct answer index`
+        });
+      }
+
+      // Create question object
+      questions.push({
+        text: questionText,
+        choices: choices,
+        correctChoice: correctChoice,
+        id: `q_${Date.now()}_${Math.floor(Math.random() * 10000)}`
+      });
+    }
+
+    if (questions.length === 0) {
+      return res.status(400).json({ error: 'No valid questions found in the file' });
+    }
+
+    // Save quiz
+    const filename = `${title.replace(/\s+/g, '_')}_${Date.now()}.json`;
+    const filePath = path.join(QUIZ_FOLDER, filename);
+    const quizData = { title, description, questions };
+    await fs.writeFile(filePath, JSON.stringify(quizData, null, 2), 'utf-8');
+
+    res.json({
+      success: true,
+      filename,
+      title,
+      questionCount: questions.length
+    });
+  } catch (err) {
+    console.error('Error importing quiz:', err);
+    res.status(500).json({ error: 'Failed to import quiz: ' + err.message });
   }
 });
 
