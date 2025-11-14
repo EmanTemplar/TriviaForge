@@ -479,6 +479,10 @@ select option:hover {
   flex-direction: column;
   background: rgba(255,255,255,0.05);
   padding: 2rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* Sidebar */
@@ -510,6 +514,10 @@ select option:hover {
   display: none;
   flex-direction: column;
   height: 100%;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 #questionText {
@@ -517,6 +525,11 @@ select option:hover {
   flex-shrink: 0;
   font-size: 1.8rem;
   margin-bottom: 2rem;
+  width: 100%;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  box-sizing: border-box;
 }
 
 /* Choices container */
@@ -526,6 +539,10 @@ select option:hover {
   gap: 1rem;
   flex: 1;
   align-content: start;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Answer feedback */
@@ -698,6 +715,14 @@ select option:hover {
   border-radius: 8px;
   color: #fff;
   transition: all 0.2s;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.4;
 }
 
 .choice-btn:active {
