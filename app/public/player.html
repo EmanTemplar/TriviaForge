@@ -298,6 +298,24 @@
     });
 
     // ---------------------------
+    // Answer rejected (tried to re-answer)
+    // ---------------------------
+    socket.on('answerRejected', ({ message, questionIndex }) => {
+      console.log(`[ANSWER LOCK] Answer rejected for question ${questionIndex}: ${message}`);
+      statusMessage.textContent = message;
+      statusMessage.style.background = 'rgba(255,0,0,0.3)';
+      statusMessage.style.color = '#f00';
+
+      // Add the question to the answered set if it's not already there
+      answeredQuestions.add(questionIndex);
+
+      // Disable all choice buttons to prevent further attempts
+      document.querySelectorAll('.choice-btn').forEach(btn => {
+        btn.disabled = true;
+      });
+    });
+
+    // ---------------------------
     // Leave room logic
     // ---------------------------
     function handleLeaveRoom() {

@@ -803,14 +803,25 @@ io.on('connection', (socket) => {
 
     if (room.players[socket.id]) {
       const player = room.players[socket.id];
+
+      // Check if player already answered this question (prevent re-answering)
+      if (player.answers && player.answers[room.currentQuestionIndex] !== undefined) {
+        console.log(`[ANSWER LOCK] ${player.name} tried to re-answer question ${room.currentQuestionIndex} (already answered with ${player.answers[room.currentQuestionIndex]})`);
+        socket.emit('answerRejected', {
+          message: 'You have already answered this question',
+          questionIndex: room.currentQuestionIndex
+        });
+        return;
+      }
+
       player.choice = choice;
-      
+
       // Record answer in player's history
       if (!player.answers) player.answers = {};
       player.answers[room.currentQuestionIndex] = choice;
-      
+
       io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
-      
+
       console.log(`${player.name} answered question ${room.currentQuestionIndex} with choice ${choice}`);
     }
   });
