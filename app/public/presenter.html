@@ -158,9 +158,11 @@
       incompleteSessions.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.filename;
-        const date = new Date(s.createdAt).toLocaleString();
+        const displayDate = s.resumedAt ? new Date(s.resumedAt).toLocaleString() : new Date(s.createdAt).toLocaleString();
+        const dateLabel = s.resumedAt ? 'Resumed' : 'Started';
+        const resumedIcon = s.resumedAt ? '↻ ' : '';
         const status = s.status === 'interrupted' ? '⚠️ Interrupted' : '⏸️ In Progress';
-        opt.textContent = `${s.quizTitle} (${s.roomCode}) - ${status} - ${date}`;
+        opt.textContent = `${resumedIcon}${s.quizTitle} (${s.roomCode}) - ${status} - ${dateLabel}: ${displayDate}`;
         incompleteSessionSelector.appendChild(opt);
       });
       resumeSessionBtn.disabled = false;
