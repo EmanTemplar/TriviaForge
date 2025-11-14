@@ -1,0 +1,75 @@
+{
+  "title": "My Quiz Title",
+  "description": "Description of the quiz",
+  "questions": [
+    {
+      "text": "What is 2+2?",
+      "choices": [
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "correctChoice": 1,
+      "id": "q_1763149934549_5305"
+    },
+    {
+      "text": "What color is the sky?",
+      "choices": [
+        "Red",
+        "Blue",
+        "Green",
+        "Yellow"
+      ],
+      "correctChoice": 1,
+      "id": "q_1763149934549_9991"
+    },
+    {
+      "text": "Sample question with 6 choices",
+      "choices": [
+        "Choice 1",
+        "Choice 2",
+        "Choice 3",
+        "Choice 4",
+        "Choice 5",
+        "Choice 6"
+      ],
+      "correctChoice": 3,
+      "id": "q_1763149934549_1018"
+    },
+    {
+      "text": "Sample question with 10 choices",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J"
+      ],
+      "correctChoice": 9,
+      "id": "q_1763149934549_713"
+    },
+    {
+      "text": "Will the upload work?",
+      "choices": [
+        "Well",
+        "Maybe",
+        "This",
+        "Might",
+        "Work",
+        "But ",
+        "Who",
+        "Really",
+        "Knows ",
+        "Ya Know?"
+      ],
+      "correctChoice": 5,
+      "id": "q_1763149934549_120"
+    }
+  ]
+}

@@ -7,6 +7,9 @@ import { Server } from 'socket.io';
 import QRCode from 'qrcode';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import xlsx from 'xlsx';
+import multer from 'multer';
+import ExcelJS from 'exceljs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,7 +67,23 @@ dotenv.config();
 const PORT = process.env.APP_PORT || 3000;
 const QUIZ_FOLDER = path.join(process.cwd(), 'quizzes');
 const COMPLETED_FOLDER = path.join(QUIZ_FOLDER, 'completed');
+const TEMPLATES_FOLDER = path.join(process.cwd(), 'templates');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.xlsx', '.xls'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only Excel files (.xlsx, .xls) are allowed'));
+    }
+  }
+});
 
 // Use HOST_IP from environment (set by docker-compose), or auto-detect, or use SERVER_URL from .env
 const HOST_IP_ENV = process.env.HOST_IP;
@@ -298,6 +317,189 @@ app.delete('/api/quizzes/:filename', async (req, res) => {
 });
 
 // --------------------
+// Routes: Excel Import/Export
+// --------------------
+
+// Download Excel template
+app.get('/api/quiz-template', async (req, res) => {
+  try {
+    // Create a new workbook with ExcelJS
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Quiz');
+
+    // Set column widths
+    worksheet.columns = [
+      { width: 40 }, // Question Text
+      { width: 18 }, // Choice A
+      { width: 18 }, // Choice B
+      { width: 18 }, // Choice C
+      { width: 18 }, // Choice D
+      { width: 18 }, // Choice E
+      { width: 18 }, // Choice F
+      { width: 18 }, // Choice G
+      { width: 18 }, // Choice H
+      { width: 18 }, // Choice I
+      { width: 18 }, // Choice J
+      { width: 30 }  // Correct Answer
+    ];
+
+    // Row 1: Quiz Title (label + editable)
+    worksheet.getRow(1).values = ['Quiz Title', 'My Quiz Title'];
+    worksheet.getCell('A1').font = { bold: true };
+    worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAD3' } }; // Light green
+    worksheet.getCell('B1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; // White (editable)
+    worksheet.getCell('B1').border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+
+    // Row 2: Description (label + editable)
+    worksheet.getRow(2).values = ['Description', 'Description of the quiz'];
+    worksheet.getCell('A2').font = { bold: true };
+    worksheet.getCell('A2').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAD3' } }; // Light green
+    worksheet.getCell('B2').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; // White (editable)
+    worksheet.getCell('B2').border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+
+    // Row 3: Empty
+
+    // Row 4: Index reference (reference only - light gray background)
+    const indexRow = worksheet.getRow(4);
+    indexRow.values = ['Index →', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '← Use these numbers'];
+    indexRow.font = { bold: true, color: { argb: 'FF666666' } };
+    indexRow.alignment = { horizontal: 'center' };
+    for (let col = 1; col <= 12; col++) {
+      const cell = worksheet.getCell(4, col);
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } }; // Light gray
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    }
+
+    // Row 5: Column headers (reference only - blue background)
+    const headerRow = worksheet.getRow(5);
+    headerRow.values = ['Question Text', 'Choice A', 'Choice B', 'Choice C', 'Choice D', 'Choice E', 'Choice F', 'Choice G', 'Choice H', 'Choice I', 'Choice J', 'Correct Answer (0-based index)'];
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }; // White text
+    headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+    for (let col = 1; col <= 12; col++) {
+      const cell = worksheet.getCell(5, col);
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } }; // Blue
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    }
+
+    // Sample questions (rows 6-9) - white background (editable)
+    const sampleData = [
+      ['What is 2+2?', '3', '4', '5', '6', '', '', '', '', '', '', '1'],
+      ['What color is the sky?', 'Red', 'Blue', 'Green', 'Yellow', '', '', '', '', '', '', '1'],
+      ['Sample question with 6 choices', 'Choice 1', 'Choice 2', 'Choice 3', 'Choice 4', 'Choice 5', 'Choice 6', '', '', '', '', '3'],
+      ['Sample question with 10 choices', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', '9']
+    ];
+
+    for (let i = 0; i < sampleData.length; i++) {
+      const row = worksheet.getRow(6 + i);
+      row.values = sampleData[i];
+
+      // Style each cell in the sample rows
+      for (let col = 1; col <= 12; col++) {
+        const cell = worksheet.getCell(6 + i, col);
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; // White
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+
+        // Center align the correct answer column
+        if (col === 12) {
+          cell.alignment = { horizontal: 'center' };
+        }
+      }
+    }
+
+    // Generate buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    // Send file
+    res.setHeader('Content-Disposition', 'attachment; filename="quiz_template.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) {
+    console.error('Error generating template:', err);
+    res.status(500).json({ error: 'Failed to generate template' });
+  }
+});
+
+// Import quiz from Excel
+app.post('/api/import-quiz', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Parse Excel file
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
+
+    // Extract quiz metadata (first 2 rows)
+    if (data.length < 6) {
+      return res.status(400).json({ error: 'Invalid template format. Please use the provided template.' });
+    }
+
+    const title = data[0][1] || 'Untitled Quiz';
+    const description = data[1][1] || '';
+
+    // Extract questions (starting from row 5, after the index reference and header rows)
+    const questions = [];
+    for (let i = 5; i < data.length; i++) {
+      const row = data[i];
+
+      // Skip empty rows
+      if (!row || !row[0]) continue;
+
+      const questionText = row[0];
+      const choices = [];
+
+      // Collect all non-empty choices (columns 1-10)
+      for (let j = 1; j <= 10; j++) {
+        if (row[j] && row[j].toString().trim() !== '') {
+          choices.push(row[j].toString());
+        }
+      }
+
+      // Get correct answer index (column 11, since columns 1-10 are choices)
+      const correctChoice = parseInt(row[11]);
+
+      // Validate
+      if (!questionText || choices.length < 2 || isNaN(correctChoice) || correctChoice < 0 || correctChoice >= choices.length) {
+        return res.status(400).json({
+          error: `Invalid question at row ${i + 1}: Must have question text, at least 2 choices, and valid correct answer index`
+        });
+      }
+
+      // Create question object
+      questions.push({
+        text: questionText,
+        choices: choices,
+        correctChoice: correctChoice,
+        id: `q_${Date.now()}_${Math.floor(Math.random() * 10000)}`
+      });
+    }
+
+    if (questions.length === 0) {
+      return res.status(400).json({ error: 'No valid questions found in the file' });
+    }
+
+    // Save quiz
+    const filename = `${title.replace(/\s+/g, '_')}_${Date.now()}.json`;
+    const filePath = path.join(QUIZ_FOLDER, filename);
+    const quizData = { title, description, questions };
+    await fs.writeFile(filePath, JSON.stringify(quizData, null, 2), 'utf-8');
+
+    res.json({
+      success: true,
+      filename,
+      title,
+      questionCount: questions.length
+    });
+  } catch (err) {
+    console.error('Error importing quiz:', err);
+    res.status(500).json({ error: 'Failed to import quiz: ' + err.message });
+  }
+});
+
+// --------------------
 // Routes: Completed Sessions
 // --------------------
 
@@ -434,6 +636,7 @@ io.on('connection', (socket) => {
           id: playerId,
           name: p.name,
           choice: null,
+          connected: false, // Mark as disconnected until they rejoin
           answers: p.answers || {},
           isResumed: true // Flag to indicate this is from a resumed session
         };
@@ -464,6 +667,12 @@ io.on('connection', (socket) => {
         revealedQuestions: liveRooms[roomCode].revealedQuestions,
         isResumed: true,
         originalRoomCode: sessionData.roomCode
+      });
+
+      // Send the player list to the presenter (shows disconnected players from previous session)
+      io.to(roomCode).emit('playerListUpdate', {
+        roomCode,
+        players: Object.values(liveRooms[roomCode].players)
       });
 
       io.emit('activeRoomsUpdate', getActiveRoomsSummary());
@@ -561,6 +770,7 @@ io.on('connection', (socket) => {
 
     // Send the player's answer history so they know which questions they've already answered
     const answeredQuestionIndices = Object.keys(room.players[socket.id].answers || {}).map(idx => parseInt(idx));
+    console.log(`[RESUME DEBUG] Sending answer history to ${playerName}:`, answeredQuestionIndices, 'Full answers:', room.players[socket.id].answers);
     socket.emit('answerHistoryRestored', { answeredQuestions: answeredQuestionIndices });
 
     // If there's a current question active, send it to the new player
@@ -600,14 +810,25 @@ io.on('connection', (socket) => {
 
     if (room.players[socket.id]) {
       const player = room.players[socket.id];
+
+      // Check if player already answered this question (prevent re-answering)
+      if (player.answers && player.answers[room.currentQuestionIndex] !== undefined) {
+        console.log(`[ANSWER LOCK] ${player.name} tried to re-answer question ${room.currentQuestionIndex} (already answered with ${player.answers[room.currentQuestionIndex]})`);
+        socket.emit('answerRejected', {
+          message: 'You have already answered this question',
+          questionIndex: room.currentQuestionIndex
+        });
+        return;
+      }
+
       player.choice = choice;
-      
+
       // Record answer in player's history
       if (!player.answers) player.answers = {};
       player.answers[room.currentQuestionIndex] = choice;
-      
+
       io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
-      
+
       console.log(`${player.name} answered question ${room.currentQuestionIndex} with choice ${choice}`);
     }
   });

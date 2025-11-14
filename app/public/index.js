@@ -316,6 +316,89 @@ document.addEventListener('DOMContentLoaded', () => {
     selectQuiz(newQuiz);
   });
 
+  // --------------------
+  // Excel Import/Export Handlers
+  // --------------------
+  const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+  const uploadExcelBtn = document.getElementById('uploadExcelBtn');
+  const excelFileInput = document.getElementById('excelFileInput');
+  const importStatus = document.getElementById('importStatus');
+
+  // Download Excel template
+  downloadTemplateBtn.addEventListener('click', async () => {
+    try {
+      importStatus.textContent = 'Downloading template...';
+      importStatus.style.color = '#4fc3f7';
+
+      const response = await fetch('/api/quiz-template');
+      if (!response.ok) throw new Error('Failed to download template');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'quiz_template.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      importStatus.textContent = '✓ Template downloaded';
+      importStatus.style.color = '#0f0';
+      setTimeout(() => { importStatus.textContent = ''; }, 3000);
+    } catch (err) {
+      importStatus.textContent = '✗ Error: ' + err.message;
+      importStatus.style.color = '#f00';
+    }
+  });
+
+  // Upload Excel file
+  uploadExcelBtn.addEventListener('click', () => {
+    excelFileInput.click();
+  });
+
+  excelFileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      importStatus.textContent = 'Uploading and processing...';
+      importStatus.style.color = '#4fc3f7';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/import-quiz', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to import quiz');
+      }
+
+      importStatus.textContent = `✓ Imported "${result.title}" with ${result.questionCount} questions`;
+      importStatus.style.color = '#0f0';
+
+      // Refresh quiz list and select the new quiz
+      await fetchQuizzes();
+      const importedQuiz = quizzes.find(q => q.filename === result.filename);
+      if (importedQuiz) {
+        selectQuiz(importedQuiz);
+      }
+
+      setTimeout(() => { importStatus.textContent = ''; }, 5000);
+    } catch (err) {
+      importStatus.textContent = '✗ Error: ' + err.message;
+      importStatus.style.color = '#f00';
+    } finally {
+      // Reset file input
+      excelFileInput.value = '';
+    }
+  });
+
   addQuestionBtn.addEventListener('click', async () => {
     if (!selectedQuiz) return alert('Select a quiz first');
 

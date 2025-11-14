@@ -294,7 +294,25 @@
       // Populate the answeredQuestions Set with the indices the player has already answered
       answeredQuestions.clear();
       answeredIndices.forEach(idx => answeredQuestions.add(idx));
-      console.log(`Answer history restored: ${answeredIndices.length} question(s) already answered`);
+      console.log(`[RESUME DEBUG] Answer history restored:`, answeredIndices, 'Set now contains:', Array.from(answeredQuestions));
+    });
+
+    // ---------------------------
+    // Answer rejected (tried to re-answer)
+    // ---------------------------
+    socket.on('answerRejected', ({ message, questionIndex }) => {
+      console.log(`[ANSWER LOCK] Answer rejected for question ${questionIndex}: ${message}`);
+      statusMessage.textContent = message;
+      statusMessage.style.background = 'rgba(255,0,0,0.3)';
+      statusMessage.style.color = '#f00';
+
+      // Add the question to the answered set if it's not already there
+      answeredQuestions.add(questionIndex);
+
+      // Disable all choice buttons to prevent further attempts
+      document.querySelectorAll('.choice-btn').forEach(btn => {
+        btn.disabled = true;
+      });
     });
 
     // ---------------------------
@@ -355,6 +373,7 @@
 
       // Check if this question was already answered
       const alreadyAnswered = answeredQuestions.has(questionIndex);
+      console.log(`[RESUME DEBUG] Question ${questionIndex} presented. Already answered?`, alreadyAnswered, 'Set contains:', Array.from(answeredQuestions));
 
       // Render choices
       choicesContainer.innerHTML = question.choices.map((choice, idx) => {
