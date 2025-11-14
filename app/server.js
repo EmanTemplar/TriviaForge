@@ -126,7 +126,12 @@ const listCompletedSessions = async () => {
         sessions.push({ filename: file, ...data });
       }
     }
-    return sessions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // Sort by most recent timestamp (resumedAt if exists, otherwise createdAt)
+    return sessions.sort((a, b) => {
+      const aTime = new Date(a.resumedAt || a.createdAt);
+      const bTime = new Date(b.resumedAt || b.createdAt);
+      return bTime - aTime;
+    });
   } catch (err) {
     return [];
   }
@@ -142,7 +147,9 @@ const saveSession = async (roomCode, room) => {
     quizFilename: room.quizFilename,
     status: room.status || 'in-progress',
     createdAt: room.createdAt,
+    resumedAt: room.resumedAt || null,
     completedAt: room.completedAt || null,
+    originalRoomCode: room.originalRoomCode || null,
     presentedQuestions: room.presentedQuestions || [],
     revealedQuestions: room.revealedQuestions || [],
     players: Object.values(room.players).map(p => ({
@@ -158,7 +165,7 @@ const saveSession = async (roomCode, room) => {
     JSON.stringify(sessionData, null, 2),
     'utf-8'
   );
-  
+
   return filename;
 };
 
