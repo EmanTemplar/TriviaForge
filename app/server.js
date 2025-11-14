@@ -636,6 +636,7 @@ io.on('connection', (socket) => {
           id: playerId,
           name: p.name,
           choice: null,
+          connected: false, // Mark as disconnected until they rejoin
           answers: p.answers || {},
           isResumed: true // Flag to indicate this is from a resumed session
         };
@@ -666,6 +667,12 @@ io.on('connection', (socket) => {
         revealedQuestions: liveRooms[roomCode].revealedQuestions,
         isResumed: true,
         originalRoomCode: sessionData.roomCode
+      });
+
+      // Send the player list to the presenter (shows disconnected players from previous session)
+      io.to(roomCode).emit('playerListUpdate', {
+        roomCode,
+        players: Object.values(liveRooms[roomCode].players)
       });
 
       io.emit('activeRoomsUpdate', getActiveRoomsSummary());
