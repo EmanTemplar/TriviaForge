@@ -463,15 +463,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     sessionsListContainer.innerHTML = sessions.map(session => {
-      const date = new Date(session.createdAt).toLocaleString();
+      const displayDate = session.resumedAt ? new Date(session.resumedAt).toLocaleString() : new Date(session.createdAt).toLocaleString();
+      const dateLabel = session.resumedAt ? 'Resumed' : 'Started';
+      const resumedBadge = session.resumedAt ? '<span style="background: rgba(255,165,0,0.3); padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.8rem; margin-left: 0.5rem;">↻ Resumed</span>' : '';
       const statusColor = session.status === 'completed' ? '#0f0' : session.status === 'interrupted' ? '#ff0' : '#aaa';
-      
+
       return `
         <div class="quizCard" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <strong>${session.quizTitle}</strong> - Room: ${session.roomCode}
+            <strong>${session.quizTitle}</strong> - Room: ${session.roomCode}${resumedBadge}
             <div style="font-size: 0.9rem; color: #aaa;">
-              Started: ${date} | Players: ${session.players.length}
+              ${dateLabel}: ${displayDate} | Players: ${session.players.length}
               <span style="color: ${statusColor}; margin-left: 1rem;">● ${session.status}</span>
             </div>
           </div>
@@ -513,7 +515,9 @@ document.addEventListener('DOMContentLoaded', () => {
     modalContent.innerHTML = `
       <div style="margin-bottom: 1rem;">
         <p><strong>Status:</strong> ${session.status}</p>
-        <p><strong>Started:</strong> ${new Date(session.createdAt).toLocaleString()}</p>
+        <p><strong>Originally Started:</strong> ${new Date(session.createdAt).toLocaleString()}</p>
+        ${session.resumedAt ? `<p><strong>Resumed:</strong> ${new Date(session.resumedAt).toLocaleString()}</p>` : ''}
+        ${session.originalRoomCode ? `<p><strong>Original Room:</strong> ${session.originalRoomCode}</p>` : ''}
         ${session.completedAt ? `<p><strong>Completed:</strong> ${new Date(session.completedAt).toLocaleString()}</p>` : ''}
         <p><strong>Total Questions:</strong> ${session.questions.length}</p>
       </div>
