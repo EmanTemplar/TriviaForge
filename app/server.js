@@ -330,10 +330,11 @@ app.get('/api/quiz-template', (req, res) => {
       ['Quiz Title', 'My Quiz Title'],
       ['Description', 'Description of the quiz'],
       [],
-      ['Question Text', 'Choice A', 'Choice B', 'Choice C', 'Choice D', 'Choice E', 'Choice F', 'Correct Answer (0-based index)'],
-      ['What is 2+2?', '3', '4', '5', '6', '', '', '1'],
-      ['What color is the sky?', 'Red', 'Blue', 'Green', 'Yellow', '', '', '1'],
-      ['Sample question with 6 choices', 'Choice 1', 'Choice 2', 'Choice 3', 'Choice 4', 'Choice 5', 'Choice 6', '3']
+      ['Question Text', 'Choice A', 'Choice B', 'Choice C', 'Choice D', 'Choice E', 'Choice F', 'Choice G', 'Choice H', 'Choice I', 'Choice J', 'Correct Answer (0-based index)'],
+      ['What is 2+2?', '3', '4', '5', '6', '', '', '', '', '', '', '1'],
+      ['What color is the sky?', 'Red', 'Blue', 'Green', 'Yellow', '', '', '', '', '', '', '1'],
+      ['Sample question with 6 choices', 'Choice 1', 'Choice 2', 'Choice 3', 'Choice 4', 'Choice 5', 'Choice 6', '', '', '', '', '3'],
+      ['Sample question with 10 choices', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', '9']
     ];
 
     // Create worksheet
@@ -342,12 +343,16 @@ app.get('/api/quiz-template', (req, res) => {
     // Set column widths
     ws['!cols'] = [
       { wch: 40 }, // Question Text
-      { wch: 20 }, // Choice A
-      { wch: 20 }, // Choice B
-      { wch: 20 }, // Choice C
-      { wch: 20 }, // Choice D
-      { wch: 20 }, // Choice E
-      { wch: 20 }, // Choice F
+      { wch: 18 }, // Choice A
+      { wch: 18 }, // Choice B
+      { wch: 18 }, // Choice C
+      { wch: 18 }, // Choice D
+      { wch: 18 }, // Choice E
+      { wch: 18 }, // Choice F
+      { wch: 18 }, // Choice G
+      { wch: 18 }, // Choice H
+      { wch: 18 }, // Choice I
+      { wch: 18 }, // Choice J
       { wch: 30 }  // Correct Answer
     ];
 
@@ -399,15 +404,15 @@ app.post('/api/import-quiz', upload.single('file'), async (req, res) => {
       const questionText = row[0];
       const choices = [];
 
-      // Collect all non-empty choices (columns 1-6)
-      for (let j = 1; j <= 6; j++) {
+      // Collect all non-empty choices (columns 1-10)
+      for (let j = 1; j <= 10; j++) {
         if (row[j] && row[j].toString().trim() !== '') {
           choices.push(row[j].toString());
         }
       }
 
-      // Get correct answer index (column 7)
-      const correctChoice = parseInt(row[7]);
+      // Get correct answer index (column 11, since columns 1-10 are choices)
+      const correctChoice = parseInt(row[11]);
 
       // Validate
       if (!questionText || choices.length < 2 || isNaN(correctChoice) || correctChoice < 0 || correctChoice >= choices.length) {
