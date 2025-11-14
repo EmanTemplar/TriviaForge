@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Edit Quiz</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Edit Quiz</h1>
+    <div class="hamburger" id="hamburger">&#9776;</div>
+    <nav id="menu">
+      <a href="index.html">Dashboard</a>
+      <a href="presenter.html">Presenter</a>
+      <a href="player.html">Player</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="quizDetails">
+      <h2 id="quizTitle"></h2>
+      <textarea id="quizDesc"></textarea>
+      <button id="updateQuiz">Update Quiz</button>
+    </section>
+
+    <section id="questionForm">
+      <h2>Add Question</h2>
+      <input type="text" id="qText" placeholder="Question text">
+      <input type="text" class="choice" placeholder="Choice A">
+      <input type="text" class="choice" placeholder="Choice B">
+      <input type="text" class="choice" placeholder="Choice C">
+      <input type="text" class="choice" placeholder="Choice D">
+      <select id="correctChoice">
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+        <option value="D">D</option>
+      </select>
+      <button id="addQuestion">Add Question</button>
+    </section>
+
+    <section id="questionsList">
+      <h2>Questions</h2>
+      <div id="questions"></div>
+    </section>
+  </main>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const quizId = params.get('id');
+
+// Menu toggle
+const menu = document.getElementById('menu');
+document.getElementById('hamburger').onclick = () => menu.classList.toggle('open');
+
+// Load quiz
+async function loadQuiz(){
+  const res = await fetch(`/api/quizzes`);
+  const quizzes = await res.json();
+  const quiz = quizzes.find(q => q.id == quizId);
+  document.getElementById('quizTitle').innerText = quiz.title;
+  document.getElementById('quizDesc').value = quiz.description || '';
+  loadQuestions();
+}
+
+// Update quiz
+document.getElementById('updateQuiz').onclick = async () => {
+  const title = document.getElementById('quizTitle').innerText;
+  const desc = document.getElementById('quizDesc').value;
+  await fetch(`/api/quizzes/${quizId}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ title, description: desc })
+  });
+  alert('Quiz updated');
+};
+
+// Add question
+document.getElementById('addQuestion').onclick = async () => {
+  const text = document.getElementById('qText').value;
+  const choices = Array.from(document.querySelectorAll('.choice')).map((c,i)=>({
+    id: String.fromCharCode(65+i), text: c.value
+  }));
+  const correct_choice = document.getElementById('correctChoice').value;
+
+  await fetch(`/api/quizzes/${quizId}/questions`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({text, choices, correct_choice})
+  });
+
+  document.getElementById('qText').value = '';
+  document.querySelectorAll('.choice').forEach(c=>c.value='');
+  loadQuestions();
+};
+
+// Load questions
+async function loadQuestions(){
+  const res = await fetch(`/api/quizzes/${quizId}/questions`);
+  const questions = await res.json();
+  const container = document.getElementById('questions');
+  container.innerHTML = '';
+  questions.forEach(q=>{
+    const div = document.createElement('div');
+    div.className = 'questionCard';
+    div.innerHTML = `
+      <strong>${q.text}</strong><br>
+      ${q.choices.map(c=>`${c.id}: ${c.text}`).join(' | ')}<br>
+      Correct: ${q.correct_choice}<br>
+      <button onclick="editQuestion(${q.id})">Edit</button>
+      <button onclick="deleteQuestion(${q.id})">Delete</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+// Edit/Delete question
+function editQuestion(id){ alert('Implement editing popup/modal for question ' + id); }
+async function deleteQuestion(id){
+  if(!confirm('Delete this question?')) return;
+  await fetch(`/api/questions/${id}`, { method:'DELETE' });
+  loadQuestions();
+}
+
+loadQuiz();
+</script>
+</body>
+</html>

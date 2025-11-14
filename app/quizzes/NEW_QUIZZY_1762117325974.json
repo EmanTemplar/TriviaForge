@@ -1,0 +1,29 @@
+{
+  "filename": "NEW_QUIZZY_1762117325974.json",
+  "title": "NEW QUIZZY",
+  "description": "",
+  "questions": [
+    {
+      "text": "ALSKOJDNkj",
+      "choices": [
+        "aknb dj",
+        "kjbnashdjb",
+        "jkbn",
+        "kjhbhjdsvbfk"
+      ],
+      "correctChoice": 2,
+      "id": "q_1762632783716_806"
+    },
+    {
+      "text": "Tsddsfghf",
+      "choices": [
+        "asd",
+        "ggfd",
+        "gsddqw",
+        "dasdas"
+      ],
+      "correctChoice": 1,
+      "id": "q_1762632791900_5317"
+    }
+  ]
+}

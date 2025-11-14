@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trivia Game - Admin Access</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #1a1a1a, #2b2b2b);">
+  
+  <div style="background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); padding: 3rem; border-radius: 20px; max-width: 500px; width: 90%; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+    
+    <h1 style="margin: 0 0 0.5rem 0; font-size: 2.5rem;">🎮 Trivia Game</h1>
+    <p style="color: #aaa; margin-bottom: 2rem;">Admin & Presenter Access</p>
+
+    <!-- Password Entry -->
+    <div id="passwordSection">
+      <input 
+        type="password" 
+        id="passwordInput" 
+        placeholder="Enter admin password"
+        style="
+          width: 100%;
+          padding: 1rem;
+          margin-bottom: 1rem;
+          background: rgba(255,255,255,0.1);
+          border: 2px solid rgba(255,255,255,0.2);
+          border-radius: 10px;
+          color: #fff;
+          font-size: 1.1rem;
+          box-sizing: border-box;
+          text-align: center;
+        "
+      />
+      
+      <div id="errorMsg" style="color: #f66; margin-bottom: 1rem; padding: 0.75rem; background: rgba(255,0,0,0.1); border-radius: 8px; display: none;"></div>
+      
+      <button 
+        id="loginBtn"
+        style="
+          width: 100%;
+          padding: 1rem;
+          background: linear-gradient(135deg, #007bff, #0056b3);
+          border: none;
+          border-radius: 10px;
+          color: #fff;
+          font-size: 1.1rem;
+          font-weight: bold;
+          cursor: pointer;
+          transition: transform 0.2s;
+        "
+        onmouseover="this.style.transform='scale(1.05)'"
+        onmouseout="this.style.transform='scale(1)'"
+      >
+        Login
+      </button>
+    </div>
+
+    <!-- Access Buttons (Hidden Until Login) -->
+    <div id="accessButtons" style="display: none;">
+      <h3 style="color: #0f0; margin-bottom: 1.5rem;">✓ Access Granted</h3>
+      
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <a href="index.html" style="
+          padding: 1rem;
+          background: rgba(0,123,255,0.3);
+          border: 2px solid rgba(0,123,255,0.5);
+          border-radius: 10px;
+          color: #fff;
+          text-decoration: none;
+          font-weight: bold;
+          transition: all 0.2s;
+        " onmouseover="this.style.background='rgba(0,123,255,0.5)'" onmouseout="this.style.background='rgba(0,123,255,0.3)'">
+          📝 Admin Panel - Manage Quizzes
+        </a>
+        
+        <a href="presenter.html" style="
+          padding: 1rem;
+          background: rgba(0,200,0,0.3);
+          border: 2px solid rgba(0,200,0,0.5);
+          border-radius: 10px;
+          color: #fff;
+          text-decoration: none;
+          font-weight: bold;
+          transition: all 0.2s;
+        " onmouseover="this.style.background='rgba(0,200,0,0.5)'" onmouseout="this.style.background='rgba(0,200,0,0.3)'">
+          🎯 Presenter - Host Game
+        </a>
+
+        <a href="display.html" style="
+          padding: 1rem;
+          background: rgba(255,165,0,0.3);
+          border: 2px solid rgba(255,165,0,0.5);
+          border-radius: 10px;
+          color: #fff;
+          text-decoration: none;
+          font-weight: bold;
+          transition: all 0.2s;
+        " onmouseover="this.style.background='rgba(255,165,0,0.5)'" onmouseout="this.style.background='rgba(255,165,0,0.3)'">
+          📺 Display Screen - For Audience
+        </a>
+      </div>
+
+      <button 
+        id="logoutBtn"
+        style="
+          width: 100%;
+          padding: 0.75rem;
+          margin-top: 2rem;
+          background: rgba(255,0,0,0.2);
+          border: 1px solid rgba(255,0,0,0.3);
+          border-radius: 8px;
+          color: #fff;
+          cursor: pointer;
+        "
+      >
+        Logout
+      </button>
+    </div>
+
+    <hr style="margin: 2rem 0; border: none; border-top: 1px solid rgba(255,255,255,0.1);">
+    
+    <a href="player.html" style="
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: #fff;
+      text-decoration: none;
+      transition: all 0.2s;
+    " onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+      👥 Join as Player
+    </a>
+  </div>
+
+  <script>
+    const passwordInput = document.getElementById('passwordInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const errorMsg = document.getElementById('errorMsg');
+    const passwordSection = document.getElementById('passwordSection');
+    const accessButtons = document.getElementById('accessButtons');
+
+    // Check if already logged in
+    const isLoggedIn = sessionStorage.getItem('triviaAuth') === 'true';
+    if (isLoggedIn) {
+      passwordSection.style.display = 'none';
+      accessButtons.style.display = 'block';
+    }
+
+    // Login
+    const attemptLogin = async () => {
+      const password = passwordInput.value.trim();
+      
+      if (!password) {
+        errorMsg.textContent = 'Please enter a password';
+        errorMsg.style.display = 'block';
+        return;
+      }
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Checking...';
+      errorMsg.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+
+        if (res.ok) {
+          sessionStorage.setItem('triviaAuth', 'true');
+          passwordSection.style.display = 'none';
+          accessButtons.style.display = 'block';
+        } else {
+          errorMsg.textContent = 'Invalid password';
+          errorMsg.style.display = 'block';
+          passwordInput.value = '';
+          passwordInput.focus();
+        }
+      } catch (err) {
+        errorMsg.textContent = 'Connection error. Please try again.';
+        errorMsg.style.display = 'block';
+      }
+
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Login';
+    };
+
+    loginBtn.addEventListener('click', attemptLogin);
+    passwordInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') attemptLogin();
+    });
+
+    // Logout
+    logoutBtn.addEventListener('click', () => {
+      sessionStorage.removeItem('triviaAuth');
+      location.reload();
+    });
+
+    // Auto-focus password input
+    if (!isLoggedIn) {
+      passwordInput.focus();
+    }
+  </script>
+</body>
+</html>

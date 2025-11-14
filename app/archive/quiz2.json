@@ -1,0 +1,47 @@
+[
+  {
+    "question": "What is 2+2?",
+    "choices": ["3", "4", "5", "6"],
+    "answer": "4"
+  },
+  {
+    "question": "What is the capital of France?",
+    "choices": ["Paris", "Lyon", "Marseille", "Toulouse"],
+    "answer": "Paris"
+  },
+  {
+    "question": "Who wrote Hamlet?",
+    "choices": ["Shakespeare", "Dickens", "Hemingway", "Tolkien"],
+    "answer": "Shakespeare"
+  },
+  {
+    "question": "Which planet is closest to the Sun?",
+    "choices": ["Earth", "Mars", "Mercury", "Venus"],
+    "answer": "Mercury"
+  },
+  {
+    "question": "What color do you get by mixing red and blue?",
+    "choices": ["Purple", "Green", "Orange", "Yellow"],
+    "answer": "Purple"
+  },
+  {
+    "question": "What is the largest mammal?",
+    "choices": ["Blue Whale", "Elephant", "Hippopotamus", "Giraffe"],
+    "answer": "Blue Whale"
+  },
+  {
+    "question": "How many continents are there?",
+    "choices": ["7", "5", "6", "8"],
+    "answer": "7"
+  },
+  {
+    "question": "What is H2O commonly known as?",
+    "choices": ["Water", "Hydrogen", "Oxygen", "Salt"],
+    "answer": "Water"
+  },
+  {
+    "question": "Who painted the Mona Lisa?",
+    "choices": ["Leonardo da Vinci", "Van Gogh", "Picasso", "Rembrandt"],
+    "answer": "Leonardo da Vinci"
+  }
+]

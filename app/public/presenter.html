@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trivia Presenter</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="logo">Trivia Presenter</div>
+    <div class="room-code" id="liveRoomCode"></div>
+    <div class="hamburger" id="hamburger">&#9776;</div>
+    <ul class="menu" id="menu">
+      <li><a href="index.html">Admin</a></li>
+      <li><a href="player.html">Player</a></li>
+      <li><a href="presenter.html">Presenter</a></li>
+      <li><a href="display.html">Spectate</a></li>
+    </ul>
+  </nav>
+
+  <div class="presenter-container">
+    <!-- Left Column: Create Room + Resume Session + Active Rooms -->
+    <section class="presenter-sidebar">
+      <div class="presenter-widget">
+        <h2>Create Room</h2>
+        <select id="quizSelector">
+          <option value="">Select a quiz</option>
+        </select>
+        <button id="makeLiveBtn">Make Live</button>
+        <button id="showQRBtn">Show Player QR Code</button>
+      </div>
+
+      <div class="presenter-widget">
+        <h2>Resume Session</h2>
+        <select id="incompleteSessionSelector">
+          <option value="">No incomplete sessions</option>
+        </select>
+        <button id="resumeSessionBtn">Resume</button>
+      </div>
+
+      <div class="presenter-widget flex-grow">
+        <h2>Active Rooms</h2>
+        <div id="activeRooms"></div>
+      </div>
+    </section>
+
+    <!-- Middle Column: Quiz Display -->
+    <section id="quizDisplay">
+      <h2 id="quizTitle">No Quiz Loaded</h2>
+      <div id="questionsSection">
+        <div id="questionsList"></div>
+        <div class="presenter-controls">
+          <div class="presenter-controls-row">
+            <button id="prevBtn">← Previous</button>
+            <button id="nextBtn">Next →</button>
+            <button id="presentBtn">Present Question to Players</button>
+            <button id="revealBtn">Reveal Answer</button>
+          </div>
+          <button id="completeQuizBtn">Complete Quiz & Save Results</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Connected Players -->
+    <section class="presenter-players">
+      <h2>Connected Players</h2>
+      <div id="playerList" class="live-feed"></div>
+    </section>
+  </div>
+
+  <!-- QR Code Modal -->
+  <div id="qrModal">
+    <div class="qr-modal-content">
+      <h2>Scan to Join</h2>
+      <img id="qrImage" src="" alt="QR Code" />
+      <p id="qrUrl"></p>
+      <button id="closeQRBtn">Close</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  const quizSelector = document.getElementById('quizSelector');
+  const makeLiveBtn = document.getElementById('makeLiveBtn');
+  const incompleteSessionSelector = document.getElementById('incompleteSessionSelector');
+  const resumeSessionBtn = document.getElementById('resumeSessionBtn');
+  const quizTitleEl = document.getElementById('quizTitle');
+  const questionsListEl = document.getElementById('questionsList');
+  const playerListEl = document.getElementById('playerList');
+  const activeRoomsEl = document.getElementById('activeRooms');
+  const liveRoomCodeDiv = document.getElementById('liveRoomCode');
+  const presentBtn = document.getElementById('presentBtn');
+  const revealBtn = document.getElementById('revealBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const prevBtn = document.getElementById('prevBtn');
+  const completeQuizBtn = document.getElementById('completeQuizBtn');
+  const showQRBtn = document.getElementById('showQRBtn');
+  const qrModal = document.getElementById('qrModal');
+  const qrImage = document.getElementById('qrImage');
+  const qrUrl = document.getElementById('qrUrl');
+  const closeQRBtn = document.getElementById('closeQRBtn');
+
+  let currentRoomCode = null;
+  let currentQuestionIndex = -1;
+  let currentQuestions = [];
+  let presentedQuestionIndex = null;
+  let presentedQuestions = []; // Track all questions that have been presented
+  let revealedQuestions = []; // Track all questions that have had answers revealed
+  let incompleteSessions = [];
+
+  // Hamburger nav
+  const menu = document.getElementById('menu');
+  const hamburger = document.getElementById('hamburger');
+
+  // Toggle menu on click (works on both mobile and desktop)
+  hamburger.addEventListener('click', (e) => {
+    e.stopPropagation(); // Prevent document listener from immediately closing
+    menu.classList.toggle('open');
+  });
+
+  // Close menu when clicking/touching outside
+  const closeMenuIfOutside = (e) => {
+    if (menu.classList.contains('open') && !menu.contains(e.target) && e.target !== hamburger) {
+      menu.classList.remove('open');
+    }
+  };
+
+  document.addEventListener('click', closeMenuIfOutside);
+  document.addEventListener('touchstart', closeMenuIfOutside);
+
+  // Load quiz list
+  async function loadQuizzes() {
+    const res = await fetch('/api/quizzes');
+    const quizzes = await res.json();
+    quizSelector.innerHTML = '<option value="">Select a quiz</option>';
+    quizzes.forEach(q => {
+      const opt = document.createElement('option');
+      opt.value = q.filename;
+      opt.textContent = q.title;
+      quizSelector.appendChild(opt);
+    });
+  }
+  loadQuizzes();
+
+  // Load incomplete sessions
+  async function loadIncompleteSessions() {
+    const res = await fetch('/api/sessions/incomplete');
+    incompleteSessions = await res.json();
+
+    if (incompleteSessions.length === 0) {
+      incompleteSessionSelector.innerHTML = '<option value="">No incomplete sessions</option>';
+      resumeSessionBtn.disabled = true;
+      resumeSessionBtn.style.opacity = '0.5';
+    } else {
+      incompleteSessionSelector.innerHTML = '<option value="">Select session to resume</option>';
+      incompleteSessions.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.filename;
+        const date = new Date(s.createdAt).toLocaleString();
+        const status = s.status === 'interrupted' ? '⚠️ Interrupted' : '⏸️ In Progress';
+        opt.textContent = `${s.quizTitle} (${s.roomCode}) - ${status} - ${date}`;
+        incompleteSessionSelector.appendChild(opt);
+      });
+      resumeSessionBtn.disabled = false;
+      resumeSessionBtn.style.opacity = '1';
+    }
+  }
+  loadIncompleteSessions();
+
+  // Resume session button
+  resumeSessionBtn.addEventListener('click', () => {
+    const sessionFilename = incompleteSessionSelector.value;
+    if (!sessionFilename) return alert('Select a session to resume');
+
+    const session = incompleteSessions.find(s => s.filename === sessionFilename);
+    if (confirm(`Resume session for "${session.quizTitle}" (original room: ${session.roomCode})?\n\nPlayers will need to rejoin with their original names to keep their progress.`)) {
+      socket.emit('resumeSession', { sessionFilename });
+    }
+  });
+
+// --------------------
+// Live Rooms Logic
+// --------------------
+
+// Make new room
+makeLiveBtn.addEventListener('click', () => {
+  const quizFilename = quizSelector.value;
+  if (!quizFilename) return alert('Select a quiz first');
+  const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+  socket.emit('createRoom', { roomCode, quizFilename });
+});
+
+// Render questions with proper data structure
+function renderQuestions() {
+  if (!currentQuestions.length) {
+    questionsListEl.innerHTML = '<em>No questions in this quiz</em>';
+    return;
+  }
+
+  questionsListEl.innerHTML = currentQuestions.map((q, i) => {
+    const isSelected = i === currentQuestionIndex;
+    const isLive = i === presentedQuestionIndex;
+    const wasPresented = presentedQuestions.includes(i) && !isLive;
+    const wasRevealed = revealedQuestions.includes(i);
+
+    let statusBadge = '';
+    if (isLive) {
+      statusBadge = '<span style="color:#ff0; font-weight:bold; font-size:0.9rem; margin-left:0.5rem;">● LIVE</span>';
+    } else if (wasPresented) {
+      statusBadge = '<span style="color:#0f0; font-weight:bold; font-size:0.9rem; margin-left:0.5rem;">✓ Presented</span>';
+    }
+
+    if (wasRevealed) {
+      statusBadge += '<span style="color:#f00; font-weight:bold; font-size:0.9rem; margin-left:0.5rem;">✓ Revealed</span>';
+    }
+
+    return `
+      <div class="questionCard ${isSelected ? 'presented' : ''}" onclick="selectQuestion(${i})" style="cursor:pointer;">
+        <strong>Q${i+1}:</strong> ${q.text} ${statusBadge}
+        <ul>
+          ${q.choices.map((choice, idx) => `
+            <li${q.correctChoice === idx ? ' style="color:#0f0"' : ''}>${choice}</li>
+          `).join('')}
+        </ul>
+      </div>
+    `;
+  }).join('');
+}
+
+// Select a question by clicking on it
+window.selectQuestion = (index) => {
+  currentQuestionIndex = index;
+  renderQuestions();
+};
+
+// Update active rooms list and highlight current
+function renderActiveRooms(rooms) {
+  if (!rooms.length) {
+    activeRoomsEl.innerHTML = '<em>No active rooms</em>';
+    return;
+  }
+
+  activeRoomsEl.innerHTML = rooms.map(r => `
+    <div class="roomCard ${r.roomCode === currentRoomCode ? 'activeRoom' : ''}" onclick="viewRoom('${r.roomCode}')">
+      <div><strong>${r.quizTitle}</strong> (${r.roomCode})</div>
+      <div>${r.playerCount} player(s)</div>
+      <button onclick="event.stopPropagation(); closeRoom('${r.roomCode}')">Close</button>
+    </div>
+  `).join('');
+}
+
+// View room
+window.viewRoom = (roomCode) => {
+  currentRoomCode = roomCode;
+  liveRoomCodeDiv.textContent = `Room: ${roomCode}`;
+  socket.emit('viewRoom', { roomCode });
+  renderActiveRooms(window.cachedRooms || []);
+};
+
+// Room created (includes resumed sessions)
+socket.on('roomCreated', ({ roomCode, quizTitle, questions, presentedQuestions: serverPresentedQuestions, revealedQuestions: serverRevealedQuestions, isResumed, originalRoomCode }) => {
+  currentRoomCode = roomCode;
+  currentQuestions = questions || [];
+  currentQuestionIndex = 0;
+  presentedQuestionIndex = null;
+  presentedQuestions = serverPresentedQuestions || [];
+  revealedQuestions = serverRevealedQuestions || [];
+  liveRoomCodeDiv.textContent = `Room: ${roomCode}`;
+  quizTitleEl.textContent = quizTitle;
+  renderQuestions();
+
+  if (isResumed) {
+    alert(`Session resumed!\n\nNew room code: ${roomCode}\nOriginal room: ${originalRoomCode}\n\nPlayers should rejoin with their original names.`);
+  }
+});
+
+// Room restored from server (when viewing a room)
+socket.on('roomRestored', ({ roomCode, quizTitle, questions, players }) => {
+  if (roomCode !== currentRoomCode) return;
+
+  currentQuestions = questions || [];
+  currentQuestionIndex = 0;
+  presentedQuestionIndex = null;
+  quizTitleEl.textContent = quizTitle;
+  renderQuestions();
+  
+  playerListEl.innerHTML = players.length
+    ? players.map(p => `<div><span style="color: ${p.connected ? '#0f0' : '#f00'}">●</span> ${p.name}</div>`).join('')
+    : '<em>No players yet</em>';
+});
+
+// Player list updates (scoped to current room)
+socket.on('playerListUpdate', ({ roomCode, players }) => {
+  if (roomCode !== currentRoomCode) return;
+  playerListEl.innerHTML = players.length
+    ? players.map(p => `<div><span style="color: ${p.connected ? '#0f0' : '#f00'}">●</span> ${p.name}${p.choice !== null ? ' ✓' : ''}</div>`).join('')
+    : '<em>No players yet</em>';
+});
+
+// Active rooms update
+socket.on('activeRoomsUpdate', (rooms) => {
+  window.cachedRooms = rooms;
+  renderActiveRooms(rooms);
+});
+
+// Close room
+window.closeRoom = (roomCode) => {
+  if (confirm(`Close room ${roomCode}?`)) {
+    socket.emit('closeRoom', { roomCode });
+    if (currentRoomCode === roomCode) {
+      currentRoomCode = null;
+      currentQuestions = [];
+      currentQuestionIndex = -1;
+      liveRoomCodeDiv.textContent = '';
+      quizTitleEl.textContent = 'No Quiz Loaded';
+      questionsListEl.innerHTML = '';
+      playerListEl.innerHTML = '';
+    }
+  }
+};
+
+socket.on('roomClosed', ({ roomCode }) => {
+  if (currentRoomCode === roomCode) {
+    alert('Room closed.');
+    currentRoomCode = null;
+    currentQuestions = [];
+    currentQuestionIndex = -1;
+    liveRoomCodeDiv.textContent = '';
+    quizTitleEl.textContent = 'No Quiz Loaded';
+    questionsListEl.innerHTML = '';
+    playerListEl.innerHTML = '';
+  }
+});
+
+// --------------------
+// END OF ROOM LOGIC
+// --------------------
+
+// ---------------- Navigation and Control Buttons ----------------
+
+// Previous button - just navigation
+prevBtn.addEventListener('click', () => {
+  if (!currentRoomCode) return alert('No room selected.');
+  if (!currentQuestions.length) return alert('No questions loaded.');
+  if (currentQuestionIndex <= 0) return alert('Already at first question.');
+  currentQuestionIndex--;
+  renderQuestions();
+});
+
+// Next button - just navigation
+nextBtn.addEventListener('click', () => {
+  if (!currentRoomCode) return alert('No room selected.');
+  if (!currentQuestions.length) return alert('No questions loaded.');
+  if (currentQuestionIndex >= currentQuestions.length - 1) return alert('Already at last question.');
+  currentQuestionIndex++;
+  renderQuestions();
+});
+
+// Present Question button - sends question to players (only one at a time)
+presentBtn.addEventListener('click', () => {
+  if (!currentRoomCode) return alert('No room selected.');
+  if (currentQuestionIndex < 0) return alert('No question selected.');
+  if (!currentQuestions.length) return alert('No questions loaded.');
+  
+  presentedQuestionIndex = currentQuestionIndex;
+  renderQuestions();
+  socket.emit('presentQuestion', { roomCode: currentRoomCode, questionIndex: currentQuestionIndex });
+});
+
+// Reveal Answer button - shows correct answer to players
+revealBtn.addEventListener('click', () => {
+  if (!currentRoomCode) return alert('No room selected.');
+  if (presentedQuestionIndex === null) {
+    return alert('Please present a question to players first.');
+  }
+  
+  socket.emit('revealAnswer', { roomCode: currentRoomCode });
+});
+
+// Complete Quiz button - marks quiz as complete and saves results
+completeQuizBtn.addEventListener('click', () => {
+  if (!currentRoomCode) return alert('No room selected.');
+  if (confirm('Complete this quiz and save all results? This will mark the session as finished.')) {
+    socket.emit('completeQuiz', { roomCode: currentRoomCode });
+  }
+});
+
+// Show QR code for player page
+showQRBtn.addEventListener('click', async () => {
+  try {
+    let url = '/api/qr/player';
+    if (currentRoomCode) {
+      url = `/api/qr/room/${currentRoomCode}`;
+    }
+    
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    qrImage.src = data.qrCode;
+    qrUrl.textContent = data.url;
+    qrModal.style.display = 'flex';
+  } catch (err) {
+    alert('Failed to generate QR code');
+    console.error(err);
+  }
+});
+
+closeQRBtn.addEventListener('click', () => {
+  qrModal.style.display = 'none';
+});
+
+qrModal.addEventListener('click', (e) => {
+  if (e.target === qrModal) {
+    qrModal.style.display = 'none';
+  }
+});
+
+// Question presented confirmation
+socket.on('questionPresented', ({ questionIndex, question, presentedQuestions: serverPresentedQuestions }) => {
+  console.log('Question presented:', question.text);
+  if (serverPresentedQuestions) {
+    presentedQuestions = serverPresentedQuestions;
+  }
+  renderQuestions();
+  playerListEl.innerHTML = playerListEl.innerHTML.replace(/✓/g, '');
+});
+
+// Question revealed confirmation
+socket.on('questionRevealed', ({ questionIndex, question, results, revealedQuestions: serverRevealedQuestions }) => {
+  if (serverRevealedQuestions) {
+    revealedQuestions = serverRevealedQuestions;
+  }
+  renderQuestions();
+
+  const resultsSummary = results.map(r =>
+    `${r.name}: ${r.choice !== null ? question.choices[r.choice] : 'No answer'} ${r.is_correct ? '✓' : '✗'}`
+  ).join('\n');
+
+  alert(`Answer Revealed!\n\nCorrect: ${question.choices[question.correctChoice]}\n\n${resultsSummary}`);
+});
+
+// Quiz completed confirmation
+socket.on('quizCompleted', ({ message, filename }) => {
+  alert(message);
+  if (filename) {
+    console.log('Session saved as:', filename);
+  }
+  // Reload incomplete sessions list to remove completed ones
+  loadIncompleteSessions();
+});
+
+// Request initial active rooms on load
+socket.emit('getActiveRooms');
+</script>
+
+</body>
+</html>

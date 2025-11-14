@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:15
+    container_name: triviagame-db
+    environment:
+      POSTGRES_USER: trivia
+      POSTGRES_PASSWORD: trivia
+      POSTGRES_DB: trivia
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./app/init:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: triviagame-app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      APP_PORT: 3000
+      DATABASE_URL: postgres://trivia:trivia@db:5432/trivia
+      HOST_IP: ${HOST_IP}       # Pass host IP into container
+    volumes:
+      - ./app/public:/app/public
+      - ./app/quizzes:/app/quizzes
+      - ./app/index.js:/app/index.js
+      - ./app/server.js:/app/server.js
+    restart: unless-stopped
+volumes:
+  pgdata:

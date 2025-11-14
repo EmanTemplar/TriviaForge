@@ -1,0 +1,1175 @@
+/* General body and font */
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #1a1a1a, #2b2b2b);
+  color: #fff;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* Header / Navbar */
+header, .navbar {
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+  background: rgba(0,0,0,0.6);
+  padding: 1rem 2rem;
+  backdrop-filter: blur(8px);
+  position: sticky; 
+  top: 0;
+  z-index: 10;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: #111;
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar .logo {
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.navbar .room-code {
+  margin-left: auto; /* pushes it to the far right */
+}
+
+.hamburger {
+  cursor: pointer;
+  font-size: 1.5rem;
+  margin-left: 1rem; /* spacing from room-code or logo */
+}
+
+
+.menu {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: absolute;
+  right: 2rem;
+  top: 60px;
+  background: rgba(0,0,0,0.8);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
+}
+
+.menu.open {
+  max-height: 500px;  /* large enough to show all items */
+  opacity: 1;
+}
+
+.menu li a { color: #fff; text-decoration: none; display:block; padding:0.3rem 0; }
+.menu li a:hover { text-decoration: underline; }
+
+/* Main container */
+.container {
+  display: flex;
+  gap: 1rem;
+  padding: 2rem;
+  flex-wrap: wrap;
+  height: calc(100vh - 120px);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Quiz Management Tab */
+#quizManagement {
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+/* Sections */
+section { 
+  backdrop-filter: blur(10px); 
+  background: rgba(255,255,255,0.05); 
+  padding: 1rem; 
+  border-radius: 10px;
+  min-height: 400px;
+}
+
+/* Headings */
+h1,h2,h3,h4 { margin:0.5rem 0; }
+
+/* Buttons */
+button {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  margin: 0.2rem 0;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: 0.2s;
+}
+button:hover { 
+  background: rgba(255,255,255,0.25);
+  transform: scale(1.03);
+}
+
+/* Inputs, Textareas, Selects */
+input, textarea, select {
+  display: block;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+/* Quiz and question cards */
+.quizCard {
+  background: rgba(255,255,255,0.05);
+  padding: 1rem;
+  margin: 0.5rem 0;
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  transition: 0.2s;
+  cursor: pointer;
+}
+
+.questionCard {
+  background: rgba(255,255,255,0.05);
+  padding: 0.75rem;
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+  transition: 0.2s;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: fit-content;
+}
+
+.questionCard > div:first-child {
+  font-size: 0.95rem;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.questionCard ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.questionCard ul li {
+  margin: 0.15rem 0;
+  word-break: break-word;
+}
+
+.questionCard > div:last-child {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.quizCard:hover, .questionCard:hover { background: rgba(255,255,255,0.15); }
+.quizCard.selected { background: rgba(0, 123, 255, 0.4); border-left: 4px solid #007bff; }
+
+/* Quiz and Question actions */
+.quizActions button {
+  margin-right: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  border-radius: 5px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.questionCard button {
+  flex: 1;
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  border-radius: 5px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.quizActions button:hover, .questionCard button:hover { background: rgba(255,255,255,0.25); transform: scale(1.05); }
+
+/* Admin question editor layout */
+#questionEditor {
+  flex: 0 0 auto;
+  min-height: 0 !important;
+  max-height: 40%;
+  overflow-y: auto;
+}
+
+#questionEditor > h2 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+/* Question text input in editor */
+#questionText {
+  padding: 0.6rem 0.75rem !important;
+  font-size: 0.95rem !important;
+  margin: 0.25rem 0 !important;
+}
+
+/* Quiz section (left column) */
+#quizSection {
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0 !important;
+}
+
+#quizSection h2,
+#quizSection button,
+#quizSection > div:not(#quizList) {
+  flex-shrink: 0;
+}
+
+/* Create New Quiz button styling */
+#createQuizBtn {
+  background: rgba(0, 200, 0, 0.3) !important;
+  border: 2px solid rgba(0, 255, 0, 0.4);
+  padding: 0.75rem 1.25rem !important;
+  font-weight: bold;
+  font-size: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 200, 0, 0.2);
+}
+
+#createQuizBtn:hover {
+  background: rgba(0, 200, 0, 0.5) !important;
+  border-color: rgba(0, 255, 0, 0.6);
+  box-shadow: 0 4px 12px rgba(0, 200, 0, 0.4);
+}
+
+/* Quiz title and description inputs */
+#quizTitle,
+#quizDescription {
+  padding: 0.75rem 1rem !important;
+  font-size: 1rem;
+  margin-top: 0.5rem !important;
+}
+
+#quizDescription {
+  min-height: 80px;
+  resize: vertical;
+}
+
+#quizList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-top: 1rem;
+}
+
+/* Choices container with labels */
+#choicesContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.5rem 0;
+}
+
+.choice-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.choice-label {
+  flex-shrink: 0;
+  width: 30px;
+  font-weight: bold;
+  color: #007bff;
+  font-size: 1rem;
+}
+
+.choice-input-wrapper input {
+  flex: 1;
+  margin: 0;
+  padding: 0.5rem 0.65rem !important;
+  font-size: 0.9rem;
+}
+
+/* Questions list section (Bottom 2/3) */
+#questionsListSection {
+  flex: 1;
+  min-height: 0 !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#questionsListSection > h2 {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+/* Question list container (scrollable grid) - Admin page only */
+#questionsListSection #questionsList {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.5rem;
+  align-content: start;
+}
+
+/* Quiz creation form */
+.quiz-creation input, .quiz-creation textarea, .quiz-creation select, .quiz-creation button {
+  display: block; 
+  width: 100%; 
+  margin: 0.5rem 0;
+  padding: 0.5rem; 
+  border: none; 
+  border-radius: 8px;
+  background: rgba(255,255,255,0.1); 
+  color: #fff;
+}
+.quiz-creation button:hover { background: rgba(0,123,255,0.5); transform: scale(1.05); }
+
+/* Highlight the question being edited */
+.questionCard.editing {
+  background: rgba(0, 123, 255, 0.4);
+  border: 2px solid #007bff;
+  box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
+  transition: background 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+}
+
+/* Hover effect for question cards */
+.questionCard:hover {
+  transform: translateY(-2px);
+  background: rgba(0, 123, 255, 0.25);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+
+/* Hidden elements */
+.hidden { display: none; }
+
+/* Responsive layout: two columns */
+@media(min-width: 768px) {
+  #quizSection { flex: 1; max-width: 33%; padding-right: 1rem; }
+}
+
+@media(max-width: 1200px) {
+  #questionsListSection #questionsList {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+}
+
+@media(max-width: 767px) {
+  .container {
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  #quizSection {
+    max-width: 100%;
+    padding: 0;
+    height: auto;
+    max-height: none;
+  }
+  #questionEditor {
+    max-height: none;
+  }
+  #quizManagement {
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  #questionsListSection #questionsList {
+    grid-template-columns: 1fr;
+  }
+  .menu { right: 1rem; top: 55px; }
+}
+
+/* Player page dropdown/manual room code inputs */
+.player-join h4 { margin: 0.5rem 0 0.2rem 0; font-weight: normal; font-size: 0.9rem; }
+#roomSelect, #roomCodeManual { margin-bottom: 0.5rem; }
+
+/* Locked message for players */
+#lockedMsg { margin-top: 1rem; font-style: italic; color: #ffec99; }
+
+/* Live feed for presenter */
+.live-feed { max-width:600px; width:100%; margin-top:1rem; }
+.live-feed div { padding:0.3rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+
+/* Dropdown select text color fix */
+select, select option {
+  color: #000 !important;       /* black text */
+  background-color: #fff !important; /* white background for contrast */
+  border: 1px solid #888;
+}
+
+/* Optional: keep hover highlight readable */
+select option:hover {
+  background-color: #e0e0e0;
+}
+
+.questionCard.presented {
+  background: rgba(0, 123, 255, 0.5);
+  transform: scale(1.02);
+}
+
+.roomCard {
+  background: rgba(255,255,255,0.05);
+  padding: 0.5rem 1rem;
+  margin: 0.3rem 0;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.roomCard.activeRoom {
+  background: rgba(0, 123, 255, 0.5);
+  transform: scale(1.02);
+}
+
+.selected-room {
+  border-left: 4px solid #007bff;
+  background: rgba(0, 123, 255, 0.2);
+  padding-left: 0.5rem;
+}
+
+/* ===== PLAYER PAGE STYLES ===== */
+
+/* Player container */
+.player-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px);
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* Question area */
+.question-area {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255,255,255,0.05);
+  padding: 2rem;
+}
+
+/* Sidebar */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255,255,255,0.05);
+  padding: 1rem;
+  gap: 1rem;
+  overflow-y: auto;
+}
+
+/* Waiting screen */
+#waitingScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+}
+
+#waitingScreen p {
+  color: #aaa;
+}
+
+/* Question display */
+#questionDisplay {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+}
+
+#questionText {
+  margin-top: 0;
+  flex-shrink: 0;
+  font-size: 1.8rem;
+  margin-bottom: 2rem;
+}
+
+/* Choices container */
+#choicesContainer {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  flex: 1;
+  align-content: start;
+}
+
+/* Answer feedback */
+#answerFeedback {
+  display: none;
+  margin-top: 2rem;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+/* Join section */
+#joinSection {
+  flex-shrink: 0;
+}
+
+#joinSection h3 {
+  margin-top: 0;
+}
+
+#joinSection label {
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+#joinSection input {
+  margin-bottom: 0.5rem;
+}
+
+#joinSection button {
+  width: 100%;
+}
+
+/* Room info */
+#roomInfo {
+  display: none;
+  flex-shrink: 0;
+  padding: 1rem;
+  background: rgba(0,123,255,0.2);
+  border-radius: 8px;
+}
+
+#roomInfo h3 {
+  margin: 0 0 0.5rem 0;
+}
+
+#roomInfo button {
+  margin-top: 0.5rem;
+  width: 100%;
+  background: rgba(255,0,0,0.3);
+}
+
+/* Players list container */
+.players-list-container {
+  flex: 1;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.players-list-container h3 {
+  margin: 0 0 0.5rem 0;
+  flex-shrink: 0;
+}
+
+#playersList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+
+#playersList em,
+#menuPlayersList em {
+  color: #aaa;
+}
+
+/* Player list items */
+.player-item {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Status message */
+#statusMessage {
+  flex-shrink: 0;
+  padding: 0.5rem;
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+/* Navbar room info (mobile) */
+#navRoomInfo {
+  display: none;
+  margin-left: auto;
+  margin-right: 1rem;
+  font-size: 0.9rem;
+}
+
+#navRoomInfo.active {
+  display: flex;
+  align-items: center;
+}
+
+#navRoomCode {
+  font-weight: bold;
+}
+
+#navConnectionStatus {
+  margin-left: 0.5rem;
+  font-size: 1.2rem;
+}
+
+/* Menu leave room button */
+#menuLeaveRoom {
+  display: none;
+  margin-top: 0.5rem;
+  padding: 0;
+}
+
+#menuLeaveBtn {
+  background: rgba(255,0,0,0.3);
+  border: 2px solid rgba(255,0,0,0.6);
+  border-radius: 5px;
+  padding: 0.5rem 1rem;
+  display: block;
+  text-align: center;
+  font-weight: bold;
+  color: #ff6666;
+}
+
+/* Menu players section */
+#menuPlayersSection {
+  display: none;
+}
+
+#menuPlayersSection > div:first-child {
+  padding: 0.5rem 0;
+  color: #aaa;
+  font-weight: bold;
+}
+
+#menuPlayersList {
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(0,0,0,0.3);
+  border-radius: 5px;
+  padding: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+/* Touch-friendly buttons */
+.choice-btn {
+  min-height: 60px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(0, 123, 255, 0.3);
+  padding: 1.5rem;
+  font-size: 1.1rem;
+  background: rgba(255,255,255,0.1);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: #fff;
+  transition: all 0.2s;
+}
+
+.choice-btn:active {
+  transform: scale(0.98);
+}
+
+.choice-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.choice-btn.selected {
+  background: rgba(0,123,255,0.5);
+  border-color: #007bff;
+}
+
+.choice-btn.correct {
+  background: rgba(0,200,0,0.4);
+  border-color: #0f0;
+}
+
+.choice-btn.incorrect {
+  background: rgba(200,0,0,0.4);
+  border-color: #f66;
+}
+
+/* Mobile: Full screen question area, sidebar hidden when in room */
+@media (max-width: 768px) {
+  /* Allow scrolling on mobile for player page */
+  body {
+    overflow: auto;
+  }
+
+  .player-container {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 60px);
+    overflow-y: visible;
+  }
+
+  .question-area {
+    flex: none;
+    min-height: auto;
+    padding: 1rem !important;
+  }
+
+  /* Show sidebar before joining (for join form) */
+  .sidebar {
+    flex: 1;
+    padding: 1rem !important;
+  }
+
+  /* Hide sidebar sections that are in hamburger menu when in room */
+  .sidebar.in-room {
+    display: none !important;
+  }
+
+  /* Hide navbar room info by default, show only when in room */
+  #navRoomInfo {
+    display: none !important;
+  }
+
+  /* Show when in room (controlled by JS) */
+  #navRoomInfo.active {
+    display: flex !important;
+    align-items: center;
+  }
+
+  /* Expand menu width for player list */
+  .menu {
+    min-width: 250px;
+  }
+
+  .choice-btn {
+    font-size: 1rem !important;
+    padding: 1.2rem !important;
+  }
+
+  #questionText {
+    font-size: 1.3rem !important;
+  }
+
+  .navbar {
+    padding: 0.75rem 1rem !important;
+  }
+
+  .logo {
+    font-size: 1rem !important;
+  }
+
+  button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  input {
+    min-height: 44px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* Desktop: Side by side */
+@media (min-width: 769px) {
+  .player-container {
+    flex-direction: row;
+    height: calc(100vh - 60px);
+    max-height: calc(100vh - 60px);
+  }
+
+  .question-area {
+    flex: 1;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+
+  .sidebar {
+    flex: 0 0 300px;
+    min-height: 100%;
+    max-height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+
+  /* Hide navbar room info on desktop (sidebar is visible) */
+  #navRoomInfo {
+    display: none !important;
+  }
+}
+
+/* ===== PRESENTER PAGE STYLES ===== */
+
+.presenter-container {
+  display: flex;
+  gap: 1rem;
+  padding: 2rem;
+  height: calc(100vh - 60px);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Left sidebar with controls */
+.presenter-sidebar {
+  flex: 0 0 20%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.presenter-widget {
+  background: rgba(255,255,255,0.05);
+  padding: 1rem;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.presenter-widget h2 {
+  margin-top: 0;
+}
+
+.presenter-widget.flex-grow {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#activeRooms {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Middle section - quiz display */
+#quizDisplay {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  overflow: hidden;
+  background: rgba(255,255,255,0.05);
+  padding: 1rem;
+  border-radius: 10px;
+}
+
+#quizTitle {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+#questionsSection {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#questionsList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.presenter-controls {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.presenter-controls-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Right sidebar - player list */
+.presenter-players {
+  flex: 0 0 20%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  overflow: hidden;
+  background: rgba(255,255,255,0.05);
+  padding: 1rem;
+  border-radius: 10px;
+}
+
+.presenter-players h2 {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+#playerList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Button styles */
+#showQRBtn {
+  width: 100%;
+  margin-top: 0.5rem;
+  background: rgba(0,200,0,0.3);
+}
+
+#resumeSessionBtn {
+  width: 100%;
+  margin-top: 0.5rem;
+  background: rgba(255,165,0,0.3);
+}
+
+#presentBtn {
+  background: rgba(0,123,255,0.3);
+  flex: 1;
+}
+
+#revealBtn {
+  background: rgba(0,200,0,0.3);
+  flex: 1;
+}
+
+#completeQuizBtn {
+  background: rgba(255,165,0,0.4);
+  width: 100%;
+  padding: 0.75rem;
+}
+
+/* QR Modal */
+#qrModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.9);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+#qrModal.active {
+  display: flex;
+}
+
+.qr-modal-content {
+  background: #1a1a1a;
+  padding: 2rem;
+  border-radius: 10px;
+  text-align: center;
+  max-width: 400px;
+}
+
+.qr-modal-content h2 {
+  margin-top: 0;
+  color: #fff;
+}
+
+#qrImage {
+  width: 300px;
+  height: 300px;
+  margin: 1rem 0;
+}
+
+#qrUrl {
+  color: #aaa;
+  font-size: 0.9rem;
+  word-break: break-all;
+}
+
+#closeQRBtn {
+  width: 100%;
+  padding: 0.75rem;
+  margin-top: 1rem;
+  background: rgba(255,0,0,0.3);
+}
+
+/* ===== COMMON UTILITY CLASSES ===== */
+
+/* Flexbox utilities */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
+.gap-1 {
+  gap: 1rem;
+}
+
+.gap-2 {
+  gap: 2rem;
+}
+
+/* Spacing utilities */
+.m-0 {
+  margin: 0;
+}
+
+.mt-0 {
+  margin-top: 0;
+}
+
+.mt-1 {
+  margin-top: 1rem;
+}
+
+.mb-1 {
+  margin-bottom: 1rem;
+}
+
+.p-1 {
+  padding: 1rem;
+}
+
+.p-2 {
+  padding: 2rem;
+}
+
+/* Width utilities */
+.w-full {
+  width: 100%;
+}
+
+.max-w-600 {
+  max-width: 600px;
+}
+
+/* Height utilities */
+.h-full {
+  height: 100%;
+}
+
+.min-h-0 {
+  min-height: 0;
+}
+
+/* Overflow utilities */
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-y-auto {
+  overflow-y: auto;
+}
+
+/* Background utilities */
+.bg-translucent {
+  background: rgba(255,255,255,0.05);
+}
+
+.bg-blue {
+  background: rgba(0,123,255,0.2);
+}
+
+.bg-red {
+  background: rgba(255,0,0,0.3);
+}
+
+.bg-green {
+  background: rgba(0,200,0,0.3);
+}
+
+.bg-orange {
+  background: rgba(255,165,0,0.3);
+}
+
+/* Border utilities */
+.rounded {
+  border-radius: 8px;
+}
+
+.rounded-lg {
+  border-radius: 10px;
+}
+
+/* Text utilities */
+.text-center {
+  text-align: center;
+}
+
+.text-sm {
+  font-size: 0.9rem;
+}
+
+.text-lg {
+  font-size: 1.2rem;
+}
+
+.text-gray {
+  color: #aaa;
+}
+
+.font-bold {
+  font-weight: bold;
+}
+
+/* Display utilities */
+.hidden {
+  display: none;
+}
+
+.block {
+  display: block;
+}
+
+/* Box sizing */
+.box-border {
+  box-sizing: border-box;
+}
+

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trivia Player</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="logo">Trivia Player</div>
+    <div id="navRoomInfo">
+      <span id="navRoomCode">----</span>
+      <span id="navConnectionStatus" title="Connection status">●</span>
+    </div>
+    <div class="hamburger" id="hamburger">&#9776;</div>
+    <ul class="menu" id="menu">
+      <li><a href="display.html">Spectate</a></li>
+      <li id="menuLeaveRoom">
+        <a href="#" id="menuLeaveBtn">Leave Room</a>
+      </li>
+      <li id="menuPlayersSection">
+        <div>Players in Room</div>
+        <div id="menuPlayersList">
+          <em>Not in a room yet</em>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="player-container">
+
+    <!-- Left/Top: Question Display -->
+    <div class="question-area">
+      <div id="waitingScreen">
+        <h2>Waiting for Question...</h2>
+        <p>The presenter will send questions when ready.</p>
+      </div>
+
+      <div id="questionDisplay">
+        <h2 id="questionText"></h2>
+
+        <div id="choicesContainer">
+          <!-- Choices will be populated here -->
+        </div>
+
+        <div id="answerFeedback">
+          <!-- Feedback after answer revealed -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Right/Bottom: Room/Lobby Status -->
+    <div class="sidebar">
+
+      <!-- Join Section -->
+      <div id="joinSection">
+        <h3>Join Room</h3>
+        <label for="playerName">Your Name</label>
+        <input id="playerName" type="text" placeholder="Enter your name" />
+
+        <label for="roomCodeManual">Room Code</label>
+        <input id="roomCodeManual" type="text" placeholder="Enter room code" />
+
+        <button id="joinBtn">Join Room</button>
+      </div>
+
+      <!-- Room Info -->
+      <div id="roomInfo">
+        <h3>Room Info</h3>
+        <div><strong>Room Code:</strong> <span id="displayRoomCode">----</span></div>
+        <div><strong>Your Name:</strong> <span id="displayPlayerName">----</span></div>
+        <button id="leaveBtn">Leave Room</button>
+      </div>
+
+      <!-- Players List -->
+      <div class="players-list-container">
+        <h3>Players in Room</h3>
+        <div id="playersList">
+          <em>Not in a room yet</em>
+        </div>
+      </div>
+
+      <!-- Status Messages -->
+      <div id="statusMessage">
+        Ready to join
+      </div>
+    </div>
+  </div>
+
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const joinBtn = document.getElementById('joinBtn');
+    const leaveBtn = document.getElementById('leaveBtn');
+    const menuLeaveBtn = document.getElementById('menuLeaveBtn');
+    const nameInput = document.getElementById('playerName');
+    const roomInput = document.getElementById('roomCodeManual');
+
+    const joinSection = document.getElementById('joinSection');
+    const roomInfo = document.getElementById('roomInfo');
+    const displayRoomCode = document.getElementById('displayRoomCode');
+    const displayPlayerName = document.getElementById('displayPlayerName');
+    const playersList = document.getElementById('playersList');
+    const menuPlayersList = document.getElementById('menuPlayersList');
+    const statusMessage = document.getElementById('statusMessage');
+    const sidebar = document.querySelector('.sidebar');
+
+    // Navbar elements (mobile)
+    const navRoomInfo = document.getElementById('navRoomInfo');
+    const navRoomCode = document.getElementById('navRoomCode');
+    const navConnectionStatus = document.getElementById('navConnectionStatus');
+    const menuLeaveRoom = document.getElementById('menuLeaveRoom');
+    const menuPlayersSection = document.getElementById('menuPlayersSection');
+
+    const waitingScreen = document.getElementById('waitingScreen');
+    const questionDisplay = document.getElementById('questionDisplay');
+    const questionText = document.getElementById('questionText');
+    const choicesContainer = document.getElementById('choicesContainer');
+    const answerFeedback = document.getElementById('answerFeedback');
+
+    let currentRoomCode = null;
+    let currentPlayerName = null;
+    let selectedAnswer = null;
+    let answeredQuestions = new Set(); // Track which questions this player has answered
+    let answerRevealTimeout = null; // Track the auto-hide timeout
+    let lastActivityTime = Date.now(); // Track last activity for inactivity timeout
+    let isConnected = false; // Track socket connection status
+
+    // Get answer display timeout from Options (default 30 seconds)
+    function getAnswerDisplayTimeout() {
+      try {
+        const saved = localStorage.getItem('quizOptions');
+        if (saved) {
+          const options = JSON.parse(saved);
+          return (options.answerDisplayTime || 30) * 1000; // Convert to milliseconds
+        }
+      } catch (e) {
+        console.error('Error reading quiz options:', e);
+      }
+      return 30000; // Default 30 seconds
+    }
+
+    // ---------------------------
+    // Connection Status Management
+    // ---------------------------
+    function updateConnectionStatus(connected) {
+      isConnected = connected;
+      if (connected) {
+        navConnectionStatus.style.color = '#0f0'; // Green
+        navConnectionStatus.title = 'Connected';
+      } else {
+        navConnectionStatus.style.color = '#f00'; // Red
+        navConnectionStatus.title = 'Disconnected';
+      }
+    }
+
+    // Socket connection events
+    socket.on('connect', () => {
+      updateConnectionStatus(true);
+      console.log('Connected to server');
+    });
+
+    socket.on('disconnect', () => {
+      updateConnectionStatus(false);
+      console.log('Disconnected from server');
+    });
+
+    // ---------------------------
+    // Helper: Reset to waiting screen
+    // ---------------------------
+    function resetToWaiting() {
+      waitingScreen.style.display = 'flex';
+      questionDisplay.style.display = 'none';
+      selectedAnswer = null;
+    }
+
+    // ---------------------------
+    // Helper: Update player list (sync sidebar + menu)
+    // ---------------------------
+    function updatePlayerList(players) {
+      const html = players.map((p, idx) =>
+        `<div class="player-item"><strong>${idx + 1}.</strong> <span style="color: ${p.connected ? '#0f0' : '#f00'}">●</span> ${p.name}${p.choice !== null ? ' ✓' : ''}</div>`
+      ).join('');
+
+      // Update sidebar (desktop)
+      playersList.innerHTML = html || '<em>No players yet</em>';
+
+      // Update menu (mobile)
+      menuPlayersList.innerHTML = html || '<em>Not in a room yet</em>';
+    }
+
+    // ---------------------------
+    // Helper: Detect mobile device
+    // ---------------------------
+    function isMobile() {
+      return window.innerWidth <= 768;
+    }
+
+    // Adjust grid for mobile vs desktop
+    function adjustChoiceGrid() {
+      if (isMobile()) {
+        choicesContainer.style.gridTemplateColumns = '1fr';
+      } else {
+        choicesContainer.style.gridTemplateColumns = '1fr 1fr';
+      }
+    }
+
+    window.addEventListener('resize', adjustChoiceGrid);
+
+    // ---------------------------
+    // Navigation (hamburger)
+    // ---------------------------
+    const menu = document.getElementById('menu');
+    const hamburger = document.getElementById('hamburger');
+
+    // Toggle menu on click (works on both mobile and desktop)
+    hamburger.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent document listener from immediately closing
+      menu.classList.toggle('open');
+    });
+
+    // Close menu when clicking/touching outside
+    const closeMenuIfOutside = (e) => {
+      if (menu.classList.contains('open') && !menu.contains(e.target) && e.target !== hamburger) {
+        menu.classList.remove('open');
+      }
+    };
+
+    document.addEventListener('click', closeMenuIfOutside);
+    document.addEventListener('touchstart', closeMenuIfOutside);
+
+    // Menu leave button (mobile)
+    menuLeaveBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      menu.classList.remove('open'); // Close menu first
+      if (confirm('Leave this room?')) {
+        handleLeaveRoom();
+      }
+    });
+
+    // ---------------------------
+    // Join room logic
+    // ---------------------------
+    joinBtn.addEventListener('click', () => {
+      const playerName = nameInput.value.trim();
+      const roomCode = roomInput.value.trim();
+
+      if (!playerName || !roomCode) {
+        alert('Enter your name and room code.');
+        return;
+      }
+
+      currentPlayerName = playerName;
+      currentRoomCode = roomCode;
+
+      socket.emit('joinRoom', { roomCode, playerName });
+    });
+
+    // Room joined successfully
+    socket.on('playerListUpdate', ({ roomCode, players }) => {
+      if (roomCode !== currentRoomCode) return;
+
+      // Update room info display (desktop)
+      joinSection.style.display = 'none';
+      roomInfo.style.display = 'block';
+      displayRoomCode.textContent = roomCode;
+      displayPlayerName.textContent = currentPlayerName;
+
+      // Update navbar (mobile)
+      navRoomInfo.classList.add('active');
+      navRoomCode.textContent = roomCode;
+
+      // Show menu items (mobile)
+      menuLeaveRoom.style.display = 'block';
+      menuPlayersSection.style.display = 'block';
+
+      // Hide sidebar on mobile after joining
+      sidebar.classList.add('in-room');
+
+      // Update players list (both sidebar and menu)
+      updatePlayerList(players);
+
+      statusMessage.textContent = `${players.length} player(s) in room`;
+    });
+
+    // ---------------------------
+    // Answer history restored (for reconnecting players)
+    // ---------------------------
+    socket.on('answerHistoryRestored', ({ answeredQuestions: answeredIndices }) => {
+      // Populate the answeredQuestions Set with the indices the player has already answered
+      answeredQuestions.clear();
+      answeredIndices.forEach(idx => answeredQuestions.add(idx));
+      console.log(`Answer history restored: ${answeredIndices.length} question(s) already answered`);
+    });
+
+    // ---------------------------
+    // Leave room logic
+    // ---------------------------
+    function handleLeaveRoom() {
+      socket.disconnect();
+      socket.connect();
+      currentRoomCode = null;
+      currentPlayerName = null;
+      selectedAnswer = null;
+      answeredQuestions.clear();
+
+      // Hide room info (desktop)
+      joinSection.style.display = 'block';
+      roomInfo.style.display = 'none';
+
+      // Hide navbar room info (mobile)
+      navRoomInfo.classList.remove('active');
+      navRoomCode.textContent = '----';
+
+      // Hide menu items (mobile)
+      menuLeaveRoom.style.display = 'none';
+      menuPlayersSection.style.display = 'none';
+
+      // Show sidebar again on mobile (for join form)
+      sidebar.classList.remove('in-room');
+
+      resetToWaiting();
+      updatePlayerList([]);
+      statusMessage.textContent = 'Ready to join';
+    }
+
+    // Desktop leave button
+    leaveBtn.addEventListener('click', () => {
+      if (confirm('Leave this room?')) {
+        handleLeaveRoom();
+      }
+    });
+
+    // ---------------------------
+    // Question presented by presenter
+    // ---------------------------
+    socket.on('questionPresented', ({ questionIndex, question }) => {
+      // Clear any existing answer reveal timeout
+      if (answerRevealTimeout) {
+        clearTimeout(answerRevealTimeout);
+        answerRevealTimeout = null;
+      }
+
+      waitingScreen.style.display = 'none';
+      questionDisplay.style.display = 'flex';
+      answerFeedback.style.display = 'none';
+
+      questionText.textContent = question.text;
+      selectedAnswer = null;
+      adjustChoiceGrid();
+
+      // Check if this question was already answered
+      const alreadyAnswered = answeredQuestions.has(questionIndex);
+
+      // Render choices
+      choicesContainer.innerHTML = question.choices.map((choice, idx) => {
+        const isDisabled = alreadyAnswered ? 'disabled' : '';
+        const choiceLetter = String.fromCharCode(65 + idx); // A, B, C, D, etc.
+
+        return `
+          <button
+            class="choice-btn"
+            data-index="${idx}"
+            ${isDisabled}
+          >
+            <strong>${choiceLetter}.</strong> ${choice}
+          </button>
+        `;
+      }).join('');
+
+      if (alreadyAnswered) {
+        statusMessage.textContent = 'You already answered this question';
+        statusMessage.style.background = 'rgba(255,165,0,0.3)';
+      } else {
+        statusMessage.textContent = 'Select your answer';
+        statusMessage.style.background = 'rgba(0,123,255,0.2)';
+      }
+
+      // Add click handlers to choices (only if not already answered)
+      if (!alreadyAnswered) {
+        document.querySelectorAll('.choice-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (answeredQuestions.has(questionIndex)) return; // Double-check
+
+            // Remove previous selection
+            document.querySelectorAll('.choice-btn').forEach(b => {
+              b.classList.remove('selected');
+            });
+
+            // Mark this choice as selected
+            btn.classList.add('selected');
+
+            selectedAnswer = parseInt(btn.dataset.index);
+            answeredQuestions.add(questionIndex); // Lock this question
+
+            // Disable all buttons after selection
+            document.querySelectorAll('.choice-btn').forEach(b => {
+              b.disabled = true;
+            });
+
+            // Submit answer
+            socket.emit('submitAnswer', { roomCode: currentRoomCode, choice: selectedAnswer });
+
+            statusMessage.textContent = 'Answer submitted! ✓';
+            statusMessage.style.background = 'rgba(0,200,0,0.3)';
+          });
+        });
+      }
+    });
+
+    // ---------------------------
+    // Answer revealed by presenter
+    // ---------------------------
+    socket.on('questionRevealed', ({ questionIndex, question, results }) => {
+      const myResult = results.find(r => r.name === currentPlayerName);
+      const correctChoice = question.correctChoice;
+
+      // Show feedback
+      answerFeedback.style.display = 'block';
+      
+      if (myResult && myResult.is_correct) {
+        answerFeedback.style.background = 'rgba(0,200,0,0.3)';
+        answerFeedback.style.color = '#0f0';
+        answerFeedback.innerHTML = `✓ Correct! The answer was: <strong>${question.choices[correctChoice]}</strong>`;
+      } else {
+        answerFeedback.style.background = 'rgba(200,0,0,0.3)';
+        answerFeedback.style.color = '#f66';
+        answerFeedback.innerHTML = `✗ Incorrect. The correct answer was: <strong>${question.choices[correctChoice]}</strong>`;
+      }
+
+      // Highlight correct answer in choices
+      document.querySelectorAll('.choice-btn').forEach((btn, idx) => {
+        if (idx === correctChoice) {
+          btn.classList.add('correct');
+        } else if (idx === selectedAnswer && selectedAnswer !== correctChoice) {
+          btn.classList.add('incorrect');
+        }
+      });
+
+      statusMessage.textContent = myResult && myResult.is_correct ? 'You got it right! 🎉' : 'Better luck next time!';
+      statusMessage.style.background = myResult && myResult.is_correct ? 'rgba(0,200,0,0.3)' : 'rgba(200,0,0,0.3)';
+
+      // Clear any existing timeout
+      if (answerRevealTimeout) {
+        clearTimeout(answerRevealTimeout);
+      }
+
+      // Reset to waiting screen after configured timeout
+      const timeout = getAnswerDisplayTimeout();
+      answerRevealTimeout = setTimeout(() => {
+        resetToWaiting();
+        statusMessage.textContent = 'Waiting for next question...';
+        statusMessage.style.background = 'rgba(255,255,255,0.1)';
+        answerRevealTimeout = null;
+      }, timeout);
+    });
+
+    // ---------------------------
+    // Error handling
+    // ---------------------------
+    socket.on('roomError', msg => {
+      alert(msg);
+      statusMessage.textContent = 'Error: ' + msg;
+      statusMessage.style.background = 'rgba(255,0,0,0.3)';
+    });
+
+    socket.on('roomClosed', () => {
+      alert('Room closed by presenter.');
+      handleLeaveRoom();
+      statusMessage.textContent = 'Room was closed';
+      statusMessage.style.background = 'rgba(255,0,0,0.3)';
+    });
+
+    // Initialize
+    adjustChoiceGrid();
+    updateConnectionStatus(socket.connected);
+
+    // Auto-fill room code from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomCodeParam = urlParams.get('room');
+    if (roomCodeParam) {
+      roomInput.value = roomCodeParam;
+      nameInput.focus(); // Focus on name input if room is pre-filled
+    }
+  </script>
+</body>
+</html>
