@@ -479,6 +479,10 @@ select option:hover {
   flex-direction: column;
   background: rgba(255,255,255,0.05);
   padding: 2rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* Sidebar */
@@ -510,6 +514,12 @@ select option:hover {
   display: none;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #questionText {
@@ -517,6 +527,11 @@ select option:hover {
   flex-shrink: 0;
   font-size: 1.8rem;
   margin-bottom: 2rem;
+  width: 100%;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  box-sizing: border-box;
 }
 
 /* Choices container */
@@ -526,6 +541,10 @@ select option:hover {
   gap: 1rem;
   flex: 1;
   align-content: start;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* Answer feedback */
@@ -537,6 +556,10 @@ select option:hover {
   text-align: center;
   font-size: 1.2rem;
   flex-shrink: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
 }
 
 /* Join section */
@@ -698,6 +721,14 @@ select option:hover {
   border-radius: 8px;
   color: #fff;
   transition: all 0.2s;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.4;
 }
 
 .choice-btn:active {
@@ -810,7 +841,36 @@ select option:hover {
   .question-area {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     box-sizing: border-box;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #questionDisplay {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  #choicesContainer {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .choice-btn {
+    min-height: 50px;
+    font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+    padding: clamp(0.8rem, 1.5vh, 1.5rem);
+  }
+
+  #questionText {
+    font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+    margin-bottom: 1rem;
+    flex-shrink: 0;
   }
 
   .sidebar {
@@ -824,6 +884,23 @@ select option:hover {
   /* Hide navbar room info on desktop (sidebar is visible) */
   #navRoomInfo {
     display: none !important;
+  }
+}
+
+/* Wider desktop: 2-column grid for choices */
+@media (min-width: 1024px) {
+  #choicesContainer {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Very wide screens: larger font sizes */
+@media (min-width: 1400px) {
+  .choice-btn {
+    font-size: 1.2rem;
+  }
+  #questionText {
+    font-size: 2rem;
   }
 }
 
