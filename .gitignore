@@ -12,6 +12,9 @@ yarn-error.log*
 # Session storage
 app/sessions/
 
+# User-created quizzes (ignore JSON files but keep folder structure)
+app/quizzes/*.json
+
 # Logs
 logs/
 *.log

@@ -1,0 +1,2 @@
+# This file ensures the quizzes folder is tracked by Git
+# User-created quiz JSON files are ignored via .gitignore
