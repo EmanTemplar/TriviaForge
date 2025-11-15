@@ -20,6 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const removeChoiceBtn = document.getElementById('removeChoiceBtn');
   const questionsList = document.getElementById('questionsList');
 
+  const shuffleControls = document.getElementById('shuffleControls');
+  const shuffleQuestionsBtn = document.getElementById('shuffleQuestionsBtn');
+  const shuffleAllChoicesBtn = document.getElementById('shuffleAllChoicesBtn');
+
   const MIN_CHOICES = 2;
   const MAX_CHOICES = 10;
   let currentChoiceCount = 4; // Start with 4 choices by default
@@ -50,6 +54,74 @@ document.addEventListener('DOMContentLoaded', () => {
       num = Math.floor(num / 26) - 1;
     }
     return label;
+  };
+
+  // --------------------
+  // Shuffle Helper (Fisher-Yates algorithm)
+  // --------------------
+  const shuffleArray = (array) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  // --------------------
+  // Shuffle Functions
+  // --------------------
+  const shuffleQuestions = async () => {
+    if (!selectedQuiz || !selectedQuiz.questions || selectedQuiz.questions.length === 0) {
+      alert('No questions to shuffle!');
+      return;
+    }
+
+    if (!confirm('Shuffle all questions in random order?')) return;
+
+    selectedQuiz.questions = shuffleArray(selectedQuiz.questions);
+    await saveQuiz();
+    renderQuestions();
+    alert('Questions shuffled successfully!');
+  };
+
+  const shuffleAllChoices = async () => {
+    if (!selectedQuiz || !selectedQuiz.questions || selectedQuiz.questions.length === 0) {
+      alert('No questions to shuffle choices for!');
+      return;
+    }
+
+    if (!confirm('Shuffle all answer choices for all questions?')) return;
+
+    selectedQuiz.questions.forEach(question => {
+      const shuffled = shuffleArray(question.choices);
+      // Find where the correct choice ended up after shuffle
+      const correctAnswer = question.choices[question.correctChoice];
+      const newCorrectIndex = shuffled.indexOf(correctAnswer);
+
+      question.choices = shuffled;
+      question.correctChoice = newCorrectIndex;
+    });
+
+    await saveQuiz();
+    renderQuestions();
+    alert('All choices shuffled successfully!');
+  };
+
+  const shuffleSingleQuestionChoices = (questionIndex) => {
+    if (!selectedQuiz || !selectedQuiz.questions[questionIndex]) return;
+
+    const question = selectedQuiz.questions[questionIndex];
+    const shuffled = shuffleArray(question.choices);
+
+    // Find where the correct choice ended up after shuffle
+    const correctAnswer = question.choices[question.correctChoice];
+    const newCorrectIndex = shuffled.indexOf(correctAnswer);
+
+    question.choices = shuffled;
+    question.correctChoice = newCorrectIndex;
+
+    return true;
   };
 
   // --------------------
@@ -193,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedQuiz && selectedQuiz.filename === quiz.filename) {
           selectedQuiz = null;
           questionEditor.style.display = 'none';
+          shuffleControls.style.display = 'none'; // Hide shuffle controls when quiz is deleted
           questionsList.innerHTML = '';
           quizTitleInput.value = '';
           quizDescInput.value = '';
@@ -217,6 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     selectedQuiz = quiz;
     questionEditor.style.display = 'block';
+    shuffleControls.style.display = 'block'; // Show shuffle controls when quiz is selected
 
     const res = await fetch(`/api/quizzes/${quiz.filename}`);
     const data = await res.json();
@@ -252,6 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </ul>
         <div>
           <button class="editQBtn">Edit</button>
+          <button class="shuffleQBtn" style="background: rgba(255,165,0,0.2); border: 1px solid rgba(255,165,0,0.5);">🎲 Shuffle Choices</button>
           <button class="deleteQBtn">Delete</button>
         </div>
       `;
@@ -269,6 +344,15 @@ document.addEventListener('DOMContentLoaded', () => {
         editingQuestionIndex = null;
         await saveQuiz();
         renderQuestions();
+      });
+
+      qDiv.querySelector('.shuffleQBtn').addEventListener('click', async () => {
+        if (!confirm(`Shuffle answer choices for question ${idx + 1}?`)) return;
+
+        shuffleSingleQuestionChoices(idx);
+        await saveQuiz();
+        renderQuestions();
+        alert(`Choices shuffled for question ${idx + 1}!`);
       });
 
       questionsList.appendChild(qDiv);
@@ -315,6 +399,10 @@ document.addEventListener('DOMContentLoaded', () => {
     await fetchQuizzes();
     selectQuiz(newQuiz);
   });
+
+  // Shuffle button event listeners
+  shuffleQuestionsBtn.addEventListener('click', shuffleQuestions);
+  shuffleAllChoicesBtn.addEventListener('click', shuffleAllChoices);
 
   // --------------------
   // Excel Import/Export Handlers
