@@ -67,19 +67,33 @@ If you prefer using the CasaOS UI:
 1. **Download the compose file**
    - Download `docker-compose.casaos.yml` from the GitHub repository
 
-2. **Open CasaOS Web UI**
+2. **Update the configuration**
+   - Open the file in a text editor
+   - **IMPORTANT**: Update these paths to match your setup:
+     ```yaml
+     source: /path/to/your/appdata/triviaforge/quizzes
+     source: /path/to/your/appdata/triviaforge/sessions
+     ```
+   - Replace `/path/to/your/appdata/` with your actual path
+   - Examples:
+     - `/DATA/AppData/triviaforge/quizzes` (if you have a DATA drive)
+     - `/mnt/storage/AppData/triviaforge/quizzes` (if using external storage)
+     - `/home/username/AppData/triviaforge/quizzes` (for home directory)
+   - **Important**: Also update `ADMIN_PASSWORD=changeme` to a secure password!
+
+3. **Open CasaOS Web UI**
    - Navigate to your CasaOS dashboard
 
-3. **Import via Custom Install**
+4. **Import via Custom Install**
    - Go to App Store → Custom Install
-   - Paste the contents of `docker-compose.casaos.yml`
-   - **Important**: Update `ADMIN_PASSWORD` before installing!
+   - Paste the edited contents of `docker-compose.casaos.yml`
 
-4. **Install and Access**
+5. **Install and Access**
    - Click Install
+   - CasaOS will auto-create the `quizzes` and `sessions` subdirectories
    - Navigate to: `http://your-casaos-ip:3000/landing.html`
 
-> **Note**: If the import shows a white screen or fails, use Method 1 instead.
+> **Note**: Docker will automatically create the subdirectories (`quizzes` and `sessions`) inside your specified base path. If the import shows a white screen or fails, use Method 1 instead.
 
 ## Method 3: Direct Docker Run (Quick Test)
 

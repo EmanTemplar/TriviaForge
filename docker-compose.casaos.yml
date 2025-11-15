@@ -18,11 +18,11 @@ services:
       icon: https://raw.githubusercontent.com/EmanTemplar/TriviaForge/main/screenshots/landing-page.png
     restart: unless-stopped
     volumes:
-      - type: volume
-        source: triviaforge-quizzes
+      - type: bind
+        source: /path/to/your/appdata/triviaforge/quizzes
         target: /app/quizzes
-      - type: volume
-        source: triviaforge-sessions
+      - type: bind
+        source: /path/to/your/appdata/triviaforge/sessions
         target: /app/sessions
     ports:
       - target: 3000
@@ -49,7 +49,3 @@ x-casaos:
     custom: Interactive Trivia Game Platform
   description:
     custom: A real-time, interactive trivia game platform built with Socket.IO for educators, event organizers, and trivia enthusiasts. Features include quiz management, Excel import, session resume, and mobile-optimized player interface.
-
-volumes:
-  triviaforge-quizzes:
-  triviaforge-sessions:
