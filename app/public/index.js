@@ -20,6 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const removeChoiceBtn = document.getElementById('removeChoiceBtn');
   const questionsList = document.getElementById('questionsList');
 
+  const shuffleControls = document.getElementById('shuffleControls');
+  const shuffleQuestionsBtn = document.getElementById('shuffleQuestionsBtn');
+  const shuffleAllChoicesBtn = document.getElementById('shuffleAllChoicesBtn');
+
   const MIN_CHOICES = 2;
   const MAX_CHOICES = 10;
   let currentChoiceCount = 4; // Start with 4 choices by default
@@ -50,6 +54,199 @@ document.addEventListener('DOMContentLoaded', () => {
       num = Math.floor(num / 26) - 1;
     }
     return label;
+  };
+
+  // --------------------
+  // Shuffle Helper (Fisher-Yates algorithm)
+  // --------------------
+  const shuffleArray = (array) => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  // --------------------
+  // Custom Dialog Functions
+  // --------------------
+  const customAlert = (message, title = 'Notification') => {
+    return new Promise((resolve) => {
+      const dialog = document.getElementById('customDialog');
+      const dialogTitle = document.getElementById('dialogTitle');
+      const dialogMessage = document.getElementById('dialogMessage');
+      const dialogButtons = document.getElementById('dialogButtons');
+
+      dialogTitle.textContent = title;
+      dialogMessage.textContent = message;
+
+      dialogButtons.innerHTML = '';
+      const okBtn = document.createElement('button');
+      okBtn.textContent = 'OK';
+      okBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,123,255,0.3); border: 1px solid rgba(0,123,255,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+      okBtn.onmouseover = () => okBtn.style.background = 'rgba(0,123,255,0.5)';
+      okBtn.onmouseout = () => okBtn.style.background = 'rgba(0,123,255,0.3)';
+      okBtn.onclick = () => {
+        dialog.style.display = 'none';
+        resolve();
+      };
+      dialogButtons.appendChild(okBtn);
+
+      dialog.style.display = 'flex';
+      okBtn.focus();
+    });
+  };
+
+  const customConfirm = (message, title = 'Confirm Action') => {
+    return new Promise((resolve) => {
+      const dialog = document.getElementById('customDialog');
+      const dialogTitle = document.getElementById('dialogTitle');
+      const dialogMessage = document.getElementById('dialogMessage');
+      const dialogButtons = document.getElementById('dialogButtons');
+      const dialogInput = document.getElementById('dialogInput');
+
+      dialogTitle.textContent = title;
+      dialogMessage.textContent = message;
+      dialogInput.style.display = 'none';
+
+      dialogButtons.innerHTML = '';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(100,100,100,0.3); border: 1px solid rgba(100,100,100,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s;';
+      cancelBtn.onmouseover = () => cancelBtn.style.background = 'rgba(100,100,100,0.5)';
+      cancelBtn.onmouseout = () => cancelBtn.style.background = 'rgba(100,100,100,0.3)';
+      cancelBtn.onclick = () => {
+        dialog.style.display = 'none';
+        resolve(false);
+      };
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.textContent = 'Confirm';
+      confirmBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,200,0,0.3); border: 1px solid rgba(0,200,0,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+      confirmBtn.onmouseover = () => confirmBtn.style.background = 'rgba(0,200,0,0.5)';
+      confirmBtn.onmouseout = () => confirmBtn.style.background = 'rgba(0,200,0,0.3)';
+      confirmBtn.onclick = () => {
+        dialog.style.display = 'none';
+        resolve(true);
+      };
+
+      dialogButtons.appendChild(cancelBtn);
+      dialogButtons.appendChild(confirmBtn);
+
+      dialog.style.display = 'flex';
+      confirmBtn.focus();
+    });
+  };
+
+  const customPrompt = (message, title = 'Input Required') => {
+    return new Promise((resolve) => {
+      const dialog = document.getElementById('customDialog');
+      const dialogTitle = document.getElementById('dialogTitle');
+      const dialogMessage = document.getElementById('dialogMessage');
+      const dialogButtons = document.getElementById('dialogButtons');
+      const dialogInput = document.getElementById('dialogInput');
+      const dialogInputField = document.getElementById('dialogInputField');
+
+      dialogTitle.textContent = title;
+      dialogMessage.textContent = message;
+      dialogInput.style.display = 'block';
+      dialogInputField.value = '';
+
+      dialogButtons.innerHTML = '';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(100,100,100,0.3); border: 1px solid rgba(100,100,100,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s;';
+      cancelBtn.onmouseover = () => cancelBtn.style.background = 'rgba(100,100,100,0.5)';
+      cancelBtn.onmouseout = () => cancelBtn.style.background = 'rgba(100,100,100,0.3)';
+      cancelBtn.onclick = () => {
+        dialog.style.display = 'none';
+        resolve(null);
+      };
+
+      const okBtn = document.createElement('button');
+      okBtn.textContent = 'OK';
+      okBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,123,255,0.3); border: 1px solid rgba(0,123,255,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+      okBtn.onmouseover = () => okBtn.style.background = 'rgba(0,123,255,0.5)';
+      okBtn.onmouseout = () => okBtn.style.background = 'rgba(0,123,255,0.3)';
+      okBtn.onclick = () => {
+        dialog.style.display = 'none';
+        resolve(dialogInputField.value || null);
+      };
+
+      // Enter key submits
+      dialogInputField.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          okBtn.click();
+        }
+      };
+
+      dialogButtons.appendChild(cancelBtn);
+      dialogButtons.appendChild(okBtn);
+
+      dialog.style.display = 'flex';
+      setTimeout(() => dialogInputField.focus(), 100);
+    });
+  };
+
+  // --------------------
+  // Shuffle Functions
+  // --------------------
+  const shuffleQuestions = async () => {
+    if (!selectedQuiz || !selectedQuiz.questions || selectedQuiz.questions.length === 0) {
+      await customAlert('No questions to shuffle!', 'Cannot Shuffle');
+      return;
+    }
+
+    const confirmed = await customConfirm('Shuffle all questions in random order?', 'Shuffle Questions');
+    if (!confirmed) return;
+
+    selectedQuiz.questions = shuffleArray(selectedQuiz.questions);
+    await saveQuiz();
+    renderQuestions();
+    await customAlert('Questions shuffled successfully!', 'Success');
+  };
+
+  const shuffleAllChoices = async () => {
+    if (!selectedQuiz || !selectedQuiz.questions || selectedQuiz.questions.length === 0) {
+      await customAlert('No questions to shuffle choices for!', 'Cannot Shuffle');
+      return;
+    }
+
+    const confirmed = await customConfirm('Shuffle all answer choices for all questions?', 'Shuffle All Choices');
+    if (!confirmed) return;
+
+    selectedQuiz.questions.forEach(question => {
+      const shuffled = shuffleArray(question.choices);
+      // Find where the correct choice ended up after shuffle
+      const correctAnswer = question.choices[question.correctChoice];
+      const newCorrectIndex = shuffled.indexOf(correctAnswer);
+
+      question.choices = shuffled;
+      question.correctChoice = newCorrectIndex;
+    });
+
+    await saveQuiz();
+    renderQuestions();
+    await customAlert('All choices shuffled successfully!', 'Success');
+  };
+
+  const shuffleSingleQuestionChoices = (questionIndex) => {
+    if (!selectedQuiz || !selectedQuiz.questions[questionIndex]) return;
+
+    const question = selectedQuiz.questions[questionIndex];
+    const shuffled = shuffleArray(question.choices);
+
+    // Find where the correct choice ended up after shuffle
+    const correctAnswer = question.choices[question.correctChoice];
+    const newCorrectIndex = shuffled.indexOf(correctAnswer);
+
+    question.choices = shuffled;
+    question.correctChoice = newCorrectIndex;
+
+    return true;
   };
 
   // --------------------
@@ -145,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderQuizList();
     } catch (err) {
       console.error(err);
-      alert('Could not load quizzes. Check console for errors.');
+      await customAlert('Could not load quizzes. Check console for errors.', 'Load Error');
     }
   };
 
@@ -188,11 +385,13 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       div.querySelector('.deleteQuizBtn').addEventListener('click', async () => {
-        if (!confirm('Are you sure you want to delete this quiz?')) return;
+        const confirmed = await customConfirm('Are you sure you want to delete this quiz?', 'Delete Quiz');
+        if (!confirmed) return;
         await fetch(`/api/quizzes/${quiz.filename}`, { method: 'DELETE' });
         if (selectedQuiz && selectedQuiz.filename === quiz.filename) {
           selectedQuiz = null;
           questionEditor.style.display = 'none';
+          shuffleControls.style.display = 'none'; // Hide shuffle controls when quiz is deleted
           questionsList.innerHTML = '';
           quizTitleInput.value = '';
           quizDescInput.value = '';
@@ -217,6 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     selectedQuiz = quiz;
     questionEditor.style.display = 'block';
+    shuffleControls.style.display = 'block'; // Show shuffle controls when quiz is selected
 
     const res = await fetch(`/api/quizzes/${quiz.filename}`);
     const data = await res.json();
@@ -252,6 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </ul>
         <div>
           <button class="editQBtn">Edit</button>
+          <button class="shuffleQBtn" style="background: rgba(255,165,0,0.2); border: 1px solid rgba(255,165,0,0.5);">🎲 Shuffle Choices</button>
           <button class="deleteQBtn">Delete</button>
         </div>
       `;
@@ -269,6 +470,16 @@ document.addEventListener('DOMContentLoaded', () => {
         editingQuestionIndex = null;
         await saveQuiz();
         renderQuestions();
+      });
+
+      qDiv.querySelector('.shuffleQBtn').addEventListener('click', async () => {
+        const confirmed = await customConfirm(`Shuffle answer choices for question ${idx + 1}?`, 'Shuffle Choices');
+        if (!confirmed) return;
+
+        shuffleSingleQuestionChoices(idx);
+        await saveQuiz();
+        renderQuestions();
+        await customAlert(`Choices shuffled for question ${idx + 1}!`, 'Success');
       });
 
       questionsList.appendChild(qDiv);
@@ -304,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   createQuizBtn.addEventListener('click', async () => {
-    const title = prompt('Enter new quiz title:');
+    const title = await customPrompt('Enter new quiz title:', 'Create Quiz');
     if (!title) return;
     const res = await fetch('/api/quizzes', {
       method: 'POST',
@@ -315,6 +526,10 @@ document.addEventListener('DOMContentLoaded', () => {
     await fetchQuizzes();
     selectQuiz(newQuiz);
   });
+
+  // Shuffle button event listeners
+  shuffleQuestionsBtn.addEventListener('click', shuffleQuestions);
+  shuffleAllChoicesBtn.addEventListener('click', shuffleAllChoices);
 
   // --------------------
   // Excel Import/Export Handlers
@@ -400,13 +615,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   addQuestionBtn.addEventListener('click', async () => {
-    if (!selectedQuiz) return alert('Select a quiz first');
+    if (!selectedQuiz) {
+      await customAlert('Select a quiz first', 'No Quiz Selected');
+      return;
+    }
 
     const text = questionTextInput.value.trim();
     const choices = getChoiceInputs().map(i => i.value.trim());
     const correctChoice = parseInt(correctSelect.value);
 
-    if (!text || choices.some(c => !c)) return alert('Fill in all fields');
+    if (!text || choices.some(c => !c)) {
+      await customAlert('Fill in all fields', 'Missing Information');
+      return;
+    }
 
     if (!selectedQuiz.questions) selectedQuiz.questions = [];
 
@@ -576,7 +797,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Delete session
   // --------------------
   window.deleteSession = async (filename) => {
-    if (!confirm('Delete this session permanently?')) return;
+    const confirmed = await customConfirm('Delete this session permanently?', 'Delete Session');
+    if (!confirmed) return;
     await fetch(`/api/sessions/${filename}`, { method: 'DELETE' });
     loadSessions();
   };

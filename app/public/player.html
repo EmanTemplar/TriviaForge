@@ -90,6 +90,17 @@
     </div>
   </div>
 
+  <!-- Custom Dialog Modal (for alerts and confirms) -->
+  <div id="customDialog" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2000;">
+    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 2rem; border-radius: 15px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
+      <div style="margin-bottom: 1.5rem;">
+        <h3 id="dialogTitle" style="margin: 0 0 1rem 0; color: #fff; font-size: 1.3rem; text-align: center;"></h3>
+        <p id="dialogMessage" style="margin: 0; color: #aaa; font-size: 1rem; line-height: 1.5; text-align: center;"></p>
+      </div>
+      <div id="dialogButtons" style="display: flex; gap: 1rem; justify-content: center;"></div>
+    </div>
+  </div>
+
   <!-- Socket.IO -->
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -129,6 +140,76 @@
     let answerRevealTimeout = null; // Track the auto-hide timeout
     let lastActivityTime = Date.now(); // Track last activity for inactivity timeout
     let isConnected = false; // Track socket connection status
+
+    // --------------------
+    // Custom Dialog Functions
+    // --------------------
+    const customAlert = (message, title = 'Notification') => {
+      return new Promise((resolve) => {
+        const dialog = document.getElementById('customDialog');
+        const dialogTitle = document.getElementById('dialogTitle');
+        const dialogMessage = document.getElementById('dialogMessage');
+        const dialogButtons = document.getElementById('dialogButtons');
+
+        dialogTitle.textContent = title;
+        dialogMessage.textContent = message;
+
+        dialogButtons.innerHTML = '';
+        const okBtn = document.createElement('button');
+        okBtn.textContent = 'OK';
+        okBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,123,255,0.3); border: 1px solid rgba(0,123,255,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+        okBtn.onmouseover = () => okBtn.style.background = 'rgba(0,123,255,0.5)';
+        okBtn.onmouseout = () => okBtn.style.background = 'rgba(0,123,255,0.3)';
+        okBtn.onclick = () => {
+          dialog.style.display = 'none';
+          resolve();
+        };
+        dialogButtons.appendChild(okBtn);
+
+        dialog.style.display = 'flex';
+        okBtn.focus();
+      });
+    };
+
+    const customConfirm = (message, title = 'Confirm Action') => {
+      return new Promise((resolve) => {
+        const dialog = document.getElementById('customDialog');
+        const dialogTitle = document.getElementById('dialogTitle');
+        const dialogMessage = document.getElementById('dialogMessage');
+        const dialogButtons = document.getElementById('dialogButtons');
+
+        dialogTitle.textContent = title;
+        dialogMessage.textContent = message;
+
+        dialogButtons.innerHTML = '';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(100,100,100,0.3); border: 1px solid rgba(100,100,100,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s;';
+        cancelBtn.onmouseover = () => cancelBtn.style.background = 'rgba(100,100,100,0.5)';
+        cancelBtn.onmouseout = () => cancelBtn.style.background = 'rgba(100,100,100,0.3)';
+        cancelBtn.onclick = () => {
+          dialog.style.display = 'none';
+          resolve(false);
+        };
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = 'Confirm';
+        confirmBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,200,0,0.3); border: 1px solid rgba(0,200,0,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+        confirmBtn.onmouseover = () => confirmBtn.style.background = 'rgba(0,200,0,0.5)';
+        confirmBtn.onmouseout = () => confirmBtn.style.background = 'rgba(0,200,0,0.3)';
+        confirmBtn.onclick = () => {
+          dialog.style.display = 'none';
+          resolve(true);
+        };
+
+        dialogButtons.appendChild(cancelBtn);
+        dialogButtons.appendChild(confirmBtn);
+
+        dialog.style.display = 'flex';
+        confirmBtn.focus();
+      });
+    };
 
     // Get answer display timeout from Options (default 30 seconds)
     function getAnswerDisplayTimeout() {
@@ -234,10 +315,11 @@
     document.addEventListener('touchstart', closeMenuIfOutside);
 
     // Menu leave button (mobile)
-    menuLeaveBtn.addEventListener('click', (e) => {
+    menuLeaveBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       menu.classList.remove('open'); // Close menu first
-      if (confirm('Leave this room?')) {
+      const confirmed = await customConfirm('Leave this room?', 'Leave Room');
+      if (confirmed) {
         handleLeaveRoom();
       }
     });
@@ -245,12 +327,12 @@
     // ---------------------------
     // Join room logic
     // ---------------------------
-    joinBtn.addEventListener('click', () => {
+    joinBtn.addEventListener('click', async () => {
       const playerName = nameInput.value.trim();
       const roomCode = roomInput.value.trim();
 
       if (!playerName || !roomCode) {
-        alert('Enter your name and room code.');
+        await customAlert('Enter your name and room code.', 'Missing Information');
         return;
       }
 
@@ -347,8 +429,9 @@
     }
 
     // Desktop leave button
-    leaveBtn.addEventListener('click', () => {
-      if (confirm('Leave this room?')) {
+    leaveBtn.addEventListener('click', async () => {
+      const confirmed = await customConfirm('Leave this room?', 'Leave Room');
+      if (confirmed) {
         handleLeaveRoom();
       }
     });
@@ -482,13 +565,13 @@
     // Error handling
     // ---------------------------
     socket.on('roomError', msg => {
-      alert(msg);
+      customAlert(msg, 'Room Error');
       statusMessage.textContent = 'Error: ' + msg;
       statusMessage.style.background = 'rgba(255,0,0,0.3)';
     });
 
     socket.on('roomClosed', () => {
-      alert('Room closed by presenter.');
+      customAlert('Room closed by presenter.', 'Room Closed');
       handleLeaveRoom();
       statusMessage.textContent = 'Room was closed';
       statusMessage.style.background = 'rgba(255,0,0,0.3)';
