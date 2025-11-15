@@ -1,20 +1,54 @@
-version: "3.9"
-
+name: triviaforge
 services:
-  triviaforge:
-    image: emancodetemplar/triviaforge:latest
+  main_app:
+    cpu_shares: 90
+    command: []
     container_name: triviaforge
-    ports:
-      - "3000:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
     environment:
       - APP_PORT=3000
       - ADMIN_PASSWORD=changeme
       - HOST_IP=
       - SERVER_URL=
-    volumes:
-      - triviaforge-quizzes:/app/quizzes
-      - triviaforge-sessions:/app/sessions
+    image: emancodetemplar/triviaforge:latest
+    labels:
+      icon: https://raw.githubusercontent.com/EmanTemplar/TriviaForge/main/screenshots/landing-page.png
     restart: unless-stopped
+    volumes:
+      - type: volume
+        source: triviaforge-quizzes
+        target: /app/quizzes
+      - type: volume
+        source: triviaforge-sessions
+        target: /app/sessions
+    ports:
+      - target: 3000
+        published: "3000"
+        protocol: tcp
+    devices: []
+    cap_add: []
+    network_mode: bridge
+    privileged: false
+    hostname: triviaforge
+x-casaos:
+  author: EmanTemplar
+  category: Games
+  hostname: ""
+  icon: https://raw.githubusercontent.com/EmanTemplar/TriviaForge/main/screenshots/landing-page.png
+  index: /landing.html
+  is_uncontrolled: false
+  port_map: "3000"
+  scheme: http
+  store_app_id: triviaforge
+  title:
+    custom: TriviaForge
+  tagline:
+    custom: Interactive Trivia Game Platform
+  description:
+    custom: A real-time, interactive trivia game platform built with Socket.IO for educators, event organizers, and trivia enthusiasts. Features include quiz management, Excel import, session resume, and mobile-optimized player interface.
 
 volumes:
   triviaforge-quizzes:
