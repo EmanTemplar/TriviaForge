@@ -1,0 +1,44 @@
+# Dependencies (will be installed during build)
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Session data (user-specific)
+sessions/
+
+# User-created quizzes (user-specific)
+quizzes/*.json
+quizzes/completed/*.json
+
+# Archive folder
+archive/
+
+# Git files
+.git/
+.gitignore
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+.temp/
+
+# Docker files
+Dockerfile
+.dockerignore
+docker-compose.yml

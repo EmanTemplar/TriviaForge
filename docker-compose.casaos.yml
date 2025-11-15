@@ -1,0 +1,43 @@
+name: triviaforge
+services:
+  app:
+    image: emancodetemplar/triviaforge:latest
+    container_name: triviaforge
+    ports:
+      - "3000:3000"
+    environment:
+      APP_PORT: 3000
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}  # Change this!
+      HOST_IP: ${HOST_IP:-}
+      SERVER_URL: ${SERVER_URL:-}
+    volumes:
+      - triviaforge-quizzes:/app/quizzes
+      - triviaforge-sessions:/app/sessions
+    restart: unless-stopped
+    labels:
+      icon: https://raw.githubusercontent.com/EmanTemplar/TriviaForge/main/screenshots/landing-page.png
+
+volumes:
+  triviaforge-quizzes:
+  triviaforge-sessions:
+
+# CasaOS Configuration
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: app
+  description:
+    en_us: "A real-time, interactive trivia game platform built with Socket.IO for educators and event organizers"
+  tagline:
+    en_us: "Interactive Trivia Game Platform"
+  developer: "EmanTemplar"
+  author: "EmanTemplar"
+  icon: https://raw.githubusercontent.com/EmanTemplar/TriviaForge/main/screenshots/landing-page.png
+  thumbnail: https://raw.githubusercontent.com/EmanTemplar/TriviaForge/main/screenshots/main-interface.png
+  title:
+    en_us: "TriviaForge"
+  category: "Games"
+  port_map: "3000"
+  scheme: http
+  index: /landing.html
