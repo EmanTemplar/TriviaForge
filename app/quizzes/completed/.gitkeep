@@ -1,0 +1,2 @@
+# This file ensures the completed folder is tracked by Git
+# Completed quiz session JSON files are ignored via .gitignore
