@@ -36,14 +36,25 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 - **Reconnection Support**: Automatically restore progress when rejoining
 - **Progress Tracking**: Visual indicators for answered questions
 
-<!-- Screenshot Placeholder: Player Interface (Mobile - Waiting) -->
-![Player Waiting for Question](screenshots/player-mobile-waiting.png)
-
-<!-- Screenshot Placeholder: Player Interface (Mobile - Answering) -->
-![Player Answering Questions](screenshots/player-questions.png)
-
-<!-- Screenshot Placeholder: Player Interface (Mobile - Overview) -->
-![Player Interface Overview](screenshots/player-mobile.png)
+<table>
+  <tr>
+    <td width="33%" align="center">
+      <img src="screenshots/player-mobile-waiting.png" alt="Player Waiting" width="100%"/>
+      <br/>
+      <em>Waiting for Question</em>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshots/player-questions.png" alt="Player Answering" width="100%"/>
+      <br/>
+      <em>Answering Questions</em>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshots/player-mobile.png" alt="Player Overview" width="100%"/>
+      <br/>
+      <em>Interface Overview</em>
+    </td>
+  </tr>
+</table>
 
 ### For Spectators
 - **Display Mode**: Large-screen view perfect for projectors and TVs
