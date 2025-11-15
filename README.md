@@ -296,7 +296,7 @@ Potential future features (as of Nov. 2025):
 - [ ] Timer-based questions
 - [ ] Team mode
 - [ ] Export results to CSV/PDF
-- [ ] Dark mode
+- [ ] Swapping Between Dark & Light mode
 - [ ] Internationalization
 
 ## Credits
