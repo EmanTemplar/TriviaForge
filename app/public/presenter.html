@@ -79,6 +79,17 @@
     </div>
   </div>
 
+  <!-- Custom Dialog Modal (for alerts and confirms) -->
+  <div id="customDialog" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2000;">
+    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 2rem; border-radius: 15px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
+      <div style="margin-bottom: 1.5rem;">
+        <h3 id="dialogTitle" style="margin: 0 0 1rem 0; color: #fff; font-size: 1.3rem; text-align: center;"></h3>
+        <p id="dialogMessage" style="margin: 0; color: #aaa; font-size: 1rem; line-height: 1.5; text-align: center;"></p>
+      </div>
+      <div id="dialogButtons" style="display: flex; gap: 1rem; justify-content: center;"></div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
 <script>
   const socket = io();
@@ -130,6 +141,76 @@
   document.addEventListener('click', closeMenuIfOutside);
   document.addEventListener('touchstart', closeMenuIfOutside);
 
+  // --------------------
+  // Custom Dialog Functions
+  // --------------------
+  const customAlert = (message, title = 'Notification') => {
+    return new Promise((resolve) => {
+      const dialog = document.getElementById('customDialog');
+      const dialogTitle = document.getElementById('dialogTitle');
+      const dialogMessage = document.getElementById('dialogMessage');
+      const dialogButtons = document.getElementById('dialogButtons');
+
+      dialogTitle.textContent = title;
+      dialogMessage.textContent = message;
+
+      dialogButtons.innerHTML = '';
+      const okBtn = document.createElement('button');
+      okBtn.textContent = 'OK';
+      okBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,123,255,0.3); border: 1px solid rgba(0,123,255,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+      okBtn.onmouseover = () => okBtn.style.background = 'rgba(0,123,255,0.5)';
+      okBtn.onmouseout = () => okBtn.style.background = 'rgba(0,123,255,0.3)';
+      okBtn.onclick = () => {
+        dialog.style.display = 'none';
+        resolve();
+      };
+      dialogButtons.appendChild(okBtn);
+
+      dialog.style.display = 'flex';
+      okBtn.focus();
+    });
+  };
+
+  const customConfirm = (message, title = 'Confirm Action') => {
+    return new Promise((resolve) => {
+      const dialog = document.getElementById('customDialog');
+      const dialogTitle = document.getElementById('dialogTitle');
+      const dialogMessage = document.getElementById('dialogMessage');
+      const dialogButtons = document.getElementById('dialogButtons');
+
+      dialogTitle.textContent = title;
+      dialogMessage.textContent = message;
+
+      dialogButtons.innerHTML = '';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(100,100,100,0.3); border: 1px solid rgba(100,100,100,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s;';
+      cancelBtn.onmouseover = () => cancelBtn.style.background = 'rgba(100,100,100,0.5)';
+      cancelBtn.onmouseout = () => cancelBtn.style.background = 'rgba(100,100,100,0.3)';
+      cancelBtn.onclick = () => {
+        dialog.style.display = 'none';
+        resolve(false);
+      };
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.textContent = 'Confirm';
+      confirmBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,200,0,0.3); border: 1px solid rgba(0,200,0,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+      confirmBtn.onmouseover = () => confirmBtn.style.background = 'rgba(0,200,0,0.5)';
+      confirmBtn.onmouseout = () => confirmBtn.style.background = 'rgba(0,200,0,0.3)';
+      confirmBtn.onclick = () => {
+        dialog.style.display = 'none';
+        resolve(true);
+      };
+
+      dialogButtons.appendChild(cancelBtn);
+      dialogButtons.appendChild(confirmBtn);
+
+      dialog.style.display = 'flex';
+      confirmBtn.focus();
+    });
+  };
+
   // Load quiz list
   async function loadQuizzes() {
     const res = await fetch('/api/quizzes');
@@ -172,12 +253,16 @@
   loadIncompleteSessions();
 
   // Resume session button
-  resumeSessionBtn.addEventListener('click', () => {
+  resumeSessionBtn.addEventListener('click', async () => {
     const sessionFilename = incompleteSessionSelector.value;
-    if (!sessionFilename) return alert('Select a session to resume');
+    if (!sessionFilename) {
+      await customAlert('Select a session to resume', 'No Session Selected');
+      return;
+    }
 
     const session = incompleteSessions.find(s => s.filename === sessionFilename);
-    if (confirm(`Resume session for "${session.quizTitle}" (original room: ${session.roomCode})?\n\nPlayers will need to rejoin with their original names to keep their progress.`)) {
+    const confirmed = await customConfirm(`Resume session for "${session.quizTitle}" (original room: ${session.roomCode})?\n\nPlayers will need to rejoin with their original names to keep their progress.`, 'Resume Session');
+    if (confirmed) {
       socket.emit('resumeSession', { sessionFilename });
     }
   });
@@ -187,9 +272,12 @@
 // --------------------
 
 // Make new room
-makeLiveBtn.addEventListener('click', () => {
+makeLiveBtn.addEventListener('click', async () => {
   const quizFilename = quizSelector.value;
-  if (!quizFilename) return alert('Select a quiz first');
+  if (!quizFilename) {
+    await customAlert('Select a quiz first', 'No Quiz Selected');
+    return;
+  }
   const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
   socket.emit('createRoom', { roomCode, quizFilename });
 });
@@ -274,7 +362,7 @@ socket.on('roomCreated', ({ roomCode, quizTitle, questions, presentedQuestions: 
   renderQuestions();
 
   if (isResumed) {
-    alert(`Session resumed!\n\nNew room code: ${roomCode}\nOriginal room: ${originalRoomCode}\n\nPlayers should rejoin with their original names.`);
+    customAlert(`Session resumed!\n\nNew room code: ${roomCode}\nOriginal room: ${originalRoomCode}\n\nPlayers should rejoin with their original names.`, 'Session Resumed');
   }
 });
 
@@ -308,8 +396,9 @@ socket.on('activeRoomsUpdate', (rooms) => {
 });
 
 // Close room
-window.closeRoom = (roomCode) => {
-  if (confirm(`Close room ${roomCode}?`)) {
+window.closeRoom = async (roomCode) => {
+  const confirmed = await customConfirm(`Close room ${roomCode}?`, 'Close Room');
+  if (confirmed) {
     socket.emit('closeRoom', { roomCode });
     if (currentRoomCode === roomCode) {
       currentRoomCode = null;
@@ -325,7 +414,7 @@ window.closeRoom = (roomCode) => {
 
 socket.on('roomClosed', ({ roomCode }) => {
   if (currentRoomCode === roomCode) {
-    alert('Room closed.');
+    customAlert('Room closed.', 'Room Closed');
     currentRoomCode = null;
     currentQuestions = [];
     currentQuestionIndex = -1;
@@ -343,48 +432,83 @@ socket.on('roomClosed', ({ roomCode }) => {
 // ---------------- Navigation and Control Buttons ----------------
 
 // Previous button - just navigation
-prevBtn.addEventListener('click', () => {
-  if (!currentRoomCode) return alert('No room selected.');
-  if (!currentQuestions.length) return alert('No questions loaded.');
-  if (currentQuestionIndex <= 0) return alert('Already at first question.');
+prevBtn.addEventListener('click', async () => {
+  if (!currentRoomCode) {
+    await customAlert('No room selected.', 'No Room');
+    return;
+  }
+  if (!currentQuestions.length) {
+    await customAlert('No questions loaded.', 'No Questions');
+    return;
+  }
+  if (currentQuestionIndex <= 0) {
+    await customAlert('Already at first question.', 'First Question');
+    return;
+  }
   currentQuestionIndex--;
   renderQuestions();
 });
 
 // Next button - just navigation
-nextBtn.addEventListener('click', () => {
-  if (!currentRoomCode) return alert('No room selected.');
-  if (!currentQuestions.length) return alert('No questions loaded.');
-  if (currentQuestionIndex >= currentQuestions.length - 1) return alert('Already at last question.');
+nextBtn.addEventListener('click', async () => {
+  if (!currentRoomCode) {
+    await customAlert('No room selected.', 'No Room');
+    return;
+  }
+  if (!currentQuestions.length) {
+    await customAlert('No questions loaded.', 'No Questions');
+    return;
+  }
+  if (currentQuestionIndex >= currentQuestions.length - 1) {
+    await customAlert('Already at last question.', 'Last Question');
+    return;
+  }
   currentQuestionIndex++;
   renderQuestions();
 });
 
 // Present Question button - sends question to players (only one at a time)
-presentBtn.addEventListener('click', () => {
-  if (!currentRoomCode) return alert('No room selected.');
-  if (currentQuestionIndex < 0) return alert('No question selected.');
-  if (!currentQuestions.length) return alert('No questions loaded.');
-  
+presentBtn.addEventListener('click', async () => {
+  if (!currentRoomCode) {
+    await customAlert('No room selected.', 'No Room');
+    return;
+  }
+  if (currentQuestionIndex < 0) {
+    await customAlert('No question selected.', 'No Question');
+    return;
+  }
+  if (!currentQuestions.length) {
+    await customAlert('No questions loaded.', 'No Questions');
+    return;
+  }
+
   presentedQuestionIndex = currentQuestionIndex;
   renderQuestions();
   socket.emit('presentQuestion', { roomCode: currentRoomCode, questionIndex: currentQuestionIndex });
 });
 
 // Reveal Answer button - shows correct answer to players
-revealBtn.addEventListener('click', () => {
-  if (!currentRoomCode) return alert('No room selected.');
-  if (presentedQuestionIndex === null) {
-    return alert('Please present a question to players first.');
+revealBtn.addEventListener('click', async () => {
+  if (!currentRoomCode) {
+    await customAlert('No room selected.', 'No Room');
+    return;
   }
-  
+  if (presentedQuestionIndex === null) {
+    await customAlert('Please present a question to players first.', 'No Question Presented');
+    return;
+  }
+
   socket.emit('revealAnswer', { roomCode: currentRoomCode });
 });
 
 // Complete Quiz button - marks quiz as complete and saves results
-completeQuizBtn.addEventListener('click', () => {
-  if (!currentRoomCode) return alert('No room selected.');
-  if (confirm('Complete this quiz and save all results? This will mark the session as finished.')) {
+completeQuizBtn.addEventListener('click', async () => {
+  if (!currentRoomCode) {
+    await customAlert('No room selected.', 'No Room');
+    return;
+  }
+  const confirmed = await customConfirm('Complete this quiz and save all results? This will mark the session as finished.', 'Complete Quiz');
+  if (confirmed) {
     socket.emit('completeQuiz', { roomCode: currentRoomCode });
   }
 });
@@ -404,7 +528,7 @@ showQRBtn.addEventListener('click', async () => {
     qrUrl.textContent = data.url;
     qrModal.style.display = 'flex';
   } catch (err) {
-    alert('Failed to generate QR code');
+    await customAlert('Failed to generate QR code', 'QR Code Error');
     console.error(err);
   }
 });
@@ -440,12 +564,12 @@ socket.on('questionRevealed', ({ questionIndex, question, results, revealedQuest
     `${r.name}: ${r.choice !== null ? question.choices[r.choice] : 'No answer'} ${r.is_correct ? '✓' : '✗'}`
   ).join('\n');
 
-  alert(`Answer Revealed!\n\nCorrect: ${question.choices[question.correctChoice]}\n\n${resultsSummary}`);
+  customAlert(`Answer Revealed!\n\nCorrect: ${question.choices[question.correctChoice]}\n\n${resultsSummary}`, 'Answer Revealed');
 });
 
 // Quiz completed confirmation
 socket.on('quizCompleted', ({ message, filename }) => {
-  alert(message);
+  customAlert(message, 'Quiz Completed');
   if (filename) {
     console.log('Session saved as:', filename);
   }

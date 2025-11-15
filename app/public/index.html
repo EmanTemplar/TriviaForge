@@ -157,6 +157,20 @@
     </div>
   </main>
 
+  <!-- Custom Dialog Modal (for alerts and confirms) -->
+  <div id="customDialog" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2000;">
+    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 2rem; border-radius: 15px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
+      <div style="margin-bottom: 1.5rem;">
+        <h3 id="dialogTitle" style="margin: 0 0 1rem 0; color: #fff; font-size: 1.3rem; text-align: center;"></h3>
+        <p id="dialogMessage" style="margin: 0; color: #aaa; font-size: 1rem; line-height: 1.5; text-align: center;"></p>
+      </div>
+      <div id="dialogInput" style="display: none; margin-bottom: 1rem;">
+        <input type="text" id="dialogInputField" style="width: 100%; padding: 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: #fff;">
+      </div>
+      <div id="dialogButtons" style="display: flex; gap: 1rem; justify-content: center;"></div>
+    </div>
+  </div>
+
   <!-- Session Detail Modal -->
   <div id="sessionModal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1000;">
     <div style="background: #1a1a1a; padding: 2rem; border-radius: 10px; max-width: 800px; max-height: 80vh; overflow-y: auto; width: 90%;">

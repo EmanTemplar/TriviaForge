@@ -131,6 +131,20 @@
     </div>
   </div>
 
+  <!-- Custom Dialog Modal (for alerts and confirms) -->
+  <div id="customDialog" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2000;">
+    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 2rem; border-radius: 15px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
+      <div style="margin-bottom: 1.5rem;">
+        <h3 id="dialogTitle" style="margin: 0 0 1rem 0; color: #fff; font-size: 1.3rem; text-align: center;"></h3>
+        <p id="dialogMessage" style="margin: 0; color: #aaa; font-size: 1rem; line-height: 1.5; text-align: center;"></p>
+      </div>
+      <div id="dialogButtons" style="display: flex; gap: 1rem; justify-content: center;"></div>
+      <div id="dialogInput" style="display: none; margin-top: 1rem;">
+        <input type="text" id="dialogInputField" style="width: 100%; padding: 0.75rem; font-size: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: #fff;">
+      </div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
@@ -147,6 +161,131 @@
     let currentRoomCode = null;
     let currentQuestionRevealed = false;
     let answerRevealTimeout = null; // Track the auto-hide timeout
+
+    // --------------------
+    // Custom Dialog Functions
+    // --------------------
+    const customAlert = (message, title = 'Notification') => {
+      return new Promise((resolve) => {
+        const dialog = document.getElementById('customDialog');
+        const dialogTitle = document.getElementById('dialogTitle');
+        const dialogMessage = document.getElementById('dialogMessage');
+        const dialogButtons = document.getElementById('dialogButtons');
+        const dialogInput = document.getElementById('dialogInput');
+
+        dialogTitle.textContent = title;
+        dialogMessage.textContent = message;
+        dialogInput.style.display = 'none';
+
+        dialogButtons.innerHTML = '';
+        const okBtn = document.createElement('button');
+        okBtn.textContent = 'OK';
+        okBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,123,255,0.3); border: 1px solid rgba(0,123,255,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+        okBtn.onmouseover = () => okBtn.style.background = 'rgba(0,123,255,0.5)';
+        okBtn.onmouseout = () => okBtn.style.background = 'rgba(0,123,255,0.3)';
+        okBtn.onclick = () => {
+          dialog.style.display = 'none';
+          resolve();
+        };
+        dialogButtons.appendChild(okBtn);
+
+        dialog.style.display = 'flex';
+        okBtn.focus();
+      });
+    };
+
+    const customConfirm = (message, title = 'Confirm Action') => {
+      return new Promise((resolve) => {
+        const dialog = document.getElementById('customDialog');
+        const dialogTitle = document.getElementById('dialogTitle');
+        const dialogMessage = document.getElementById('dialogMessage');
+        const dialogButtons = document.getElementById('dialogButtons');
+        const dialogInput = document.getElementById('dialogInput');
+
+        dialogTitle.textContent = title;
+        dialogMessage.textContent = message;
+        dialogInput.style.display = 'none';
+
+        dialogButtons.innerHTML = '';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(100,100,100,0.3); border: 1px solid rgba(100,100,100,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s;';
+        cancelBtn.onmouseover = () => cancelBtn.style.background = 'rgba(100,100,100,0.5)';
+        cancelBtn.onmouseout = () => cancelBtn.style.background = 'rgba(100,100,100,0.3)';
+        cancelBtn.onclick = () => {
+          dialog.style.display = 'none';
+          resolve(false);
+        };
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = 'Confirm';
+        confirmBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,200,0,0.3); border: 1px solid rgba(0,200,0,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+        confirmBtn.onmouseover = () => confirmBtn.style.background = 'rgba(0,200,0,0.5)';
+        confirmBtn.onmouseout = () => confirmBtn.style.background = 'rgba(0,200,0,0.3)';
+        confirmBtn.onclick = () => {
+          dialog.style.display = 'none';
+          resolve(true);
+        };
+
+        dialogButtons.appendChild(cancelBtn);
+        dialogButtons.appendChild(confirmBtn);
+
+        dialog.style.display = 'flex';
+        confirmBtn.focus();
+      });
+    };
+
+    const customPrompt = (message, title = 'Input Required') => {
+      return new Promise((resolve) => {
+        const dialog = document.getElementById('customDialog');
+        const dialogTitle = document.getElementById('dialogTitle');
+        const dialogMessage = document.getElementById('dialogMessage');
+        const dialogButtons = document.getElementById('dialogButtons');
+        const dialogInput = document.getElementById('dialogInput');
+        const dialogInputField = document.getElementById('dialogInputField');
+
+        dialogTitle.textContent = title;
+        dialogMessage.textContent = message;
+        dialogInput.style.display = 'block';
+        dialogInputField.value = '';
+
+        dialogButtons.innerHTML = '';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(100,100,100,0.3); border: 1px solid rgba(100,100,100,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s;';
+        cancelBtn.onmouseover = () => cancelBtn.style.background = 'rgba(100,100,100,0.5)';
+        cancelBtn.onmouseout = () => cancelBtn.style.background = 'rgba(100,100,100,0.3)';
+        cancelBtn.onclick = () => {
+          dialog.style.display = 'none';
+          resolve(null);
+        };
+
+        const okBtn = document.createElement('button');
+        okBtn.textContent = 'OK';
+        okBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,123,255,0.3); border: 1px solid rgba(0,123,255,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+        okBtn.onmouseover = () => okBtn.style.background = 'rgba(0,123,255,0.5)';
+        okBtn.onmouseout = () => okBtn.style.background = 'rgba(0,123,255,0.3)';
+        okBtn.onclick = () => {
+          dialog.style.display = 'none';
+          resolve(dialogInputField.value || null);
+        };
+
+        // Enter key submits
+        dialogInputField.onkeydown = (e) => {
+          if (e.key === 'Enter') {
+            okBtn.click();
+          }
+        };
+
+        dialogButtons.appendChild(cancelBtn);
+        dialogButtons.appendChild(okBtn);
+
+        dialog.style.display = 'flex';
+        setTimeout(() => dialogInputField.focus(), 100);
+      });
+    };
 
     // Get answer display timeout from Options (default 30 seconds)
     function getAnswerDisplayTimeout() {
@@ -171,14 +310,16 @@
       connectToRoom(roomParam);
     } else {
       // Prompt for room code
-      const room = prompt('Enter room code to display:');
-      if (room) {
-        currentRoomCode = room;
-        connectToRoom(room);
-      } else {
-        statusDisplay.textContent = 'No room code provided';
-        statusDisplay.style.background = 'rgba(255,0,0,0.3)';
-      }
+      (async () => {
+        const room = await customPrompt('Enter room code to display:', 'Join Room');
+        if (room) {
+          currentRoomCode = room;
+          connectToRoom(room);
+        } else {
+          statusDisplay.textContent = 'No room code provided';
+          statusDisplay.style.background = 'rgba(255,0,0,0.3)';
+        }
+      })();
     }
 
     function connectToRoom(roomCode) {

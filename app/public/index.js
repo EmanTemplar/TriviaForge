@@ -69,29 +69,154 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // --------------------
+  // Custom Dialog Functions
+  // --------------------
+  const customAlert = (message, title = 'Notification') => {
+    return new Promise((resolve) => {
+      const dialog = document.getElementById('customDialog');
+      const dialogTitle = document.getElementById('dialogTitle');
+      const dialogMessage = document.getElementById('dialogMessage');
+      const dialogButtons = document.getElementById('dialogButtons');
+
+      dialogTitle.textContent = title;
+      dialogMessage.textContent = message;
+
+      dialogButtons.innerHTML = '';
+      const okBtn = document.createElement('button');
+      okBtn.textContent = 'OK';
+      okBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,123,255,0.3); border: 1px solid rgba(0,123,255,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+      okBtn.onmouseover = () => okBtn.style.background = 'rgba(0,123,255,0.5)';
+      okBtn.onmouseout = () => okBtn.style.background = 'rgba(0,123,255,0.3)';
+      okBtn.onclick = () => {
+        dialog.style.display = 'none';
+        resolve();
+      };
+      dialogButtons.appendChild(okBtn);
+
+      dialog.style.display = 'flex';
+      okBtn.focus();
+    });
+  };
+
+  const customConfirm = (message, title = 'Confirm Action') => {
+    return new Promise((resolve) => {
+      const dialog = document.getElementById('customDialog');
+      const dialogTitle = document.getElementById('dialogTitle');
+      const dialogMessage = document.getElementById('dialogMessage');
+      const dialogButtons = document.getElementById('dialogButtons');
+      const dialogInput = document.getElementById('dialogInput');
+
+      dialogTitle.textContent = title;
+      dialogMessage.textContent = message;
+      dialogInput.style.display = 'none';
+
+      dialogButtons.innerHTML = '';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(100,100,100,0.3); border: 1px solid rgba(100,100,100,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s;';
+      cancelBtn.onmouseover = () => cancelBtn.style.background = 'rgba(100,100,100,0.5)';
+      cancelBtn.onmouseout = () => cancelBtn.style.background = 'rgba(100,100,100,0.3)';
+      cancelBtn.onclick = () => {
+        dialog.style.display = 'none';
+        resolve(false);
+      };
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.textContent = 'Confirm';
+      confirmBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,200,0,0.3); border: 1px solid rgba(0,200,0,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+      confirmBtn.onmouseover = () => confirmBtn.style.background = 'rgba(0,200,0,0.5)';
+      confirmBtn.onmouseout = () => confirmBtn.style.background = 'rgba(0,200,0,0.3)';
+      confirmBtn.onclick = () => {
+        dialog.style.display = 'none';
+        resolve(true);
+      };
+
+      dialogButtons.appendChild(cancelBtn);
+      dialogButtons.appendChild(confirmBtn);
+
+      dialog.style.display = 'flex';
+      confirmBtn.focus();
+    });
+  };
+
+  const customPrompt = (message, title = 'Input Required') => {
+    return new Promise((resolve) => {
+      const dialog = document.getElementById('customDialog');
+      const dialogTitle = document.getElementById('dialogTitle');
+      const dialogMessage = document.getElementById('dialogMessage');
+      const dialogButtons = document.getElementById('dialogButtons');
+      const dialogInput = document.getElementById('dialogInput');
+      const dialogInputField = document.getElementById('dialogInputField');
+
+      dialogTitle.textContent = title;
+      dialogMessage.textContent = message;
+      dialogInput.style.display = 'block';
+      dialogInputField.value = '';
+
+      dialogButtons.innerHTML = '';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(100,100,100,0.3); border: 1px solid rgba(100,100,100,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.2s;';
+      cancelBtn.onmouseover = () => cancelBtn.style.background = 'rgba(100,100,100,0.5)';
+      cancelBtn.onmouseout = () => cancelBtn.style.background = 'rgba(100,100,100,0.3)';
+      cancelBtn.onclick = () => {
+        dialog.style.display = 'none';
+        resolve(null);
+      };
+
+      const okBtn = document.createElement('button');
+      okBtn.textContent = 'OK';
+      okBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,123,255,0.3); border: 1px solid rgba(0,123,255,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+      okBtn.onmouseover = () => okBtn.style.background = 'rgba(0,123,255,0.5)';
+      okBtn.onmouseout = () => okBtn.style.background = 'rgba(0,123,255,0.3)';
+      okBtn.onclick = () => {
+        dialog.style.display = 'none';
+        resolve(dialogInputField.value || null);
+      };
+
+      // Enter key submits
+      dialogInputField.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          okBtn.click();
+        }
+      };
+
+      dialogButtons.appendChild(cancelBtn);
+      dialogButtons.appendChild(okBtn);
+
+      dialog.style.display = 'flex';
+      setTimeout(() => dialogInputField.focus(), 100);
+    });
+  };
+
+  // --------------------
   // Shuffle Functions
   // --------------------
   const shuffleQuestions = async () => {
     if (!selectedQuiz || !selectedQuiz.questions || selectedQuiz.questions.length === 0) {
-      alert('No questions to shuffle!');
+      await customAlert('No questions to shuffle!', 'Cannot Shuffle');
       return;
     }
 
-    if (!confirm('Shuffle all questions in random order?')) return;
+    const confirmed = await customConfirm('Shuffle all questions in random order?', 'Shuffle Questions');
+    if (!confirmed) return;
 
     selectedQuiz.questions = shuffleArray(selectedQuiz.questions);
     await saveQuiz();
     renderQuestions();
-    alert('Questions shuffled successfully!');
+    await customAlert('Questions shuffled successfully!', 'Success');
   };
 
   const shuffleAllChoices = async () => {
     if (!selectedQuiz || !selectedQuiz.questions || selectedQuiz.questions.length === 0) {
-      alert('No questions to shuffle choices for!');
+      await customAlert('No questions to shuffle choices for!', 'Cannot Shuffle');
       return;
     }
 
-    if (!confirm('Shuffle all answer choices for all questions?')) return;
+    const confirmed = await customConfirm('Shuffle all answer choices for all questions?', 'Shuffle All Choices');
+    if (!confirmed) return;
 
     selectedQuiz.questions.forEach(question => {
       const shuffled = shuffleArray(question.choices);
@@ -105,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     await saveQuiz();
     renderQuestions();
-    alert('All choices shuffled successfully!');
+    await customAlert('All choices shuffled successfully!', 'Success');
   };
 
   const shuffleSingleQuestionChoices = (questionIndex) => {
@@ -217,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderQuizList();
     } catch (err) {
       console.error(err);
-      alert('Could not load quizzes. Check console for errors.');
+      await customAlert('Could not load quizzes. Check console for errors.', 'Load Error');
     }
   };
 
@@ -260,7 +385,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       div.querySelector('.deleteQuizBtn').addEventListener('click', async () => {
-        if (!confirm('Are you sure you want to delete this quiz?')) return;
+        const confirmed = await customConfirm('Are you sure you want to delete this quiz?', 'Delete Quiz');
+        if (!confirmed) return;
         await fetch(`/api/quizzes/${quiz.filename}`, { method: 'DELETE' });
         if (selectedQuiz && selectedQuiz.filename === quiz.filename) {
           selectedQuiz = null;
@@ -347,12 +473,13 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       qDiv.querySelector('.shuffleQBtn').addEventListener('click', async () => {
-        if (!confirm(`Shuffle answer choices for question ${idx + 1}?`)) return;
+        const confirmed = await customConfirm(`Shuffle answer choices for question ${idx + 1}?`, 'Shuffle Choices');
+        if (!confirmed) return;
 
         shuffleSingleQuestionChoices(idx);
         await saveQuiz();
         renderQuestions();
-        alert(`Choices shuffled for question ${idx + 1}!`);
+        await customAlert(`Choices shuffled for question ${idx + 1}!`, 'Success');
       });
 
       questionsList.appendChild(qDiv);
@@ -388,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   createQuizBtn.addEventListener('click', async () => {
-    const title = prompt('Enter new quiz title:');
+    const title = await customPrompt('Enter new quiz title:', 'Create Quiz');
     if (!title) return;
     const res = await fetch('/api/quizzes', {
       method: 'POST',
@@ -488,13 +615,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   addQuestionBtn.addEventListener('click', async () => {
-    if (!selectedQuiz) return alert('Select a quiz first');
+    if (!selectedQuiz) {
+      await customAlert('Select a quiz first', 'No Quiz Selected');
+      return;
+    }
 
     const text = questionTextInput.value.trim();
     const choices = getChoiceInputs().map(i => i.value.trim());
     const correctChoice = parseInt(correctSelect.value);
 
-    if (!text || choices.some(c => !c)) return alert('Fill in all fields');
+    if (!text || choices.some(c => !c)) {
+      await customAlert('Fill in all fields', 'Missing Information');
+      return;
+    }
 
     if (!selectedQuiz.questions) selectedQuiz.questions = [];
 
@@ -664,7 +797,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Delete session
   // --------------------
   window.deleteSession = async (filename) => {
-    if (!confirm('Delete this session permanently?')) return;
+    const confirmed = await customConfirm('Delete this session permanently?', 'Delete Session');
+    if (!confirmed) return;
     await fetch(`/api/sessions/${filename}`, { method: 'DELETE' });
     loadSessions();
   };
