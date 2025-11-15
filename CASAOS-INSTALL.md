@@ -1,35 +1,8 @@
 # Installing TriviaForge on CasaOS
 
-## Method 1: Import Docker Compose File (Recommended)
+## Method 1: Manual Installation via SSH (Recommended)
 
-1. **Download the CasaOS compose file**
-   - Download `docker-compose.casaos.yml` from this repository
-
-2. **Open CasaOS Web UI**
-   - Navigate to your CasaOS dashboard (usually `http://your-casaos-ip`)
-
-3. **Import Custom App**
-   - Click on "App Store" in the sidebar
-   - Click the "Import" button (usually in the top right)
-   - Upload the `docker-compose.casaos.yml` file
-   - Or paste the contents of the file into the import dialog
-
-4. **Configure Environment Variables**
-   - Set `ADMIN_PASSWORD` to a secure password (required!)
-   - Optionally set `HOST_IP` to your CasaOS server's IP address
-   - Optionally set `SERVER_URL` if you're using a domain/reverse proxy
-
-5. **Install the App**
-   - Click "Install" or "Submit"
-   - Wait for CasaOS to pull the image and start the container
-
-6. **Access TriviaForge**
-   - Click on the TriviaForge app in your CasaOS dashboard
-   - Or navigate to: `http://your-casaos-ip:3000/landing.html`
-
-## Method 2: Manual Docker Compose
-
-If the import method doesn't work, you can install manually:
+This is the most reliable method for CasaOS.
 
 1. **SSH into your CasaOS server**
 
@@ -39,49 +12,93 @@ If the import method doesn't work, you can install manually:
    cd /DATA/AppData/triviaforge
    ```
 
-3. **Create docker-compose.yml**
+3. **Pull the Docker image**
+   ```bash
+   docker pull emancodetemplar/triviaforge:latest
+   ```
+
+4. **Create docker-compose.yml**
    ```bash
    nano docker-compose.yml
    ```
 
-4. **Paste the following configuration:**
+5. **Paste the following configuration:**
    ```yaml
+   version: "3.9"
+
    services:
-     app:
+     triviaforge:
        image: emancodetemplar/triviaforge:latest
        container_name: triviaforge
        ports:
          - "3000:3000"
        environment:
-         APP_PORT: 3000
-         ADMIN_PASSWORD: your_secure_password_here  # CHANGE THIS!
-         HOST_IP: 192.168.x.x  # Your CasaOS IP
+         - APP_PORT=3000
+         - ADMIN_PASSWORD=your_secure_password_here
+         - HOST_IP=192.168.x.x
+         - SERVER_URL=
        volumes:
-         - ./quizzes:/app/quizzes
-         - ./sessions:/app/sessions
+         - triviaforge-quizzes:/app/quizzes
+         - triviaforge-sessions:/app/sessions
        restart: unless-stopped
+
+   volumes:
+     triviaforge-quizzes:
+     triviaforge-sessions:
    ```
 
-5. **Update the configuration**
-   - Change `ADMIN_PASSWORD` to a secure password
+6. **Update the configuration**
+   - Change `ADMIN_PASSWORD` to a secure password (REQUIRED!)
    - Update `HOST_IP` to your CasaOS server's IP address
-   - Save and exit (Ctrl+X, Y, Enter)
+   - Save and exit (Ctrl+X, Y, Enter in nano)
 
-6. **Start TriviaForge**
+7. **Start TriviaForge**
    ```bash
    docker-compose up -d
    ```
 
-7. **Access TriviaForge**
+8. **Access TriviaForge**
    - Navigate to: `http://your-casaos-ip:3000/landing.html`
 
-## Method 3: CasaOS CLI
+## Method 2: Import Docker Compose File (Alternative)
 
-Using the CasaOS CLI (if available):
+If you prefer using the CasaOS UI:
+
+1. **Download the compose file**
+   - Download `docker-compose.casaos.yml` from the GitHub repository
+
+2. **Open CasaOS Web UI**
+   - Navigate to your CasaOS dashboard
+
+3. **Import via Custom Install**
+   - Go to App Store → Custom Install
+   - Paste the contents of `docker-compose.casaos.yml`
+   - **Important**: Update `ADMIN_PASSWORD` before installing!
+
+4. **Install and Access**
+   - Click Install
+   - Navigate to: `http://your-casaos-ip:3000/landing.html`
+
+> **Note**: If the import shows a white screen or fails, use Method 1 instead.
+
+## Method 3: Direct Docker Run (Quick Test)
+
+For a quick test without docker-compose:
 
 ```bash
-casaos-cli app-management install docker://emancodetemplar/triviaforge:latest
+docker run -d \
+  --name triviaforge \
+  -p 3000:3000 \
+  -e APP_PORT=3000 \
+  -e ADMIN_PASSWORD=your_secure_password \
+  -e HOST_IP=192.168.x.x \
+  -v triviaforge-quizzes:/app/quizzes \
+  -v triviaforge-sessions:/app/sessions \
+  --restart unless-stopped \
+  emancodetemplar/triviaforge:latest
 ```
+
+Replace `your_secure_password` and `192.168.x.x` with your values.
 
 ## Post-Installation
 
