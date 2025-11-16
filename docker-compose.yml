@@ -20,9 +20,15 @@ services:
     depends_on:
       - db
     environment:
-      APP_PORT: 3000
-      DATABASE_URL: postgres://trivia:trivia@db:5432/trivia
-      HOST_IP: ${HOST_IP}       # Pass host IP into container
+      APP_PORT: ${APP_PORT:-3000}
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL:-postgres://trivia:trivia@db:5432/trivia}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      TZ: ${TZ:-America/New_York}
+      SERVER_URL: ${SERVER_URL}
+      HOST_IP: ${HOST_IP}
+      SESSION_TIMEOUT: ${SESSION_TIMEOUT:-3600000}
+      APP_NAME: ${APP_NAME:-TriviaForge}
     volumes:
       - ./app/public:/app/public
       - ./app/quizzes:/app/quizzes

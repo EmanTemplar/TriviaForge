@@ -5,18 +5,10 @@ import dotenv from 'dotenv';
 import http from 'http';
 import { Server } from 'socket.io';
 import QRCode from 'qrcode';
-import { fileURLToPath } from 'url';
 import os from 'os';
 import xlsx from 'xlsx';
 import multer from 'multer';
 import ExcelJS from 'exceljs';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Load .env file
-const envPath = path.join(__dirname, '.env');
-dotenv.config({ path: envPath });
 
 // --------------------
 // Helper: Auto-detect local IP
@@ -62,7 +54,13 @@ app.get('/', (req, res) => {
   res.redirect('/landing.html');
 });
 
+// Load .env file from root directory (for both Docker and local development)
+// When running locally, looks for .env in parent directory
+// When running in Docker, environment variables are passed via docker-compose.yml
+dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
+
 app.use(express.static('public'));
+
 const PORT = process.env.APP_PORT || 3000;
 const QUIZ_FOLDER = path.join(process.cwd(), 'quizzes');
 const COMPLETED_FOLDER = path.join(QUIZ_FOLDER, 'completed');
