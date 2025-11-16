@@ -211,6 +211,88 @@
     });
   };
 
+  // Enhanced Answer Reveal Modal
+  const showAnswerRevealModal = (question, results) => {
+    return new Promise((resolve) => {
+      const dialog = document.getElementById('customDialog');
+      const dialogTitle = document.getElementById('dialogTitle');
+      const dialogMessage = document.getElementById('dialogMessage');
+      const dialogButtons = document.getElementById('dialogButtons');
+
+      dialogTitle.textContent = 'Answer Revealed!';
+
+      // Calculate statistics
+      const totalPlayers = results.length;
+      const correctCount = results.filter(r => r.is_correct).length;
+      const answeredCount = results.filter(r => r.choice !== null).length;
+      const correctPercentage = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
+
+      // Build HTML content with table
+      const messageHTML = `
+        <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(0,200,0,0.2); border-radius: 8px; border: 1px solid rgba(0,200,0,0.5);">
+          <div style="font-weight: bold; margin-bottom: 0.5rem;">Correct Answer:</div>
+          <div style="font-size: 1.1rem; color: #0f0;">${question.choices[question.correctChoice]}</div>
+        </div>
+
+        <div style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: space-around; font-size: 0.9rem;">
+          <div><strong>${correctCount}/${answeredCount}</strong> correct</div>
+          <div><strong>${correctPercentage}%</strong> accuracy</div>
+          <div><strong>${totalPlayers - answeredCount}</strong> no answer</div>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+          <div style="font-weight: bold; margin-bottom: 0.75rem; color: #fff;">Player Responses:</div>
+          <div style="max-height: 400px; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 0.5rem;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="border-bottom: 2px solid rgba(255,255,255,0.2);">
+                  <th style="text-align: left; padding: 0.75rem 0.5rem; color: #aaa; font-weight: bold;">Player</th>
+                  <th style="text-align: left; padding: 0.75rem 0.5rem; color: #aaa; font-weight: bold;">Answer</th>
+                  <th style="text-align: center; padding: 0.75rem 0.5rem; color: #aaa; font-weight: bold; width: 60px;">Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${results.map(r => {
+                  const answerText = r.choice !== null ? question.choices[r.choice] : 'No answer';
+                  const resultIcon = r.is_correct ? '✓' : (r.choice !== null ? '✗' : '—');
+                  const resultColor = r.is_correct ? '#0f0' : (r.choice !== null ? '#f66' : '#aaa');
+                  const bgColor = r.is_correct ? 'rgba(0,200,0,0.1)' : (r.choice !== null ? 'rgba(200,0,0,0.1)' : 'rgba(100,100,100,0.1)');
+
+                  return `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); background: ${bgColor};">
+                      <td style="padding: 0.75rem 0.5rem; font-weight: bold;">${r.name}</td>
+                      <td style="padding: 0.75rem 0.5rem; color: ${r.choice !== null ? '#fff' : '#aaa'};">${answerText}</td>
+                      <td style="padding: 0.75rem 0.5rem; text-align: center; font-size: 1.2rem; font-weight: bold; color: ${resultColor};">${resultIcon}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      dialogMessage.innerHTML = messageHTML;
+      dialogMessage.style.textAlign = 'left';
+
+      dialogButtons.innerHTML = '';
+      const okBtn = document.createElement('button');
+      okBtn.textContent = 'Close';
+      okBtn.style.cssText = 'padding: 0.75rem 2rem; background: rgba(0,123,255,0.3); border: 1px solid rgba(0,123,255,0.5); color: #fff; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: all 0.2s;';
+      okBtn.onmouseover = () => okBtn.style.background = 'rgba(0,123,255,0.5)';
+      okBtn.onmouseout = () => okBtn.style.background = 'rgba(0,123,255,0.3)';
+      okBtn.onclick = () => {
+        dialog.style.display = 'none';
+        dialogMessage.style.textAlign = 'center'; // Reset to default
+        resolve();
+      };
+      dialogButtons.appendChild(okBtn);
+
+      dialog.style.display = 'flex';
+      okBtn.focus();
+    });
+  };
+
   // Load quiz list
   async function loadQuizzes() {
     const res = await fetch('/api/quizzes');
@@ -560,11 +642,8 @@ socket.on('questionRevealed', ({ questionIndex, question, results, revealedQuest
   }
   renderQuestions();
 
-  const resultsSummary = results.map(r =>
-    `${r.name}: ${r.choice !== null ? question.choices[r.choice] : 'No answer'} ${r.is_correct ? '✓' : '✗'}`
-  ).join('\n');
-
-  customAlert(`Answer Revealed!\n\nCorrect: ${question.choices[question.correctChoice]}\n\n${resultsSummary}`, 'Answer Revealed');
+  // Show enhanced answer reveal modal with formatted table
+  showAnswerRevealModal(question, results);
 });
 
 // Quiz completed confirmation
