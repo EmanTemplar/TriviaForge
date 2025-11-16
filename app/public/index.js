@@ -250,13 +250,109 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // --------------------
+  // Question Reordering Functions
+  // --------------------
+  const moveQuestionUp = async (index) => {
+    if (index <= 0) return;
+
+    // Swap with previous question
+    [selectedQuiz.questions[index - 1], selectedQuiz.questions[index]] =
+    [selectedQuiz.questions[index], selectedQuiz.questions[index - 1]];
+
+    // Update editingQuestionIndex if needed
+    if (editingQuestionIndex === index) {
+      editingQuestionIndex = index - 1;
+    } else if (editingQuestionIndex === index - 1) {
+      editingQuestionIndex = index;
+    }
+
+    await saveQuiz();
+    renderQuestions();
+  };
+
+  const moveQuestionDown = async (index) => {
+    if (index >= selectedQuiz.questions.length - 1) return;
+
+    // Swap with next question
+    [selectedQuiz.questions[index], selectedQuiz.questions[index + 1]] =
+    [selectedQuiz.questions[index + 1], selectedQuiz.questions[index]];
+
+    // Update editingQuestionIndex if needed
+    if (editingQuestionIndex === index) {
+      editingQuestionIndex = index + 1;
+    } else if (editingQuestionIndex === index + 1) {
+      editingQuestionIndex = index;
+    }
+
+    await saveQuiz();
+    renderQuestions();
+  };
+
+  // --------------------
+  // Choice Reordering Functions
+  // --------------------
+  const moveChoiceUp = (index) => {
+    if (index <= 0) return;
+
+    const inputs = getChoiceInputs();
+    const currentValues = inputs.map(input => input.value);
+
+    // Swap values
+    [currentValues[index - 1], currentValues[index]] =
+    [currentValues[index], currentValues[index - 1]];
+
+    // Update correct answer index if needed
+    const currentCorrect = parseInt(correctSelect.value);
+    if (currentCorrect === index) {
+      correctSelect.value = index - 1;
+    } else if (currentCorrect === index - 1) {
+      correctSelect.value = index;
+    }
+
+    // Re-render with swapped values
+    inputs.forEach((input, i) => {
+      input.value = currentValues[i];
+    });
+  };
+
+  const moveChoiceDown = (index) => {
+    const inputs = getChoiceInputs();
+    if (index >= inputs.length - 1) return;
+
+    const currentValues = inputs.map(input => input.value);
+
+    // Swap values
+    [currentValues[index], currentValues[index + 1]] =
+    [currentValues[index + 1], currentValues[index]];
+
+    // Update correct answer index if needed
+    const currentCorrect = parseInt(correctSelect.value);
+    if (currentCorrect === index) {
+      correctSelect.value = index + 1;
+    } else if (currentCorrect === index + 1) {
+      correctSelect.value = index;
+    }
+
+    // Re-render with swapped values
+    inputs.forEach((input, i) => {
+      input.value = currentValues[i];
+    });
+  };
+
+  // --------------------
   // Dynamic Choice Management
   // --------------------
   const renderChoiceInputs = () => {
+    // Preserve existing values before clearing
+    const currentValues = getChoiceInputs().map(input => input.value);
+
     choicesContainer.innerHTML = '';
     for (let i = 0; i < currentChoiceCount; i++) {
       const wrapper = document.createElement('div');
       wrapper.className = 'choice-input-wrapper';
+      wrapper.style.display = 'flex';
+      wrapper.style.alignItems = 'center';
+      wrapper.style.gap = '0.5rem';
 
       const label = document.createElement('div');
       label.className = 'choice-label';
@@ -267,9 +363,53 @@ document.addEventListener('DOMContentLoaded', () => {
       input.className = 'choice-input';
       input.placeholder = `Choice ${getChoiceLabel(i)}`;
       input.dataset.choiceIndex = i;
+      input.style.flex = '1';
+
+      // Restore previous value if it existed
+      if (currentValues[i]) {
+        input.value = currentValues[i];
+      }
+
+      // Reorder buttons
+      const reorderBtns = document.createElement('div');
+      reorderBtns.style.display = 'flex';
+      reorderBtns.style.flexDirection = 'column';
+      reorderBtns.style.gap = '0.1rem';
+
+      const upBtn = document.createElement('button');
+      upBtn.textContent = '▲';
+      upBtn.style.cssText = 'padding: 0.1rem 0.4rem; background: rgba(100,100,255,0.2); border: 1px solid rgba(100,100,255,0.5); font-size: 0.7rem; cursor: pointer;';
+      upBtn.disabled = i === 0;
+      if (i === 0) {
+        upBtn.style.opacity = '0.3';
+        upBtn.style.cursor = 'not-allowed';
+      }
+      upBtn.title = 'Move Up';
+      upBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (i > 0) moveChoiceUp(i);
+      });
+
+      const downBtn = document.createElement('button');
+      downBtn.textContent = '▼';
+      downBtn.style.cssText = 'padding: 0.1rem 0.4rem; background: rgba(100,100,255,0.2); border: 1px solid rgba(100,100,255,0.5); font-size: 0.7rem; cursor: pointer;';
+      downBtn.disabled = i === currentChoiceCount - 1;
+      if (i === currentChoiceCount - 1) {
+        downBtn.style.opacity = '0.3';
+        downBtn.style.cursor = 'not-allowed';
+      }
+      downBtn.title = 'Move Down';
+      downBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (i < currentChoiceCount - 1) moveChoiceDown(i);
+      });
+
+      reorderBtns.appendChild(upBtn);
+      reorderBtns.appendChild(downBtn);
 
       wrapper.appendChild(label);
       wrapper.appendChild(input);
+      wrapper.appendChild(reorderBtns);
       choicesContainer.appendChild(wrapper);
     }
     updateCorrectChoiceDropdown();
@@ -445,8 +585,17 @@ document.addEventListener('DOMContentLoaded', () => {
       qDiv.className = 'questionCard';
       if (editingQuestionIndex === idx) qDiv.classList.add('editing');
 
+      const isFirst = idx === 0;
+      const isLast = idx === selectedQuiz.questions.length - 1;
+
       qDiv.innerHTML = `
-        <div><strong>${idx + 1}. ${q.text}</strong></div>
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+          <div><strong>${idx + 1}. ${q.text}</strong></div>
+          <div style="display: flex; flex-direction: column; gap: 0.25rem; margin-left: 1rem;">
+            <button class="moveUpBtn" ${isFirst ? 'disabled' : ''} style="padding: 0.2rem 0.5rem; background: rgba(100,100,255,0.2); border: 1px solid rgba(100,100,255,0.5); font-size: 0.8rem; ${isFirst ? 'opacity: 0.3; cursor: not-allowed;' : ''}" title="Move Up">▲</button>
+            <button class="moveDownBtn" ${isLast ? 'disabled' : ''} style="padding: 0.2rem 0.5rem; background: rgba(100,100,255,0.2); border: 1px solid rgba(100,100,255,0.5); font-size: 0.8rem; ${isLast ? 'opacity: 0.3; cursor: not-allowed;' : ''}" title="Move Down">▼</button>
+          </div>
+        </div>
         <ul>
           ${q.choices.map((c, i) => `<li${q.correctChoice == i ? ' style="color:#0f0"' : ''}>${c}</li>`).join('')}
         </ul>
@@ -480,6 +629,15 @@ document.addEventListener('DOMContentLoaded', () => {
         await saveQuiz();
         renderQuestions();
         await customAlert(`Choices shuffled for question ${idx + 1}!`, 'Success');
+      });
+
+      // Move up/down buttons
+      qDiv.querySelector('.moveUpBtn').addEventListener('click', () => {
+        if (!isFirst) moveQuestionUp(idx);
+      });
+
+      qDiv.querySelector('.moveDownBtn').addEventListener('click', () => {
+        if (!isLast) moveQuestionDown(idx);
       });
 
       questionsList.appendChild(qDiv);
