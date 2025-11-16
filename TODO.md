@@ -100,9 +100,86 @@ Tables:
 
 ---
 
+### 5. Live Quiz Progress Dashboard for Presenter
+**Status:** Planned
+**Description:** Add a real-time progress dashboard for presenters to view current quiz results and player performance during an active session.
+
+**Current Limitation:**
+- Presenters can only see detailed results when revealing individual answers
+- No overview of overall quiz progress during the session
+- Cannot see which players are ahead or behind in real-time
+
+**Proposed Features:**
+- Button or section above "Connected Players" to open progress modal
+- Modal shows live leaderboard/standings
+- Display for each player:
+  - Total questions answered
+  - Correct/incorrect count
+  - Current score or percentage
+  - Questions not yet answered
+- Real-time updates as players submit answers
+- Sortable by score, name, or answer count
+- Visual indicators for performance (color-coded)
+
+**Use Cases:**
+- Monitor quiz progress during live sessions
+- Identify struggling players who may need help
+- See overall class/group performance trends
+- Make informed decisions about pacing
+- Provide encouragement to specific players
+
+**Technical Considerations:**
+- Socket.IO event for requesting current standings
+- Server calculates scores based on revealed questions only
+- Modal component reusable across presenter interface
+- Refresh button or auto-refresh every few seconds
+
+---
+
+### 6. Player Progress Tracker
+**Status:** Planned
+**Description:** Add a progress indicator for players to track their own performance throughout the quiz.
+
+**Current Limitation:**
+- Players only see if their last answer was correct/incorrect
+- No running total of their performance
+- Cannot see how many questions remain
+
+**Proposed Features:**
+- Compact progress widget in player interface
+- Display personal statistics:
+  - Questions answered: X/Y
+  - Correct answers: X
+  - Incorrect answers: X
+  - Current accuracy percentage
+  - Questions remaining
+- Update in real-time after each answer is revealed
+- Visual progress bar or indicator
+- Motivational feedback based on performance
+
+**UI Placement Options:**
+- Small widget in top corner of player interface
+- Section in mobile hamburger menu
+- Sticky footer bar with collapsed/expanded states
+- Sidebar on desktop view
+
+**Use Cases:**
+- Self-assessment and motivation
+- Track personal improvement
+- Set personal goals during quiz
+- Understand performance before final results
+
+**Technical Considerations:**
+- Client-side calculation based on revealed answers
+- Persist in player session state
+- Reset when joining new quiz
+- Consider accessibility for different screen sizes
+
+---
+
 ## Long-term / Major Refactors
 
-### 5. React Migration for Frontend
+### 7. React Migration for Frontend
 **Status:** Under Consideration
 **Description:** Restructure the HTML/JavaScript codebase using React to improve scalability, maintainability, and developer experience.
 
@@ -142,7 +219,7 @@ Tables:
 
 ---
 
-### 6. GitHub Actions - Docker Auto-Build & Push
+### 8. GitHub Actions - Docker Auto-Build & Push
 **Status:** Planned
 **Description:** Set up GitHub Actions workflow to automatically build and push Docker images to Docker Hub on commits/releases.
 
