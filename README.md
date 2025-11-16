@@ -303,6 +303,14 @@ Potential future features (as of Nov. 2025):
 
 Built with love for educators, event organizers, and trivia enthusiasts.
 
+### AI Assistance Disclosure
+
+This project was developed with assistance from AI tools, including:
+- **Claude Code** - for code generation, debugging, and feature implementation
+- **Anthropic's Claude** - for architecture design and problem-solving
+
+While AI tools were instrumental in the development process, all code has been reviewed, tested, and validated for functionality and security. The project architecture, feature decisions, and final implementation remain the responsibility of the human developers.
+
 ---
 
 **TriviaForge** - Where Knowledge Meets Fun 🎮
