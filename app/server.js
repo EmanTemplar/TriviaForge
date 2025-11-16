@@ -14,8 +14,8 @@ import ExcelJS from 'exceljs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env from parent directory if it exists, otherwise from current directory
-const envPath = path.join(__dirname, '..', '.env');
+// Load .env file
+const envPath = path.join(__dirname, '.env');
 dotenv.config({ path: envPath });
 
 // --------------------
@@ -63,7 +63,6 @@ app.get('/', (req, res) => {
 });
 
 app.use(express.static('public'));
-dotenv.config();
 const PORT = process.env.APP_PORT || 3000;
 const QUIZ_FOLDER = path.join(process.cwd(), 'quizzes');
 const COMPLETED_FOLDER = path.join(QUIZ_FOLDER, 'completed');
