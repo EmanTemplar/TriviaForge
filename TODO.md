@@ -5,35 +5,33 @@ This document tracks planned features, improvements, and tasks for future develo
 ## High Priority
 
 ### 1. Preserve Choice Data in Question Editor
-**Status:** Planned
+**Status:** ✅ Completed (v1.0.2)
 **Description:** When adding or removing answer choices in the question editor, the existing choice data disappears. Need to preserve the original choices when modifying the number of choices to prevent data loss.
 
-**Current Behavior:**
-- Adding/removing choices clears all existing choice inputs
-- Users must re-enter all choice data
-
-**Desired Behavior:**
-- Preserve existing choice values when adding new choices
-- When removing choices, only remove the last choice
-- Maintain data integrity throughout editing process
+**Implementation:**
+- Modified `renderChoiceInputs()` to capture existing values before re-rendering
+- Choice values are now preserved when adding new choices
+- When removing choices, only the last choice is removed
+- Data integrity maintained throughout editing process
 
 ---
 
 ### 2. Manual Question & Choice Reordering
-**Status:** Planned
+**Status:** ✅ Completed (v1.0.2)
 **Description:** Add drag-and-drop or arrow-based controls to manually reorder questions within a quiz and choices within a question.
 
-**Features:**
-- Drag-and-drop interface for question reordering
-- Up/down arrows for question position adjustment
-- Drag-and-drop or arrows for choice reordering
+**Implementation:**
+- Arrow-based controls for question reordering (▲/▼ buttons on each question card)
+- Arrow-based controls for choice reordering (▲/▼ buttons next to each choice input)
 - Auto-update correct answer index when choices are reordered
-- Visual feedback during reordering
+- Buttons automatically disable at boundaries (first/last position)
+- Visual feedback with disabled state styling
 
-**Use Cases:**
-- Logical flow adjustment
-- Difficulty progression
-- Thematic grouping
+**Features Delivered:**
+- Up/down arrows for question position adjustment
+- Up/down arrows for choice reordering
+- Auto-update correct answer index when choices are reordered
+- Boundary detection (disabled buttons at first/last positions)
 
 ---
 
