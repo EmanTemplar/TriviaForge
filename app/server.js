@@ -1084,19 +1084,44 @@ app.get('/api/sessions/:filename', async (req, res) => {
       }
     }
 
-    // Fetch presented and revealed questions
+    // Fetch quiz questions with full details
     const questionsResult = await pool.query(`
-      SELECT presentation_order, is_presented, is_revealed
-      FROM session_questions
-      WHERE game_session_id = $1
-      ORDER BY presentation_order
+      SELECT
+        sq.presentation_order,
+        sq.is_presented,
+        sq.is_revealed,
+        qs.question_text,
+        qs.id as question_id
+      FROM session_questions sq
+      JOIN questions qs ON sq.question_id = qs.id
+      WHERE sq.game_session_id = $1
+      ORDER BY sq.presentation_order
     `, [sessionId]);
 
     const presentedQuestions = [];
     const revealedQuestions = [];
+    const questions = [];
+
     for (const row of questionsResult.rows) {
       if (row.is_presented) presentedQuestions.push(row.presentation_order);
       if (row.is_revealed) revealedQuestions.push(row.presentation_order);
+
+      // Fetch answers for this question
+      const answersResult = await pool.query(`
+        SELECT answer_text, is_correct, display_order
+        FROM answers
+        WHERE question_id = $1
+        ORDER BY display_order
+      `, [row.question_id]);
+
+      const choices = answersResult.rows.map(a => a.answer_text);
+      const correctChoice = answersResult.rows.findIndex(a => a.is_correct);
+
+      questions.push({
+        text: row.question_text,
+        choices,
+        correctChoice
+      });
     }
 
     // Format response to match frontend expectations
@@ -1111,6 +1136,7 @@ app.get('/api/sessions/:filename', async (req, res) => {
       originalRoomCode: session.original_session_id ? `Room ${session.original_session_id}` : null,
       presentedQuestions,
       revealedQuestions,
+      questions,
       players: Array.from(playersMap.values())
     };
 
