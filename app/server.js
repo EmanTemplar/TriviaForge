@@ -247,59 +247,174 @@ await fs.mkdir(COMPLETED_FOLDER, { recursive: true });
 // Old file-based function removed - use listQuizzesFromDB() instead
 
 // --------------------
-// Helper: list completed sessions
+// Helper: list completed sessions from database
 // --------------------
 const listCompletedSessions = async () => {
   try {
-    const files = await fs.readdir(COMPLETED_FOLDER);
-    const sessions = [];
-    for (const file of files) {
-      if (file.endsWith('.json')) {
-        const data = JSON.parse(await fs.readFile(path.join(COMPLETED_FOLDER, file), 'utf-8'));
-        sessions.push({ filename: file, ...data });
-      }
-    }
-    // Sort by most recent timestamp (resumedAt if exists, otherwise createdAt)
-    return sessions.sort((a, b) => {
-      const aTime = new Date(a.resumedAt || a.createdAt);
-      const bTime = new Date(b.resumedAt || b.createdAt);
-      return bTime - aTime;
-    });
+    const result = await pool.query(`
+      SELECT
+        gs.id,
+        gs.room_code,
+        gs.status,
+        gs.created_at,
+        gs.completed_at,
+        q.title as quiz_title,
+        COUNT(DISTINCT gp.id) as player_count,
+        COUNT(DISTINCT sq.id) as question_count,
+        COUNT(DISTINCT CASE WHEN sq.is_presented THEN sq.id END) as presented_count
+      FROM game_sessions gs
+      JOIN quizzes q ON gs.quiz_id = q.id
+      LEFT JOIN game_participants gp ON gs.id = gp.game_session_id
+      LEFT JOIN session_questions sq ON gs.id = sq.game_session_id
+      GROUP BY gs.id, gs.room_code, gs.status, gs.created_at, gs.completed_at, q.title
+      ORDER BY gs.created_at DESC
+    `);
+
+    return result.rows.map(row => ({
+      sessionId: row.id,
+      roomCode: row.room_code,
+      quizTitle: row.quiz_title,
+      status: row.status,
+      createdAt: row.created_at,
+      completedAt: row.completed_at,
+      playerCount: parseInt(row.player_count),
+      questionCount: parseInt(row.question_count),
+      presentedCount: parseInt(row.presented_count)
+    }));
   } catch (err) {
+    console.error('Error listing sessions from database:', err);
     return [];
   }
 };
 
 // --------------------
-// Helper: save session to file
+// Helper: save session to database
 // --------------------
 const saveSession = async (roomCode, room) => {
-  const sessionData = {
-    roomCode,
-    quizTitle: room.quizData.title,
-    quizFilename: room.quizFilename,
-    status: room.status || 'in-progress',
-    createdAt: room.createdAt,
-    resumedAt: room.resumedAt || null,
-    completedAt: room.completedAt || null,
-    originalRoomCode: room.originalRoomCode || null,
-    presentedQuestions: room.presentedQuestions || [],
-    revealedQuestions: room.revealedQuestions || [],
-    players: Object.values(room.players).map(p => ({
-      name: p.name,
-      answers: p.answers || {}
-    })),
-    questions: room.quizData.questions
-  };
+  const client = await pool.connect();
 
-  const filename = `${roomCode}_${Date.now()}.json`;
-  await fs.writeFile(
-    path.join(COMPLETED_FOLDER, filename),
-    JSON.stringify(sessionData, null, 2),
-    'utf-8'
-  );
+  try {
+    await client.query('BEGIN');
 
-  return filename;
+    // 1. Insert or update game_sessions
+    const sessionResult = await client.query(`
+      INSERT INTO game_sessions (
+        quiz_id, room_code, status, current_question_index,
+        created_at, completed_at, original_session_id
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (room_code) DO UPDATE SET
+        status = $3,
+        current_question_index = $4,
+        completed_at = $6
+      RETURNING id
+    `, [
+      room.quizId,
+      roomCode,
+      room.status || 'in-progress',
+      room.currentQuestionIndex,
+      room.createdAt,
+      room.completedAt || null,
+      room.originalSessionId || null
+    ]);
+
+    const sessionId = sessionResult.rows[0].id;
+
+    // 2. Insert session_questions (track presented/revealed status)
+    // Clear existing session questions first
+    await client.query('DELETE FROM session_questions WHERE game_session_id = $1', [sessionId]);
+
+    const presentedSet = new Set(room.presentedQuestions || []);
+    const revealedSet = new Set(room.revealedQuestions || []);
+
+    for (let i = 0; i < room.quizData.questions.length; i++) {
+      const question = room.quizData.questions[i];
+      const isPresented = presentedSet.has(i);
+      const isRevealed = revealedSet.has(i);
+
+      await client.query(`
+        INSERT INTO session_questions (
+          game_session_id, question_id, presentation_order,
+          is_presented, is_revealed
+        )
+        VALUES ($1, $2, $3, $4, $5)
+      `, [sessionId, question.id, i, isPresented, isRevealed]);
+    }
+
+    // 3. Insert game_participants and their answers
+    // Clear existing participants first
+    await client.query('DELETE FROM game_participants WHERE game_session_id = $1', [sessionId]);
+
+    for (const player of Object.values(room.players)) {
+      // Insert participant (user_id is NULL for anonymous players)
+      const participantResult = await client.query(`
+        INSERT INTO game_participants (
+          user_id, game_session_id, display_name, score,
+          is_connected, socket_id, joined_at, last_seen
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id
+      `, [
+        null, // user_id (will be set when we add authentication)
+        sessionId,
+        player.name,
+        0, // score (calculated from correct answers)
+        player.connected || false,
+        player.id, // socket_id
+        new Date(),
+        new Date()
+      ]);
+
+      const participantId = participantResult.rows[0].id;
+
+      // 4. Insert participant answers
+      if (player.answers && typeof player.answers === 'object') {
+        for (const [questionIndexStr, choiceIndex] of Object.entries(player.answers)) {
+          const questionIndex = parseInt(questionIndexStr);
+          const question = room.quizData.questions[questionIndex];
+
+          if (question && question.id) {
+            // Find the answer_id for this choice
+            const answerResult = await client.query(`
+              SELECT id, is_correct
+              FROM answers
+              WHERE question_id = $1 AND display_order = $2
+            `, [question.id, choiceIndex]);
+
+            if (answerResult.rows.length > 0) {
+              const answer = answerResult.rows[0];
+
+              await client.query(`
+                INSERT INTO participant_answers (
+                  participant_id, question_id, answer_id, is_correct, answered_at
+                )
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (participant_id, question_id) DO NOTHING
+              `, [
+                participantId,
+                question.id,
+                answer.id,
+                answer.is_correct,
+                new Date()
+              ]);
+            }
+          }
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+
+    console.log(`✅ Session ${roomCode} saved to database (session_id: ${sessionId})`);
+    return sessionId.toString();
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error saving session to database:', err);
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
 // --------------------
@@ -904,23 +1019,133 @@ app.get('/api/sessions/incomplete', async (req, res) => {
   res.json(incomplete);
 });
 
-// Get single session
+// Get single session (from database)
 app.get('/api/sessions/:filename', async (req, res) => {
   try {
-    const filePath = path.join(COMPLETED_FOLDER, req.params.filename);
-    const data = JSON.parse(await fs.readFile(filePath, 'utf-8'));
-    res.json(data);
+    // Extract session ID from filename (session_123.json → 123) or use directly
+    const sessionId = req.params.filename.includes('_')
+      ? parseInt(req.params.filename.split('_')[1].replace('.json', ''))
+      : parseInt(req.params.filename);
+
+    if (isNaN(sessionId)) {
+      return res.status(400).json({ error: 'Invalid session ID format' });
+    }
+
+    // Fetch session with all related data
+    const sessionResult = await pool.query(`
+      SELECT
+        gs.id,
+        gs.room_code,
+        gs.status,
+        gs.created_at,
+        gs.completed_at,
+        gs.original_session_id,
+        q.id as quiz_id,
+        q.title as quiz_title
+      FROM game_sessions gs
+      JOIN quizzes q ON gs.quiz_id = q.id
+      WHERE gs.id = $1
+    `, [sessionId]);
+
+    if (sessionResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    const session = sessionResult.rows[0];
+
+    // Fetch participants with their answers
+    const participantsResult = await pool.query(`
+      SELECT
+        gp.display_name,
+        pa.question_id,
+        pa.answer_id,
+        sq.presentation_order,
+        a.display_order as choice_index,
+        pa.is_correct
+      FROM game_participants gp
+      LEFT JOIN participant_answers pa ON gp.id = pa.participant_id
+      LEFT JOIN session_questions sq ON pa.question_id = sq.question_id AND sq.game_session_id = $1
+      LEFT JOIN answers a ON pa.answer_id = a.id
+      WHERE gp.game_session_id = $1
+      ORDER BY gp.display_name, sq.presentation_order
+    `, [sessionId]);
+
+    // Group answers by player
+    const playersMap = new Map();
+    for (const row of participantsResult.rows) {
+      if (!playersMap.has(row.display_name)) {
+        playersMap.set(row.display_name, {
+          name: row.display_name,
+          answers: {}
+        });
+      }
+      if (row.question_id && row.presentation_order !== null) {
+        playersMap.get(row.display_name).answers[row.presentation_order] = row.choice_index;
+      }
+    }
+
+    // Fetch presented and revealed questions
+    const questionsResult = await pool.query(`
+      SELECT presentation_order, is_presented, is_revealed
+      FROM session_questions
+      WHERE game_session_id = $1
+      ORDER BY presentation_order
+    `, [sessionId]);
+
+    const presentedQuestions = [];
+    const revealedQuestions = [];
+    for (const row of questionsResult.rows) {
+      if (row.is_presented) presentedQuestions.push(row.presentation_order);
+      if (row.is_revealed) revealedQuestions.push(row.presentation_order);
+    }
+
+    // Format response to match frontend expectations
+    const response = {
+      sessionId: session.id,
+      roomCode: session.room_code,
+      quizTitle: session.quiz_title,
+      quizFilename: `quiz_${session.quiz_id}.json`,
+      status: session.status,
+      createdAt: session.created_at,
+      completedAt: session.completed_at,
+      originalRoomCode: session.original_session_id ? `Room ${session.original_session_id}` : null,
+      presentedQuestions,
+      revealedQuestions,
+      players: Array.from(playersMap.values())
+    };
+
+    res.json(response);
   } catch (err) {
-    res.status(404).json({ error: 'Session not found' });
+    console.error('Error fetching session:', err);
+    res.status(500).json({ error: 'Failed to fetch session' });
   }
 });
 
-// Delete session
+// Delete session (from database)
 app.delete('/api/sessions/:filename', async (req, res) => {
   try {
-    await fs.unlink(path.join(COMPLETED_FOLDER, req.params.filename));
+    // Extract session ID from filename
+    const sessionId = req.params.filename.includes('_')
+      ? parseInt(req.params.filename.split('_')[1].replace('.json', ''))
+      : parseInt(req.params.filename);
+
+    if (isNaN(sessionId)) {
+      return res.status(400).json({ error: 'Invalid session ID format' });
+    }
+
+    // Soft delete: mark session as deleted (or hard delete if preferred)
+    const result = await pool.query(
+      'DELETE FROM game_sessions WHERE id = $1 RETURNING id',
+      [sessionId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
     res.json({ success: true });
   } catch (err) {
+    console.error('Error deleting session:', err);
     res.status(500).json({ error: 'Failed to delete session' });
   }
 });
@@ -1037,31 +1262,46 @@ io.on('connection', (socket) => {
   // Presenter resumes an incomplete session
   socket.on('resumeSession', async ({ sessionFilename }) => {
     try {
-      const sessionPath = path.join(COMPLETED_FOLDER, sessionFilename);
-      const sessionData = JSON.parse(await fs.readFile(sessionPath, 'utf-8'));
+      // Extract session ID from filename (session_123.json → 123)
+      const sessionId = sessionFilename.includes('_')
+        ? parseInt(sessionFilename.split('_')[1].replace('.json', ''))
+        : parseInt(sessionFilename);
+
+      if (isNaN(sessionId)) {
+        return socket.emit('roomError', 'Invalid session ID format');
+      }
+
+      // Load session data from database
+      const sessionResult = await pool.query(`
+        SELECT
+          gs.id,
+          gs.room_code as original_room_code,
+          gs.quiz_id,
+          gs.created_at,
+          q.title as quiz_title
+        FROM game_sessions gs
+        JOIN quizzes q ON gs.quiz_id = q.id
+        WHERE gs.id = $1
+      `, [sessionId]);
+
+      if (sessionResult.rows.length === 0) {
+        return socket.emit('roomError', 'Session not found');
+      }
+
+      const session = sessionResult.rows[0];
 
       // Generate new room code for resumed session
       const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
 
       // Load the quiz data from database
-      // Extract quiz ID from filename format (quiz_123.json → 123)
-      const quizFilename = sessionData.quizFilename;
-      const quizId = quizFilename.includes('_')
-        ? parseInt(quizFilename.split('_')[1].replace('.json', ''))
-        : parseInt(quizFilename);
-
-      if (isNaN(quizId)) {
-        return socket.emit('roomError', 'Invalid quiz ID format in session');
-      }
-
-      const quiz = await getQuizById(quizId);
+      const quiz = await getQuizById(session.quiz_id);
       if (!quiz) {
         return socket.emit('roomError', 'Quiz not found for this session');
       }
 
       // Convert database format to legacy format for compatibility
       const quizData = {
-        filename: quizFilename,
+        filename: `quiz_${session.quiz_id}.json`,
         title: quiz.title,
         description: quiz.description,
         questions: quiz.questions.map(q => ({
@@ -1072,37 +1312,77 @@ io.on('connection', (socket) => {
         }))
       };
 
-      // Reconstruct players from session data
+      // Load participants and their answers from database
+      const participantsResult = await pool.query(`
+        SELECT
+          gp.display_name,
+          pa.question_id,
+          sq.presentation_order,
+          a.display_order as choice_index
+        FROM game_participants gp
+        LEFT JOIN participant_answers pa ON gp.id = pa.participant_id
+        LEFT JOIN session_questions sq ON pa.question_id = sq.question_id AND sq.game_session_id = $1
+        LEFT JOIN answers a ON pa.answer_id = a.id
+        WHERE gp.game_session_id = $1
+        ORDER BY gp.display_name
+      `, [sessionId]);
+
+      // Reconstruct players from database data
+      const playersMap = new Map();
+      for (const row of participantsResult.rows) {
+        if (!playersMap.has(row.display_name)) {
+          const playerId = `temp_${row.display_name}`;
+          playersMap.set(row.display_name, {
+            id: playerId,
+            name: row.display_name,
+            choice: null,
+            connected: false,
+            answers: {},
+            isResumed: true
+          });
+        }
+        if (row.presentation_order !== null && row.choice_index !== null) {
+          playersMap.get(row.display_name).answers[row.presentation_order] = row.choice_index;
+        }
+      }
+
       const players = {};
-      sessionData.players.forEach(p => {
-        // Create a temporary player entry (they'll rejoin with new socket IDs)
-        // Store their previous answers
-        const playerId = `temp_${p.name}`;
-        players[playerId] = {
-          id: playerId,
-          name: p.name,
-          choice: null,
-          connected: false, // Mark as disconnected until they rejoin
-          answers: p.answers || {},
-          isResumed: true // Flag to indicate this is from a resumed session
-        };
-      });
+      for (const playerData of playersMap.values()) {
+        players[playerData.id] = playerData;
+      }
+
+      // Load presented and revealed questions
+      const questionsResult = await pool.query(`
+        SELECT presentation_order, is_presented, is_revealed
+        FROM session_questions
+        WHERE game_session_id = $1
+        ORDER BY presentation_order
+      `, [sessionId]);
+
+      const presentedQuestions = [];
+      const revealedQuestions = [];
+      for (const row of questionsResult.rows) {
+        if (row.is_presented) presentedQuestions.push(row.presentation_order);
+        if (row.is_revealed) revealedQuestions.push(row.presentation_order);
+      }
 
       liveRooms[roomCode] = {
-        quizFilename: sessionData.quizFilename,
+        quizFilename: `quiz_${session.quiz_id}.json`,
+        quizId: session.quiz_id,
         quizData,
         players,
         presenterId: socket.id,
         currentQuestionIndex: null,
-        presentedQuestions: sessionData.presentedQuestions || [],
-        revealedQuestions: sessionData.revealedQuestions || [],
+        presentedQuestions,
+        revealedQuestions,
         status: 'in-progress',
-        createdAt: sessionData.createdAt,
+        createdAt: session.created_at,
         resumedAt: new Date().toISOString(),
-        originalRoomCode: sessionData.roomCode
+        originalRoomCode: session.original_room_code,
+        originalSessionId: sessionId
       };
 
-      console.log(`Room ${roomCode} resumed from session ${sessionData.roomCode}`);
+      console.log(`Room ${roomCode} resumed from session ID ${sessionId} (original room: ${session.original_room_code})`);
 
       socket.join(roomCode);
       socket.emit('roomCreated', {
@@ -1112,7 +1392,7 @@ io.on('connection', (socket) => {
         presentedQuestions: liveRooms[roomCode].presentedQuestions,
         revealedQuestions: liveRooms[roomCode].revealedQuestions,
         isResumed: true,
-        originalRoomCode: sessionData.roomCode
+        originalRoomCode: session.original_room_code
       });
 
       // Send the player list to the presenter (shows disconnected players from previous session)
