@@ -417,52 +417,237 @@ app.post('/api/options', async (req, res) => {
 // --------------------
 
 // Get all quizzes
+// Get all quizzes (from database)
 app.get('/api/quizzes', async (req, res) => {
-  const quizzes = await listQuizzes();
-  res.json(quizzes);
+  try {
+    const quizzes = await listQuizzesFromDB();
+    // Format response to match expected structure for frontend
+    const formatted = quizzes.map(q => ({
+      id: q.id,
+      filename: `quiz_${q.id}.json`, // For backward compatibility with frontend
+      title: q.title,
+      description: q.description,
+      questionCount: parseInt(q.question_count),
+      createdAt: q.created_at
+    }));
+    res.json(formatted);
+  } catch (err) {
+    console.error('Error fetching quizzes:', err);
+    res.status(500).json({ error: 'Failed to fetch quizzes' });
+  }
 });
 
-// Get single quiz
+// Get single quiz (from database)
+// Note: :filename param is actually the quiz ID (for backward compatibility)
+// Format: quiz_123.json → extract ID 123
 app.get('/api/quizzes/:filename', async (req, res) => {
   try {
-    const filePath = path.join(QUIZ_FOLDER, req.params.filename);
-    const data = JSON.parse(await fs.readFile(filePath, 'utf-8'));
-    res.json(data);
+    // Extract quiz ID from filename format (quiz_123.json → 123)
+    const filename = req.params.filename;
+    const quizId = filename.includes('_')
+      ? parseInt(filename.split('_')[1].replace('.json', ''))
+      : parseInt(filename);
+
+    if (isNaN(quizId)) {
+      return res.status(400).json({ error: 'Invalid quiz ID format' });
+    }
+
+    const quiz = await getQuizById(quizId);
+
+    if (!quiz) {
+      return res.status(404).json({ error: 'Quiz not found' });
+    }
+
+    // Format response to match expected frontend structure
+    const formatted = {
+      filename: `quiz_${quiz.id}.json`,
+      title: quiz.title,
+      description: quiz.description,
+      questions: quiz.questions.map(q => ({
+        id: q.id,
+        text: q.text,
+        choices: q.choices.map(c => c.text),
+        correctChoice: q.choices.findIndex(c => c.isCorrect)
+      }))
+    };
+
+    res.json(formatted);
   } catch (err) {
-    res.status(404).json({ error: 'Quiz not found' });
+    console.error('Error fetching quiz:', err);
+    res.status(500).json({ error: 'Failed to fetch quiz' });
   }
 });
 
-// Create new quiz
+// Create new quiz (in database)
 app.post('/api/quizzes', async (req, res) => {
   const { title, description, questions } = req.body;
-  const filename = `${title.replace(/\s+/g, '_')}_${Date.now()}.json`;
-  const filePath = path.join(QUIZ_FOLDER, filename);
-  const quizData = { title, description, questions: questions || [] };
-  await fs.writeFile(filePath, JSON.stringify(quizData, null, 2), 'utf-8');
-  res.json({ filename, ...quizData });
-});
+  const client = await pool.connect();
 
-// Update quiz
-app.put('/api/quizzes/:filename', async (req, res) => {
   try {
-    const filePath = path.join(QUIZ_FOLDER, req.params.filename);
-    const data = req.body;
-    if (!Array.isArray(data.questions)) data.questions = [];
-    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
-    res.json(data);
+    await client.query('BEGIN');
+
+    // Insert quiz
+    const quizResult = await client.query(
+      'INSERT INTO quizzes (title, description, created_by) VALUES ($1, $2, $3) RETURNING id',
+      [title, description, 1] // TODO: Use actual user ID from auth session
+    );
+    const quizId = quizResult.rows[0].id;
+
+    // Insert each question with answers
+    for (let i = 0; i < (questions || []).length; i++) {
+      const q = questions[i];
+
+      // Insert question
+      const questionResult = await client.query(
+        'INSERT INTO questions (question_text, question_type, created_by) VALUES ($1, $2, $3) RETURNING id',
+        [q.text, 'multiple_choice', 1] // TODO: Use actual user ID
+      );
+      const questionId = questionResult.rows[0].id;
+
+      // Link question to quiz
+      await client.query(
+        'INSERT INTO quiz_questions (quiz_id, question_id, question_order) VALUES ($1, $2, $3)',
+        [quizId, questionId, i + 1]
+      );
+
+      // Insert answers
+      for (let j = 0; j < (q.choices || []).length; j++) {
+        const isCorrect = j === q.correctChoice;
+        await client.query(
+          'INSERT INTO answers (question_id, answer_text, is_correct, display_order) VALUES ($1, $2, $3, $4)',
+          [questionId, q.choices[j], isCorrect, j]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+
+    // Return formatted response
+    const filename = `quiz_${quizId}.json`;
+    res.json({
+      filename,
+      id: quizId,
+      title,
+      description,
+      questions: questions || []
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to save quiz' });
+    await client.query('ROLLBACK');
+    console.error('Error creating quiz:', err);
+    res.status(500).json({ error: 'Failed to create quiz' });
+  } finally {
+    client.release();
   }
 });
 
-// Delete quiz
+// Update quiz (in database)
+app.put('/api/quizzes/:filename', async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    // Extract quiz ID from filename
+    const filename = req.params.filename;
+    const quizId = filename.includes('_')
+      ? parseInt(filename.split('_')[1].replace('.json', ''))
+      : parseInt(filename);
+
+    if (isNaN(quizId)) {
+      return res.status(400).json({ error: 'Invalid quiz ID format' });
+    }
+
+    const { title, description, questions } = req.body;
+    if (!Array.isArray(questions)) {
+      return res.status(400).json({ error: 'Questions must be an array' });
+    }
+
+    await client.query('BEGIN');
+
+    // Update quiz metadata
+    await client.query(
+      'UPDATE quizzes SET title = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+      [title, description, quizId]
+    );
+
+    // Delete old quiz-question relationships and questions (cascades to answers)
+    await client.query(`
+      DELETE FROM questions
+      WHERE id IN (
+        SELECT question_id FROM quiz_questions WHERE quiz_id = $1
+      )
+    `, [quizId]);
+
+    // Insert new questions with answers
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+
+      // Insert question
+      const questionResult = await client.query(
+        'INSERT INTO questions (question_text, question_type, created_by) VALUES ($1, $2, $3) RETURNING id',
+        [q.text, 'multiple_choice', 1] // TODO: Use actual user ID
+      );
+      const questionId = questionResult.rows[0].id;
+
+      // Link question to quiz
+      await client.query(
+        'INSERT INTO quiz_questions (quiz_id, question_id, question_order) VALUES ($1, $2, $3)',
+        [quizId, questionId, i + 1]
+      );
+
+      // Insert answers
+      for (let j = 0; j < (q.choices || []).length; j++) {
+        const isCorrect = j === q.correctChoice;
+        await client.query(
+          'INSERT INTO answers (question_id, answer_text, is_correct, display_order) VALUES ($1, $2, $3, $4)',
+          [questionId, q.choices[j], isCorrect, j]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+
+    // Return formatted response
+    res.json({
+      filename: `quiz_${quizId}.json`,
+      id: quizId,
+      title,
+      description,
+      questions
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error updating quiz:', err);
+    res.status(500).json({ error: 'Failed to update quiz' });
+  } finally {
+    client.release();
+  }
+});
+
+// Delete quiz (soft delete - sets is_active = false)
 app.delete('/api/quizzes/:filename', async (req, res) => {
   try {
-    await fs.unlink(path.join(QUIZ_FOLDER, req.params.filename));
+    // Extract quiz ID from filename
+    const filename = req.params.filename;
+    const quizId = filename.includes('_')
+      ? parseInt(filename.split('_')[1].replace('.json', ''))
+      : parseInt(filename);
+
+    if (isNaN(quizId)) {
+      return res.status(400).json({ error: 'Invalid quiz ID format' });
+    }
+
+    // Soft delete: set is_active to false
+    const result = await pool.query(
+      'UPDATE quizzes SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id',
+      [quizId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Quiz not found' });
+    }
+
     res.json({ success: true });
   } catch (err) {
+    console.error('Error deleting quiz:', err);
     res.status(500).json({ error: 'Failed to delete quiz' });
   }
 });
