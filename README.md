@@ -67,18 +67,19 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 ## Technology Stack
 
 - **Backend**: Node.js, Express.js, Socket.IO
+- **Database**: PostgreSQL 15 (fully normalized schema)
 - **Frontend**: Vanilla JavaScript, HTML5, CSS3
 - **Excel Processing**: ExcelJS, XLSX, Multer
 - **Real-time Communication**: WebSocket (via Socket.IO)
-- **Data Storage**: JSON file-based system
+- **Containerization**: Docker, Docker Compose
 
 ## Installation
 
 ### Prerequisites
-- Node.js (v14 or higher)
-- npm (v6 or higher)
+- **Docker** and **Docker Compose** (recommended)
+  - OR Node.js (v20 or higher) + PostgreSQL 15
 
-### Setup Instructions
+### Quick Start with Docker (Recommended)
 
 1. **Clone the repository**
    ```bash
@@ -86,15 +87,9 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
    cd TriviaForge
    ```
 
-2. **Install dependencies**
-   ```bash
-   cd app
-   npm install
-   ```
+2. **Configure environment variables**
 
-3. **Configure environment variables**
-
-   Create a `.env` file in the `app` directory (use `.env.example` as a template):
+   Create a `.env` file in the root directory:
    ```bash
    cp .env.example .env
    ```
@@ -102,26 +97,80 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
    Edit the `.env` file with your configuration:
    ```env
    # Server Configuration
-   APP_PORT=3000                    # Port for the application (default: 3000)
+   APP_PORT=3000
+   NODE_ENV=production
+
+   # Database Configuration
+   DATABASE_URL=postgres://trivia:trivia@db:5432/trivia
 
    # Admin Security
    ADMIN_PASSWORD=your_secure_password_here
 
-   # Network Configuration (Optional)
-   HOST_IP=192.168.1.100           # Your server's IP address
-   SERVER_URL=http://localhost:3000 # Full server URL (overrides HOST_IP if set)
+   # Network Configuration
+   HOST_IP=192.168.1.100           # Your server's IP address for QR codes
+   SERVER_URL=http://localhost:3000 # Full server URL (overrides HOST_IP)
+
+   # Session Configuration
+   SESSION_TIMEOUT=3600000         # 1 hour in milliseconds
+
+   # Application
+   APP_NAME=TriviaForge
+   TZ=America/New_York            # Timezone for database timestamps
    ```
 
-4. **Start the server**
+3. **Start the application**
    ```bash
-   npm start
+   docker-compose up -d
    ```
 
-5. **Access the application**
+   The database schema will be automatically initialized on first run.
+
+4. **Access the application**
    - Admin Panel: `http://localhost:3000/index.html`
    - Presenter: `http://localhost:3000/presenter.html`
    - Player: `http://localhost:3000/player.html`
    - Display: `http://localhost:3000/display.html`
+
+5. **View logs** (optional)
+   ```bash
+   docker-compose logs -f app
+   ```
+
+6. **Stop the application**
+   ```bash
+   docker-compose down
+   ```
+
+### Manual Setup (Without Docker)
+
+1. **Install PostgreSQL 15**
+   - Follow [PostgreSQL installation guide](https://www.postgresql.org/download/)
+
+2. **Create database**
+   ```bash
+   createdb trivia
+   psql trivia < app/init/tables.sql
+   ```
+
+3. **Install Node.js dependencies**
+   ```bash
+   cd app
+   npm install
+   ```
+
+4. **Configure environment variables**
+
+   Create `.env` file in `app` directory:
+   ```env
+   DATABASE_URL=postgres://your_user:your_password@localhost:5432/trivia
+   ADMIN_PASSWORD=your_secure_password_here
+   APP_PORT=3000
+   ```
+
+5. **Start the server**
+   ```bash
+   npm start
+   ```
 
 ## Usage Guide
 
@@ -214,13 +263,19 @@ TriviaForge/
 │   │   ├── display.html  # Spectator/display view
 │   │   ├── styles.css    # Shared styles
 │   │   └── *.js          # Client-side scripts
-│   ├── quizzes/          # Stored quiz JSON files
-│   ├── sessions/         # Session state files
+│   ├── init/             # Database initialization
+│   │   └── tables.sql    # PostgreSQL schema
+│   ├── quizzes/          # Legacy quiz storage (deprecated)
+│   ├── sessions/         # Legacy session storage (deprecated)
 │   ├── server.js         # Main server application
+│   ├── Dockerfile        # Docker container definition
 │   └── package.json      # Dependencies
+├── docker-compose.yml    # Docker orchestration
+├── .env.example          # Environment variables template
 ├── LICENSE               # PolyForm Noncommercial License
 ├── CONTRIBUTING.md       # Contribution guidelines
-└── README.md            # This file
+├── TODO.md               # Feature roadmap
+└── README.md             # This file
 ```
 
 ## Environment Variables
@@ -228,9 +283,14 @@ TriviaForge/
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
 | `APP_PORT` | Port number for the server | `3000` | No |
+| `DATABASE_URL` | PostgreSQL connection string | `postgres://trivia:trivia@db:5432/trivia` | Yes |
 | `ADMIN_PASSWORD` | Password to access admin panel | - | Yes |
 | `HOST_IP` | Server IP address for network access | Auto-detected | No |
 | `SERVER_URL` | Full server URL (overrides HOST_IP) | `http://{HOST_IP}:{PORT}` | No |
+| `SESSION_TIMEOUT` | Session expiration time (ms) | `3600000` (1 hour) | No |
+| `NODE_ENV` | Environment mode | `production` | No |
+| `TZ` | Timezone for timestamps | `America/New_York` | No |
+| `APP_NAME` | Application name | `TriviaForge` | No |
 
 ## Features in Detail
 
@@ -241,11 +301,12 @@ TriviaForge/
 - Preserves question formatting and special characters
 
 ### Session Management
-- Automatic session state saving
-- Player answer history preservation
+- Automatic session state saving to PostgreSQL database
+- Player answer history preservation with transactions
 - Reconnection support with progress restoration
 - Timestamp tracking for created and resumed sessions
 - Status indicators (In Progress, Interrupted, Completed)
+- Session analytics with participant performance views
 
 ### Answer Integrity
 - Server-side validation prevents answer manipulation
