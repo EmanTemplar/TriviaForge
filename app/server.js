@@ -817,18 +817,61 @@ app.post('/api/import-quiz', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No valid questions found in the file' });
     }
 
-    // Save quiz
-    const filename = `${title.replace(/\s+/g, '_')}_${Date.now()}.json`;
-    const filePath = path.join(QUIZ_FOLDER, filename);
-    const quizData = { title, description, questions };
-    await fs.writeFile(filePath, JSON.stringify(quizData, null, 2), 'utf-8');
+    // Save quiz to database
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    res.json({
-      success: true,
-      filename,
-      title,
-      questionCount: questions.length
-    });
+      // Insert quiz
+      const quizResult = await client.query(
+        'INSERT INTO quizzes (title, description, created_by) VALUES ($1, $2, $3) RETURNING id',
+        [title, description, 1] // TODO: Use actual user ID from auth session
+      );
+      const quizId = quizResult.rows[0].id;
+
+      // Insert each question with answers
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+
+        // Insert question
+        const questionResult = await client.query(
+          'INSERT INTO questions (question_text, question_type, created_by) VALUES ($1, $2, $3) RETURNING id',
+          [q.text, 'multiple_choice', 1] // TODO: Use actual user ID
+        );
+        const questionId = questionResult.rows[0].id;
+
+        // Link question to quiz
+        await client.query(
+          'INSERT INTO quiz_questions (quiz_id, question_id, question_order) VALUES ($1, $2, $3)',
+          [quizId, questionId, i + 1]
+        );
+
+        // Insert answers
+        for (let j = 0; j < q.choices.length; j++) {
+          const isCorrect = j === q.correctChoice;
+          await client.query(
+            'INSERT INTO answers (question_id, answer_text, is_correct, display_order) VALUES ($1, $2, $3, $4)',
+            [questionId, q.choices[j], isCorrect, j]
+          );
+        }
+      }
+
+      await client.query('COMMIT');
+
+      const filename = `quiz_${quizId}.json`;
+      res.json({
+        success: true,
+        filename,
+        id: quizId,
+        title,
+        questionCount: questions.length
+      });
+    } catch (dbErr) {
+      await client.query('ROLLBACK');
+      throw dbErr;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error('Error importing quiz:', err);
     res.status(500).json({ error: 'Failed to import quiz: ' + err.message });
