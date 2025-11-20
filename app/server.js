@@ -64,9 +64,8 @@ dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
 app.use(express.static('public'));
 
 const PORT = process.env.APP_PORT || 3000;
-const QUIZ_FOLDER = path.join(process.cwd(), 'quizzes');
-const COMPLETED_FOLDER = path.join(QUIZ_FOLDER, 'completed');
-const TEMPLATES_FOLDER = path.join(process.cwd(), 'templates');
+const QUIZ_FOLDER = path.join(process.cwd(), 'quizzes'); // Still used for quiz_options.json
+const COMPLETED_FOLDER = path.join(QUIZ_FOLDER, 'completed'); // Still used for session storage
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // --------------------
@@ -243,19 +242,9 @@ console.log(`🔐 Admin password loaded: ${ADMIN_PASSWORD ? '***set***' : 'NOT S
 await fs.mkdir(COMPLETED_FOLDER, { recursive: true });
 
 // --------------------
-// Helper: list quizzes
+// Helper: list quizzes (REMOVED - now using database)
 // --------------------
-const listQuizzes = async () => {
-  const files = await fs.readdir(QUIZ_FOLDER);
-  const quizzes = [];
-  for (const file of files) {
-    if (file.endsWith('.json')) {
-      const data = JSON.parse(await fs.readFile(path.join(QUIZ_FOLDER, file), 'utf-8'));
-      quizzes.push({ filename: file, title: data.title, description: data.description, questions: data.questions || [] });
-    }
-  }
-  return quizzes;
-};
+// Old file-based function removed - use listQuizzesFromDB() instead
 
 // --------------------
 // Helper: list completed sessions
@@ -929,7 +918,7 @@ const io = new Server(server, {
 // --------------------
 // Live Rooms Logic with Session Recording
 // --------------------
-const liveRooms = {}; // { roomCode: { quizFilename, quizData, players: {}, presenterId, currentQuestionIndex, presentedQuestions: [], status, createdAt } }
+const liveRooms = {}; // { roomCode: { quizFilename, quizId, quizData (from DB), players: {}, presenterId, currentQuestionIndex, presentedQuestions: [], status, createdAt } }
 let quizOptions = { answerDisplayTime: 30 }; // Default options
 
 // Load quiz options on startup
@@ -958,12 +947,38 @@ io.on('connection', (socket) => {
   // Presenter creates a room
   socket.on('createRoom', async ({ roomCode, quizFilename }) => {
     try {
-      const quizPath = path.join(QUIZ_FOLDER, quizFilename);
-      const quizData = JSON.parse(await fs.readFile(quizPath, 'utf-8'));
+      // Extract quiz ID from filename format (quiz_123.json → 123)
+      const quizId = quizFilename.includes('_')
+        ? parseInt(quizFilename.split('_')[1].replace('.json', ''))
+        : parseInt(quizFilename);
+
+      if (isNaN(quizId)) {
+        return socket.emit('roomError', 'Invalid quiz ID format');
+      }
+
+      // Fetch quiz from database
+      const quiz = await getQuizById(quizId);
+      if (!quiz) {
+        return socket.emit('roomError', 'Quiz not found');
+      }
+
+      // Convert database format to legacy format for compatibility
+      const quizData = {
+        filename: quizFilename,
+        title: quiz.title,
+        description: quiz.description,
+        questions: quiz.questions.map(q => ({
+          id: q.id,
+          text: q.text,
+          choices: q.choices.map(c => c.text),
+          correctChoice: q.choices.findIndex(c => c.isCorrect)
+        }))
+      };
 
       if (!liveRooms[roomCode]) {
         liveRooms[roomCode] = {
           quizFilename,
+          quizId,
           quizData,
           players: {},
           presenterId: socket.id,
@@ -973,7 +988,7 @@ io.on('connection', (socket) => {
           status: 'in-progress',
           createdAt: new Date().toISOString()
         };
-        console.log(`Room ${roomCode} created for quiz ${quizFilename}`);
+        console.log(`Room ${roomCode} created for quiz ID ${quizId} (${quiz.title})`);
       }
 
       socket.join(roomCode);
@@ -1001,9 +1016,34 @@ io.on('connection', (socket) => {
       // Generate new room code for resumed session
       const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
 
-      // Load the quiz data
-      const quizPath = path.join(QUIZ_FOLDER, sessionData.quizFilename);
-      const quizData = JSON.parse(await fs.readFile(quizPath, 'utf-8'));
+      // Load the quiz data from database
+      // Extract quiz ID from filename format (quiz_123.json → 123)
+      const quizFilename = sessionData.quizFilename;
+      const quizId = quizFilename.includes('_')
+        ? parseInt(quizFilename.split('_')[1].replace('.json', ''))
+        : parseInt(quizFilename);
+
+      if (isNaN(quizId)) {
+        return socket.emit('roomError', 'Invalid quiz ID format in session');
+      }
+
+      const quiz = await getQuizById(quizId);
+      if (!quiz) {
+        return socket.emit('roomError', 'Quiz not found for this session');
+      }
+
+      // Convert database format to legacy format for compatibility
+      const quizData = {
+        filename: quizFilename,
+        title: quiz.title,
+        description: quiz.description,
+        questions: quiz.questions.map(q => ({
+          id: q.id,
+          text: q.text,
+          choices: q.choices.map(c => c.text),
+          correctChoice: q.choices.findIndex(c => c.isCorrect)
+        }))
+      };
 
       // Reconstruct players from session data
       const players = {};
