@@ -9,6 +9,8 @@ import os from 'os';
 import xlsx from 'xlsx';
 import multer from 'multer';
 import ExcelJS from 'exceljs';
+import pkg from 'pg';
+const { Pool } = pkg;
 
 // --------------------
 // Helper: Auto-detect local IP
@@ -66,6 +68,151 @@ const QUIZ_FOLDER = path.join(process.cwd(), 'quizzes');
 const COMPLETED_FOLDER = path.join(QUIZ_FOLDER, 'completed');
 const TEMPLATES_FOLDER = path.join(process.cwd(), 'templates');
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+// --------------------
+// PostgreSQL Connection Pool
+// --------------------
+// NOTE: Connection pool size does NOT limit number of players/users
+// Pool connections are borrowed for milliseconds to run queries, then returned
+// 10 connections can easily handle 1000+ concurrent players
+// Increase only if you see "pool timeout" errors under heavy load
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgres://trivia:trivia@db:5432/trivia',
+  max: 10, // Maximum number of database connections in the pool (NOT player limit)
+  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection cannot be established
+});
+
+// Event handlers for connection pool
+pool.on('connect', () => {
+  console.log('✅ PostgreSQL client connected to pool');
+});
+
+pool.on('error', (err) => {
+  console.error('❌ Unexpected PostgreSQL pool error:', err);
+});
+
+// Test initial connection on startup
+try {
+  const testConnection = await pool.query('SELECT NOW() as current_time');
+  console.log('🗄️  Database connection test successful at:', testConnection.rows[0].current_time);
+} catch (err) {
+  console.error('❌ Failed to connect to PostgreSQL database:', err.message);
+  console.error('⚠️  Application will continue but database features will not work');
+  console.error('💡 Make sure PostgreSQL container is running: docker-compose up -d db');
+}
+
+// --------------------
+// Database Helper Functions
+// --------------------
+
+/**
+ * Fetch a complete quiz by ID with all questions and answers
+ * @param {number} quizId - The quiz ID to fetch
+ * @returns {Promise<Object>} Quiz object with questions and answers
+ */
+const getQuizById = async (quizId) => {
+  const client = await pool.connect();
+  try {
+    // Fetch quiz metadata
+    const quizResult = await client.query(
+      'SELECT id, title, description, answer_display_timeout, created_at FROM quizzes WHERE id = $1 AND is_active = TRUE',
+      [quizId]
+    );
+
+    if (quizResult.rows.length === 0) {
+      return null;
+    }
+
+    const quiz = quizResult.rows[0];
+
+    // Fetch questions with answers (using the view for convenience)
+    const questionsResult = await client.query(`
+      SELECT
+        question_id,
+        question_text,
+        question_type,
+        question_order,
+        answer_id,
+        answer_text,
+        is_correct,
+        display_order
+      FROM quiz_full_details
+      WHERE quiz_id = $1
+      ORDER BY question_order, display_order
+    `, [quizId]);
+
+    // Group answers by question
+    const questionsMap = new Map();
+    for (const row of questionsResult.rows) {
+      if (!questionsMap.has(row.question_id)) {
+        questionsMap.set(row.question_id, {
+          id: row.question_id,
+          text: row.question_text,
+          type: row.question_type,
+          order: row.question_order,
+          choices: []
+        });
+      }
+      questionsMap.get(row.question_id).choices.push({
+        id: row.answer_id,
+        text: row.answer_text,
+        isCorrect: row.is_correct,
+        order: row.display_order
+      });
+    }
+
+    // Convert map to array sorted by question_order
+    const questions = Array.from(questionsMap.values())
+      .sort((a, b) => a.order - b.order);
+
+    return {
+      id: quiz.id,
+      title: quiz.title,
+      description: quiz.description,
+      answerDisplayTimeout: quiz.answer_display_timeout,
+      createdAt: quiz.created_at,
+      questions
+    };
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * List all active quizzes (basic info only)
+ * @returns {Promise<Array>} Array of quiz objects
+ */
+const listQuizzesFromDB = async () => {
+  const result = await pool.query(`
+    SELECT
+      q.id,
+      q.title,
+      q.description,
+      q.created_at,
+      COUNT(qq.question_id) as question_count
+    FROM quizzes q
+    LEFT JOIN quiz_questions qq ON q.id = qq.quiz_id
+    WHERE q.is_active = TRUE
+    GROUP BY q.id, q.title, q.description, q.created_at
+    ORDER BY q.created_at DESC
+  `);
+
+  return result.rows;
+};
+
+// Test query with sample data
+try {
+  const sampleQuiz = await getQuizById(1);
+  if (sampleQuiz) {
+    console.log('✅ Sample query successful! Quiz:', sampleQuiz.title);
+    console.log(`   └─ ${sampleQuiz.questions.length} question(s) loaded`);
+  } else {
+    console.log('ℹ️  No quiz with ID 1 found (this is normal for a fresh database)');
+  }
+} catch (err) {
+  console.error('❌ Sample query failed:', err.message);
+}
 
 // Configure multer for file uploads
 const upload = multer({
