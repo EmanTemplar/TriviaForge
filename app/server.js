@@ -271,15 +271,15 @@ const listCompletedSessions = async () => {
     `);
 
     return result.rows.map(row => ({
-      sessionId: row.id,
-      roomCode: row.room_code,
-      quizTitle: row.quiz_title,
+      session_id: row.id,
+      room_code: row.room_code,
+      quiz_title: row.quiz_title,
       status: row.status,
-      createdAt: row.created_at,
-      completedAt: row.completed_at,
-      playerCount: parseInt(row.player_count),
-      questionCount: parseInt(row.question_count),
-      presentedCount: parseInt(row.presented_count)
+      created_at: row.created_at,
+      completed_at: row.completed_at,
+      player_count: parseInt(row.player_count),
+      question_count: parseInt(row.question_count),
+      presented_count: parseInt(row.presented_count)
     }));
   } catch (err) {
     console.error('Error listing sessions from database:', err);
