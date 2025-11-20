@@ -842,23 +842,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     sessionsListContainer.innerHTML = sessions.map(session => {
-      const displayDate = session.resumedAt ? new Date(session.resumedAt).toLocaleString() : new Date(session.createdAt).toLocaleString();
-      const dateLabel = session.resumedAt ? 'Resumed' : 'Started';
-      const resumedBadge = session.resumedAt ? '<span style="background: rgba(255,165,0,0.3); padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.8rem; margin-left: 0.5rem;">↻ Resumed</span>' : '';
+      const displayDate = new Date(session.created_at).toLocaleString();
       const statusColor = session.status === 'completed' ? '#0f0' : session.status === 'interrupted' ? '#ff0' : '#aaa';
 
       return `
         <div class="quizCard" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <strong>${session.quizTitle}</strong> - Room: ${session.roomCode}${resumedBadge}
+            <strong>${session.quiz_title}</strong> - Room: ${session.room_code}
             <div style="font-size: 0.9rem; color: #aaa;">
-              ${dateLabel}: ${displayDate} | Players: ${session.players.length}
+              Started: ${displayDate} | Players: ${session.player_count} | Questions: ${session.question_count}
               <span style="color: ${statusColor}; margin-left: 1rem;">● ${session.status}</span>
             </div>
           </div>
           <div style="display: flex; gap: 0.5rem;">
-            <button onclick="viewSession('${session.filename}')" style="background: rgba(0,123,255,0.3);">View Details</button>
-            <button onclick="deleteSession('${session.filename}')" style="background: rgba(255,0,0,0.3);">Delete</button>
+            <button onclick="viewSession('${session.session_id}')" style="background: rgba(0,123,255,0.3);">View Details</button>
+            <button onclick="deleteSession('${session.session_id}')" style="background: rgba(255,0,0,0.3);">Delete</button>
           </div>
         </div>
       `;
@@ -868,8 +866,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // --------------------
   // View session details (modal)
   // --------------------
-  window.viewSession = async (filename) => {
-    const res = await fetch(`/api/sessions/${filename}`);
+  window.viewSession = async (sessionId) => {
+    const res = await fetch(`/api/sessions/${sessionId}`);
     const session = await res.json();
 
     modalTitle.textContent = `${session.quizTitle} - Room ${session.roomCode}`;
@@ -894,9 +892,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modalContent.innerHTML = `
       <div style="margin-bottom: 1rem;">
         <p><strong>Status:</strong> ${session.status}</p>
-        <p><strong>Originally Started:</strong> ${new Date(session.createdAt).toLocaleString()}</p>
-        ${session.resumedAt ? `<p><strong>Resumed:</strong> ${new Date(session.resumedAt).toLocaleString()}</p>` : ''}
-        ${session.originalRoomCode ? `<p><strong>Original Room:</strong> ${session.originalRoomCode}</p>` : ''}
+        <p><strong>Started:</strong> ${new Date(session.createdAt).toLocaleString()}</p>
         ${session.completedAt ? `<p><strong>Completed:</strong> ${new Date(session.completedAt).toLocaleString()}</p>` : ''}
         <p><strong>Total Questions:</strong> ${session.questions.length}</p>
       </div>
@@ -954,10 +950,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // --------------------
   // Delete session
   // --------------------
-  window.deleteSession = async (filename) => {
+  window.deleteSession = async (sessionId) => {
     const confirmed = await customConfirm('Delete this session permanently?', 'Delete Session');
     if (!confirmed) return;
-    await fetch(`/api/sessions/${filename}`, { method: 'DELETE' });
+    await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
     loadSessions();
   };
 
@@ -979,22 +975,41 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('answerDisplayTime').value = seconds;
   };
 
-  window.saveQuizOptions = () => {
+  window.saveQuizOptions = async () => {
     const timeout = document.getElementById('answerDisplayTime').value;
-    localStorage.setItem('quizOptions', JSON.stringify({ answerDisplayTime: parseInt(timeout) }));
     const msg = document.getElementById('optionsSaveMsg');
-    msg.textContent = 'Options saved successfully!';
-    msg.style.display = 'block';
-    msg.style.background = 'rgba(0,255,0,0.2)';
-    msg.style.color = '#0f0';
-    setTimeout(() => { msg.style.display = 'none'; }, 3000);
+
+    try {
+      const res = await fetch('/api/options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answerDisplayTime: parseInt(timeout) })
+      });
+
+      if (!res.ok) throw new Error('Failed to save options');
+
+      msg.textContent = 'Options saved successfully!';
+      msg.style.display = 'block';
+      msg.style.background = 'rgba(0,255,0,0.2)';
+      msg.style.color = '#0f0';
+      setTimeout(() => { msg.style.display = 'none'; }, 3000);
+    } catch (err) {
+      msg.textContent = 'Error: ' + err.message;
+      msg.style.display = 'block';
+      msg.style.background = 'rgba(255,0,0,0.2)';
+      msg.style.color = '#f00';
+    }
   };
 
-  window.loadOptions = () => {
-    const saved = localStorage.getItem('quizOptions');
-    if (saved) {
-      const options = JSON.parse(saved);
+  window.loadOptions = async () => {
+    try {
+      const res = await fetch('/api/options');
+      if (!res.ok) throw new Error('Failed to load options');
+      const options = await res.json();
       document.getElementById('answerDisplayTime').value = options.answerDisplayTime || 30;
+    } catch (err) {
+      console.error('Failed to load quiz options:', err);
+      document.getElementById('answerDisplayTime').value = 30; // fallback to default
     }
   };
 });
