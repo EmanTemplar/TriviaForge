@@ -327,6 +327,31 @@ GROUP BY gp.id, gp.display_name, gs.room_code, q.title, gp.score
 ORDER BY gp.score DESC;
 
 -- ============================================================================
+-- 11. APP_SETTINGS TABLE
+-- ============================================================================
+-- Global application settings (key-value store)
+-- Used for quiz options and other app-wide configuration
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS app_settings (
+  setting_key VARCHAR(255) PRIMARY KEY,
+  setting_value TEXT NOT NULL,
+  description TEXT,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert default quiz options
+INSERT INTO app_settings (setting_key, setting_value, description)
+VALUES
+  ('answer_display_time', '30', 'Default answer display timeout in seconds (5-300)')
+ON CONFLICT (setting_key) DO NOTHING;
+
+-- Trigger for auto-updating updated_at timestamp
+CREATE TRIGGER update_app_settings_updated_at
+  BEFORE UPDATE ON app_settings
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
 -- SCHEMA VERSION TRACKING
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS schema_version (

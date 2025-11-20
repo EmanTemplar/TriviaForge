@@ -64,8 +64,8 @@ dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
 app.use(express.static('public'));
 
 const PORT = process.env.APP_PORT || 3000;
-const QUIZ_FOLDER = path.join(process.cwd(), 'quizzes'); // Still used for quiz_options.json
-const COMPLETED_FOLDER = path.join(QUIZ_FOLDER, 'completed'); // Still used for session storage
+const QUIZ_FOLDER = path.join(process.cwd(), 'quizzes'); // Legacy folder kept for backward compatibility
+const COMPLETED_FOLDER = path.join(QUIZ_FOLDER, 'completed'); // Still used for session storage (will migrate later)
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // --------------------
@@ -378,22 +378,42 @@ app.get('/api/qr/room/:roomCode', async (req, res) => {
 // --------------------
 
 // Get quiz options
+// Get quiz options (from database)
 app.get('/api/options', async (req, res) => {
   try {
-    const optionsPath = path.join(QUIZ_FOLDER, 'quiz_options.json');
-    const data = await fs.readFile(optionsPath, 'utf-8');
-    res.json(JSON.parse(data));
+    const result = await pool.query(
+      "SELECT setting_value FROM app_settings WHERE setting_key = 'answer_display_time'"
+    );
+
+    const answerDisplayTime = result.rows.length > 0
+      ? parseInt(result.rows[0].setting_value)
+      : 30;
+
+    res.json({ answerDisplayTime });
   } catch (err) {
-    // Return defaults if file doesn't exist
-    res.json({ answerDisplayTime: 30 });
+    console.error('Error fetching options:', err);
+    res.json({ answerDisplayTime: 30 }); // Return default on error
   }
 });
 
-// Save quiz options
+// Save quiz options (to database)
 app.post('/api/options', async (req, res) => {
   try {
-    const optionsPath = path.join(QUIZ_FOLDER, 'quiz_options.json');
-    await fs.writeFile(optionsPath, JSON.stringify(req.body, null, 2), 'utf-8');
+    const { answerDisplayTime } = req.body;
+
+    // Validate input
+    if (!answerDisplayTime || answerDisplayTime < 5 || answerDisplayTime > 300) {
+      return res.status(400).json({ error: 'Answer display time must be between 5 and 300 seconds' });
+    }
+
+    // Update or insert setting
+    await pool.query(`
+      INSERT INTO app_settings (setting_key, setting_value, description)
+      VALUES ('answer_display_time', $1, 'Answer display timeout in seconds')
+      ON CONFLICT (setting_key)
+      DO UPDATE SET setting_value = $1, updated_at = CURRENT_TIMESTAMP
+    `, [answerDisplayTime.toString()]);
+
     res.json({ success: true, options: req.body });
   } catch (err) {
     console.error('Error saving options:', err);
@@ -921,14 +941,21 @@ const io = new Server(server, {
 const liveRooms = {}; // { roomCode: { quizFilename, quizId, quizData (from DB), players: {}, presenterId, currentQuestionIndex, presentedQuestions: [], status, createdAt } }
 let quizOptions = { answerDisplayTime: 30 }; // Default options
 
-// Load quiz options on startup
+// Load quiz options on startup from database
 (async () => {
   try {
-    const optionsPath = path.join(QUIZ_FOLDER, 'quiz_options.json');
-    const data = await fs.readFile(optionsPath, 'utf-8');
-    quizOptions = JSON.parse(data);
-    console.log('📋 Quiz options loaded:', quizOptions);
+    const result = await pool.query(
+      "SELECT setting_value FROM app_settings WHERE setting_key = 'answer_display_time'"
+    );
+
+    if (result.rows.length > 0) {
+      quizOptions.answerDisplayTime = parseInt(result.rows[0].setting_value);
+      console.log('📋 Quiz options loaded from database:', quizOptions);
+    } else {
+      console.log('📋 Using default quiz options');
+    }
   } catch (err) {
+    console.error('Error loading quiz options from database:', err);
     console.log('📋 Using default quiz options');
   }
 })();
