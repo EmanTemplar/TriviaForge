@@ -32,7 +32,6 @@ services:
     volumes:
       - ./app/public:/app/public
       - ./app/quizzes:/app/quizzes
-      - ./app/index.js:/app/index.js
       - ./app/server.js:/app/server.js
     restart: unless-stopped
 volumes:
