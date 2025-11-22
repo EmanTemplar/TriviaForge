@@ -16,19 +16,22 @@ services:
       dockerfile: Dockerfile
     container_name: triviagame-app
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-3000}:3000"
     depends_on:
       - db
+    env_file:
+      - .env
     environment:
-      APP_PORT: ${APP_PORT:-3000}
-      NODE_ENV: ${NODE_ENV:-production}
-      DATABASE_URL: ${DATABASE_URL:-postgres://trivia:trivia@db:5432/trivia}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      TZ: ${TZ:-America/New_York}
-      SERVER_URL: ${SERVER_URL}
-      HOST_IP: ${HOST_IP}
-      SESSION_TIMEOUT: ${SESSION_TIMEOUT:-3600000}
-      APP_NAME: ${APP_NAME:-TriviaForge}
+      # These can be overridden in Docker Desktop UI or via .env file
+      APP_PORT: 3000
+      NODE_ENV: production
+      DATABASE_URL: postgres://trivia:trivia@db:5432/trivia
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      TZ: America/New_York
+      SERVER_URL: ${SERVER_URL:-}
+      HOST_IP: ${HOST_IP:-}
+      SESSION_TIMEOUT: 3600000
+      APP_NAME: TriviaForge
     volumes:
       - ./app/public:/app/public
       - ./app/quizzes:/app/quizzes

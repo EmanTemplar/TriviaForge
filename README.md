@@ -141,6 +141,56 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
    docker-compose down
    ```
 
+### Quick Start with Docker Desktop GUI
+
+If you prefer using Docker Desktop's graphical interface:
+
+1. **Clone the repository** (same as above)
+   ```bash
+   git clone git@github.com:EmanTemplar/TriviaForge.git
+   cd TriviaForge
+   ```
+
+2. **Open Docker Desktop**
+   - Navigate to the directory containing `docker-compose.yml`
+   - Or import the project directly in Docker Desktop
+
+3. **Configure environment variables via Docker Desktop UI**
+
+   In Docker Desktop:
+   - Click on the `triviagame-app` service
+   - Go to the **Configuration** or **Environment** tab
+   - Add the following environment variables:
+
+   | Variable | Value | Required |
+   |----------|-------|----------|
+   | `ADMIN_PASSWORD` | `your_secure_password_here` | **Yes** |
+   | `SERVER_URL` | `http://YOUR_IP:3000` | **Yes** |
+   | `HOST_IP` | `YOUR_IP_ADDRESS` | No |
+   | `TZ` | `America/New_York` | No |
+   | `SESSION_TIMEOUT` | `3600000` | No |
+   | `APP_NAME` | `TriviaForge` | No |
+   | `APP_PORT` | `3000` | No |
+   | `NODE_ENV` | `production` | No |
+
+   **Important:**
+   - `ADMIN_PASSWORD` is required for admin login
+   - `SERVER_URL` should be set to your server's accessible URL (e.g., `http://192.168.1.100:3000`)
+   - Variables set in Docker Desktop UI override `.env` file values
+
+4. **Start the containers**
+   - Click the **Start** or **Play** button in Docker Desktop
+   - The database will initialize automatically on first run
+
+5. **Access the application**
+   - Same URLs as Docker Compose method above
+   - Check logs in Docker Desktop's **Logs** tab if issues occur
+
+6. **Stop the application**
+   - Click the **Stop** button in Docker Desktop
+
+**Note:** You can use **both** methods - create a `.env` file for defaults and override specific variables in Docker Desktop UI as needed. Docker Desktop UI values take precedence.
+
 ### Manual Setup (Without Docker)
 
 1. **Install PostgreSQL 15**
@@ -280,17 +330,34 @@ TriviaForge/
 
 ## Environment Variables
 
+### Configuration Methods
+
+Environment variables can be set in multiple ways (listed by precedence, highest to lowest):
+
+1. **Docker Desktop UI** - Set directly in the container configuration (highest priority)
+2. **`.env` file** - Place in the root directory alongside `docker-compose.yml`
+3. **Default values** - Built into `docker-compose.yml` (lowest priority)
+
+### Available Variables
+
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
 | `APP_PORT` | Port number for the server | `3000` | No |
-| `DATABASE_URL` | PostgreSQL connection string | `postgres://trivia:trivia@db:5432/trivia` | Yes |
-| `ADMIN_PASSWORD` | Password to access admin panel | - | Yes |
+| `DATABASE_URL` | PostgreSQL connection string | `postgres://trivia:trivia@db:5432/trivia` | Yes (auto-configured in Docker) |
+| `ADMIN_PASSWORD` | Password to access admin panel | - | **Yes** |
 | `HOST_IP` | Server IP address for network access | Auto-detected | No |
-| `SERVER_URL` | Full server URL (overrides HOST_IP) | `http://{HOST_IP}:{PORT}` | No |
+| `SERVER_URL` | Full server URL (overrides HOST_IP) | - | **Yes** (for QR codes) |
 | `SESSION_TIMEOUT` | Session expiration time (ms) | `3600000` (1 hour) | No |
 | `NODE_ENV` | Environment mode | `production` | No |
 | `TZ` | Timezone for timestamps | `America/New_York` | No |
 | `APP_NAME` | Application name | `TriviaForge` | No |
+
+### Important Notes
+
+- **For Docker Desktop users:** Variables set in the UI will override `.env` file values
+- **For Docker Compose CLI users:** Create a `.env` file from `.env.example` and configure there
+- **`ADMIN_PASSWORD`** must be set before first run for admin login to work
+- **`SERVER_URL`** should be set to your server's accessible IP/hostname for QR code generation to work correctly
 
 ## Features in Detail
 
