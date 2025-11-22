@@ -421,9 +421,53 @@ const saveSession = async (roomCode, room) => {
 // Helper: check if session has answers
 // --------------------
 const sessionHasAnswers = (room) => {
-  return Object.values(room.players).some(player => 
+  return Object.values(room.players).some(player =>
     player.answers && Object.keys(player.answers).length > 0
   );
+};
+
+// --------------------
+// Middleware: Authentication
+// --------------------
+
+const requireAuth = async (req, res, next) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT us.token, us.user_id, u.username, u.account_type FROM user_sessions us JOIN users u ON us.user_id = u.id WHERE us.token = $1 AND us.expires_at > NOW()',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid or expired session' });
+    }
+
+    // Update last_used_at
+    await pool.query(
+      'UPDATE user_sessions SET last_used_at = NOW() WHERE token = $1',
+      [token]
+    );
+
+    req.user = result.rows[0];
+    next();
+  } catch (err) {
+    console.error('Auth middleware error:', err);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+};
+
+const requireAdmin = async (req, res, next) => {
+  await requireAuth(req, res, () => {
+    if (req.user.account_type !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    next();
+  });
 };
 
 // --------------------
@@ -1001,49 +1045,6 @@ app.post('/api/import-quiz', upload.single('file'), async (req, res) => {
     res.status(500).json({ error: 'Failed to import quiz: ' + err.message });
   }
 });
-
-// --------------------
-// Authentication Middleware
-// --------------------
-const requireAuth = async (req, res, next) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-
-  if (!token) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-
-  try {
-    const result = await pool.query(
-      'SELECT us.token, us.user_id, u.username, u.account_type FROM user_sessions us JOIN users u ON us.user_id = u.id WHERE us.token = $1 AND us.expires_at > NOW()',
-      [token]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid or expired session' });
-    }
-
-    // Update last_used_at
-    await pool.query(
-      'UPDATE user_sessions SET last_used_at = NOW() WHERE token = $1',
-      [token]
-    );
-
-    req.user = result.rows[0];
-    next();
-  } catch (err) {
-    console.error('Auth middleware error:', err);
-    res.status(500).json({ error: 'Authentication failed' });
-  }
-};
-
-const requireAdmin = async (req, res, next) => {
-  await requireAuth(req, res, () => {
-    if (req.user.account_type !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    next();
-  });
-};
 
 // --------------------
 // Routes: Authentication
