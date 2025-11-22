@@ -346,7 +346,7 @@ const saveSession = async (roomCode, room) => {
     await client.query('DELETE FROM game_participants WHERE game_session_id = $1', [sessionId]);
 
     for (const player of Object.values(room.players)) {
-      // Insert participant (user_id is NULL for anonymous players)
+      // Insert participant with user_id from guest/registered account
       const participantResult = await client.query(`
         INSERT INTO game_participants (
           user_id, game_session_id, display_name, score,
@@ -355,7 +355,7 @@ const saveSession = async (roomCode, room) => {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id
       `, [
-        null, // user_id (will be set when we add authentication)
+        player.userId || null, // user_id from guest or registered account
         sessionId,
         player.name,
         0, // score (calculated from correct answers)
@@ -1124,6 +1124,80 @@ app.post('/api/auth/logout', requireAuth, async (req, res) => {
   }
 });
 
+// Player registration - upgrade guest account to player account
+app.post('/api/auth/register-player', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const bcrypt = await import('bcrypt');
+
+    // Check if username exists as guest
+    const userResult = await pool.query(
+      'SELECT id, account_type, password_hash FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Guest account not found. Please join a game first.' });
+    }
+
+    const user = userResult.rows[0];
+
+    // If already a player or admin, return error
+    if (user.account_type !== 'guest') {
+      return res.status(400).json({ error: 'This account is already registered' });
+    }
+
+    // If guest already has a password, they're trying to register again
+    if (user.password_hash) {
+      return res.status(400).json({ error: 'This account already has a password' });
+    }
+
+    // Upgrade guest account to player account
+    const passwordHash = await bcrypt.hash(password, 10);
+    await pool.query(
+      `UPDATE users
+       SET account_type = $1, password_hash = $2
+       WHERE id = $3`,
+      ['player', passwordHash, user.id]
+    );
+
+    // Create session token
+    const sessionResult = await pool.query(
+      `INSERT INTO user_sessions (user_id, expires_at)
+       VALUES ($1, NOW() + INTERVAL '${process.env.SESSION_TIMEOUT || 3600000} milliseconds')
+       RETURNING token, expires_at`,
+      [user.id]
+    );
+
+    const session = sessionResult.rows[0];
+
+    console.log(`Guest user "${username}" upgraded to player account`);
+
+    res.json({
+      success: true,
+      token: session.token,
+      user: {
+        id: user.id,
+        username: username,
+        account_type: 'player'
+      },
+      expires_at: session.expires_at
+    });
+  } catch (err) {
+    console.error('Player registration error:', err);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
 // Get current user
 app.get('/api/auth/me', requireAuth, (req, res) => {
   res.json({
@@ -1487,6 +1561,7 @@ io.on('connection', (socket) => {
       // Load participants and their answers from database
       const participantsResult = await pool.query(`
         SELECT
+          gp.user_id,
           gp.display_name,
           pa.question_id,
           sq.presentation_order,
@@ -1507,6 +1582,7 @@ io.on('connection', (socket) => {
           playersMap.set(row.display_name, {
             id: playerId,
             name: row.display_name,
+            userId: row.user_id, // Preserve user_id for reconnection
             choice: null,
             connected: false,
             answers: {},
@@ -1604,10 +1680,38 @@ io.on('connection', (socket) => {
   });
 
   // Player joins a room
-  socket.on('joinRoom', ({ roomCode, playerName }) => {
+  socket.on('joinRoom', async ({ roomCode, playerName }) => {
     const room = liveRooms[roomCode];
     if (!room) {
       socket.emit('roomError', 'Room not found.');
+      return;
+    }
+
+    // Create or retrieve guest user account
+    let userId = null;
+    try {
+      // Check if user already exists
+      const userResult = await pool.query(
+        'SELECT id FROM users WHERE username = $1 AND account_type = $2',
+        [playerName, 'guest']
+      );
+
+      if (userResult.rows.length > 0) {
+        // User already exists
+        userId = userResult.rows[0].id;
+        console.log(`Guest user "${playerName}" already exists with ID: ${userId}`);
+      } else {
+        // Create new guest user
+        const createResult = await pool.query(
+          'INSERT INTO users (username, account_type, password_hash) VALUES ($1, $2, NULL) RETURNING id',
+          [playerName, 'guest']
+        );
+        userId = createResult.rows[0].id;
+        console.log(`Created new guest user "${playerName}" with ID: ${userId}`);
+      }
+    } catch (err) {
+      console.error('Error creating/retrieving guest user:', err);
+      socket.emit('roomError', 'Failed to create user account. Please try again.');
       return;
     }
 
@@ -1635,6 +1739,7 @@ io.on('connection', (socket) => {
       room.players[socket.id] = {
         ...playerData,
         id: socket.id,
+        userId: userId, // Associate with user account
         connected: true,
         choice: currentChoice // Restore choice if they already answered current question
       };
@@ -1655,6 +1760,7 @@ io.on('connection', (socket) => {
       room.players[socket.id] = {
         id: socket.id,
         name: playerName,
+        userId: userId, // Associate with user account
         choice: null,
         connected: true,
         answers: existingAnswers
