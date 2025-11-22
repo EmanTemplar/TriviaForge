@@ -494,7 +494,7 @@ app.get('/api/qr/room/:roomCode', async (req, res) => {
 
 // Get quiz options
 // Get quiz options (from database)
-app.get('/api/options', async (req, res) => {
+app.get('/api/options', requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT setting_value FROM app_settings WHERE setting_key = 'answer_display_time'"
@@ -512,7 +512,7 @@ app.get('/api/options', async (req, res) => {
 });
 
 // Save quiz options (to database)
-app.post('/api/options', async (req, res) => {
+app.post('/api/options', requireAdmin, async (req, res) => {
   try {
     const { answerDisplayTime } = req.body;
 
@@ -542,7 +542,7 @@ app.post('/api/options', async (req, res) => {
 
 // Get all quizzes
 // Get all quizzes (from database)
-app.get('/api/quizzes', async (req, res) => {
+app.get('/api/quizzes', requireAdmin, async (req, res) => {
   try {
     const quizzes = await listQuizzesFromDB();
     // Format response to match expected structure for frontend
@@ -564,7 +564,7 @@ app.get('/api/quizzes', async (req, res) => {
 // Get single quiz (from database)
 // Note: :filename param is actually the quiz ID (for backward compatibility)
 // Format: quiz_123.json → extract ID 123
-app.get('/api/quizzes/:filename', async (req, res) => {
+app.get('/api/quizzes/:filename', requireAdmin, async (req, res) => {
   try {
     // Extract quiz ID from filename format (quiz_123.json → 123)
     const filename = req.params.filename;
@@ -603,7 +603,7 @@ app.get('/api/quizzes/:filename', async (req, res) => {
 });
 
 // Create new quiz (in database)
-app.post('/api/quizzes', async (req, res) => {
+app.post('/api/quizzes', requireAdmin, async (req, res) => {
   const { title, description, questions } = req.body;
   const client = await pool.connect();
 
@@ -665,7 +665,7 @@ app.post('/api/quizzes', async (req, res) => {
 });
 
 // Update quiz (in database)
-app.put('/api/quizzes/:filename', async (req, res) => {
+app.put('/api/quizzes/:filename', requireAdmin, async (req, res) => {
   const client = await pool.connect();
 
   try {
@@ -747,7 +747,7 @@ app.put('/api/quizzes/:filename', async (req, res) => {
 });
 
 // Delete quiz (soft delete - sets is_active = false)
-app.delete('/api/quizzes/:filename', async (req, res) => {
+app.delete('/api/quizzes/:filename', requireAdmin, async (req, res) => {
   try {
     // Extract quiz ID from filename
     const filename = req.params.filename;
@@ -1227,20 +1227,20 @@ app.post('/api/auth/check', async (req, res) => {
 // --------------------
 
 // Get all completed sessions
-app.get('/api/sessions', async (req, res) => {
+app.get('/api/sessions', requireAdmin, async (req, res) => {
   const sessions = await listCompletedSessions();
   res.json(sessions);
 });
 
 // Get incomplete sessions only
-app.get('/api/sessions/incomplete', async (req, res) => {
+app.get('/api/sessions/incomplete', requireAdmin, async (req, res) => {
   const sessions = await listCompletedSessions();
   const incomplete = sessions.filter(s => s.status !== 'completed');
   res.json(incomplete);
 });
 
 // Get single session (from database)
-app.get('/api/sessions/:filename', async (req, res) => {
+app.get('/api/sessions/:filename', requireAdmin, async (req, res) => {
   try {
     // Extract session ID from filename (session_123.json → 123) or use directly
     const sessionId = req.params.filename.includes('_')
@@ -1368,7 +1368,7 @@ app.get('/api/sessions/:filename', async (req, res) => {
 });
 
 // Delete session (from database)
-app.delete('/api/sessions/:filename', async (req, res) => {
+app.delete('/api/sessions/:filename', requireAdmin, async (req, res) => {
   try {
     // Extract session ID from filename
     const sessionId = req.params.filename.includes('_')

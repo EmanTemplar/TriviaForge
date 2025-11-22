@@ -2,7 +2,61 @@
 // Admin page script
 // --------------------
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // --------------------
+  // Authentication Check
+  // --------------------
+  const token = localStorage.getItem('triviaAuthToken');
+
+  if (!token) {
+    window.location.href = 'landing.html';
+    return;
+  }
+
+  // Verify token and check admin role
+  try {
+    const response = await fetch('/api/auth/me', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      localStorage.removeItem('triviaAuthToken');
+      window.location.href = 'landing.html';
+      return;
+    }
+
+    const data = await response.json();
+
+    if (data.user.account_type !== 'admin') {
+      alert('Admin access required');
+      localStorage.removeItem('triviaAuthToken');
+      window.location.href = 'landing.html';
+      return;
+    }
+
+    // Set username in navbar if element exists
+    const usernameDisplay = document.getElementById('adminUsername');
+    if (usernameDisplay) {
+      usernameDisplay.textContent = data.user.username;
+    }
+  } catch (err) {
+    console.error('Authentication error:', err);
+    localStorage.removeItem('triviaAuthToken');
+    window.location.href = 'landing.html';
+    return;
+  }
+
+  // --------------------
+  // Helper: Get auth headers
+  // --------------------
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('triviaAuthToken');
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+  };
+
   // --------------------
   // DOM References
   // --------------------
@@ -476,7 +530,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // --------------------
   const fetchQuizzes = async () => {
     try {
-      const res = await fetch('/api/quizzes');
+      const res = await fetch('/api/quizzes', {
+        headers: getAuthHeaders()
+      });
       if (!res.ok) throw new Error('Failed to fetch quizzes');
       quizzes = await res.json();
       renderQuizList();
@@ -494,7 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!selectedQuiz.questions) selectedQuiz.questions = [];
     const res = await fetch(`/api/quizzes/${selectedQuiz.filename}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(selectedQuiz)
     });
     const updatedQuiz = await res.json();
@@ -527,7 +583,10 @@ document.addEventListener('DOMContentLoaded', () => {
       div.querySelector('.deleteQuizBtn').addEventListener('click', async () => {
         const confirmed = await customConfirm('Are you sure you want to delete this quiz?', 'Delete Quiz');
         if (!confirmed) return;
-        await fetch(`/api/quizzes/${quiz.filename}`, { method: 'DELETE' });
+        await fetch(`/api/quizzes/${quiz.filename}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
         if (selectedQuiz && selectedQuiz.filename === quiz.filename) {
           selectedQuiz = null;
           questionEditor.style.display = 'none';
@@ -677,7 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!title) return;
     const res = await fetch('/api/quizzes', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ title, description: '', questions: [] })
     });
     const newQuiz = await res.json();
@@ -830,7 +889,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Sessions Management
   // --------------------
   const loadSessions = async () => {
-    const res = await fetch('/api/sessions');
+    const res = await fetch('/api/sessions', {
+      headers: getAuthHeaders()
+    });
     const sessions = await res.json();
     renderSessions(sessions);
   };
@@ -867,7 +928,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // View session details (modal)
   // --------------------
   window.viewSession = async (sessionId) => {
-    const res = await fetch(`/api/sessions/${sessionId}`);
+    const res = await fetch(`/api/sessions/${sessionId}`, {
+      headers: getAuthHeaders()
+    });
     const session = await res.json();
 
     modalTitle.textContent = `${session.quizTitle} - Room ${session.roomCode}`;
@@ -953,7 +1016,10 @@ document.addEventListener('DOMContentLoaded', () => {
   window.deleteSession = async (sessionId) => {
     const confirmed = await customConfirm('Delete this session permanently?', 'Delete Session');
     if (!confirmed) return;
-    await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+    await fetch(`/api/sessions/${sessionId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
     loadSessions();
   };
 
@@ -982,7 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const res = await fetch('/api/options', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ answerDisplayTime: parseInt(timeout) })
       });
 
@@ -1003,7 +1069,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.loadOptions = async () => {
     try {
-      const res = await fetch('/api/options');
+      const res = await fetch('/api/options', {
+        headers: getAuthHeaders()
+      });
       if (!res.ok) throw new Error('Failed to load options');
       const options = await res.json();
       document.getElementById('answerDisplayTime').value = options.answerDisplayTime || 30;
@@ -1012,4 +1080,29 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('answerDisplayTime').value = 30; // fallback to default
     }
   };
+
+  // --------------------
+  // Logout Functionality
+  // --------------------
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+
+      const token = localStorage.getItem('triviaAuthToken');
+      if (token) {
+        try {
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        } catch (err) {
+          console.error('Logout error:', err);
+        }
+      }
+
+      localStorage.removeItem('triviaAuthToken');
+      window.location.href = 'landing.html';
+    });
+  }
 });

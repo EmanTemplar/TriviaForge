@@ -16,6 +16,12 @@
       <li><a href="player.html">Player</a></li>
       <li><a href="presenter.html">Presenter</a></li>
       <li><a href="display.html">Spectate</a></li>
+      <li style="color: #4fc3f7; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.5rem; margin-top: 0.5rem;">
+        <span id="presenterUsername">Admin</span>
+      </li>
+      <li>
+        <a href="#" id="logoutBtn" style="color: #f66;">Logout</a>
+      </li>
     </ul>
   </nav>
 
@@ -92,6 +98,51 @@
 
   <script src="/socket.io/socket.io.js"></script>
 <script>
+  // --------------------
+  // Authentication Check
+  // --------------------
+  (async () => {
+    const token = localStorage.getItem('triviaAuthToken');
+
+    if (!token) {
+      window.location.href = 'landing.html';
+      return;
+    }
+
+    // Verify token and check admin role
+    try {
+      const response = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        localStorage.removeItem('triviaAuthToken');
+        window.location.href = 'landing.html';
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.user.account_type !== 'admin') {
+        alert('Admin access required');
+        localStorage.removeItem('triviaAuthToken');
+        window.location.href = 'landing.html';
+        return;
+      }
+
+      // Set username in navbar
+      const usernameDisplay = document.getElementById('presenterUsername');
+      if (usernameDisplay) {
+        usernameDisplay.textContent = data.user.username;
+      }
+    } catch (err) {
+      console.error('Authentication error:', err);
+      localStorage.removeItem('triviaAuthToken');
+      window.location.href = 'landing.html';
+      return;
+    }
+  })();
+
   const socket = io();
   const quizSelector = document.getElementById('quizSelector');
   const makeLiveBtn = document.getElementById('makeLiveBtn');
@@ -658,6 +709,31 @@ socket.on('quizCompleted', ({ message, filename }) => {
 
 // Request initial active rooms on load
 socket.emit('getActiveRooms');
+
+// --------------------
+// Logout Functionality
+// --------------------
+const logoutBtn = document.getElementById('logoutBtn');
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+
+    const token = localStorage.getItem('triviaAuthToken');
+    if (token) {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } catch (err) {
+        console.error('Logout error:', err);
+      }
+    }
+
+    localStorage.removeItem('triviaAuthToken');
+    window.location.href = 'landing.html';
+  });
+}
 </script>
 
 </body>
