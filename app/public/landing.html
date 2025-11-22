@@ -7,18 +7,19 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #1a1a1a, #2b2b2b);">
-  
+
   <div style="background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); padding: 3rem; border-radius: 20px; max-width: 500px; width: 90%; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-    
+
     <h1 style="margin: 0 0 0.5rem 0; font-size: 2.5rem;">🎮 Trivia Forge</h1>
     <p style="color: #aaa; margin-bottom: 2rem;">Admin & Presenter Access</p>
 
-    <!-- Password Entry -->
-    <div id="passwordSection">
-      <input 
-        type="password" 
-        id="passwordInput" 
-        placeholder="Enter admin password"
+    <!-- Login Form -->
+    <div id="loginSection">
+      <input
+        type="text"
+        id="usernameInput"
+        placeholder="Username"
+        value="admin"
         style="
           width: 100%;
           padding: 1rem;
@@ -29,13 +30,29 @@
           color: #fff;
           font-size: 1.1rem;
           box-sizing: border-box;
-          text-align: center;
         "
       />
-      
+
+      <input
+        type="password"
+        id="passwordInput"
+        placeholder="Password"
+        style="
+          width: 100%;
+          padding: 1rem;
+          margin-bottom: 1rem;
+          background: rgba(255,255,255,0.1);
+          border: 2px solid rgba(255,255,255,0.2);
+          border-radius: 10px;
+          color: #fff;
+          font-size: 1.1rem;
+          box-sizing: border-box;
+        "
+      />
+
       <div id="errorMsg" style="color: #f66; margin-bottom: 1rem; padding: 0.75rem; background: rgba(255,0,0,0.1); border-radius: 8px; display: none;"></div>
-      
-      <button 
+
+      <button
         id="loginBtn"
         style="
           width: 100%;
@@ -59,7 +76,7 @@
     <!-- Access Buttons (Hidden Until Login) -->
     <div id="accessButtons" style="display: none;">
       <h3 style="color: #0f0; margin-bottom: 1.5rem;">✓ Access Granted</h3>
-      
+
       <div style="display: flex; flex-direction: column; gap: 1rem;">
         <a href="index.html" style="
           padding: 1rem;
@@ -73,7 +90,7 @@
         " onmouseover="this.style.background='rgba(0,123,255,0.5)'" onmouseout="this.style.background='rgba(0,123,255,0.3)'">
           📝 Admin Panel - Manage Quizzes
         </a>
-        
+
         <a href="presenter.html" style="
           padding: 1rem;
           background: rgba(0,200,0,0.3);
@@ -101,7 +118,7 @@
         </a>
       </div>
 
-      <button 
+      <button
         id="logoutBtn"
         style="
           width: 100%;
@@ -119,7 +136,7 @@
     </div>
 
     <hr style="margin: 2rem 0; border: none; border-top: 1px solid rgba(255,255,255,0.1);">
-    
+
     <a href="player.html" style="
       display: inline-block;
       padding: 0.75rem 1.5rem;
@@ -134,47 +151,87 @@
   </div>
 
   <script>
+    const usernameInput = document.getElementById('usernameInput');
     const passwordInput = document.getElementById('passwordInput');
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const errorMsg = document.getElementById('errorMsg');
-    const passwordSection = document.getElementById('passwordSection');
+    const loginSection = document.getElementById('loginSection');
     const accessButtons = document.getElementById('accessButtons');
 
-    // Check if already logged in
-    const isLoggedIn = sessionStorage.getItem('triviaAuth') === 'true';
-    if (isLoggedIn) {
-      passwordSection.style.display = 'none';
-      accessButtons.style.display = 'block';
-    }
+    // Check if already logged in (has valid token)
+    const checkAuth = async () => {
+      const token = localStorage.getItem('triviaAuthToken');
+      if (!token) return false;
+
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          return data.user.account_type === 'admin';
+        }
+      } catch (err) {
+        console.error('Auth check failed:', err);
+      }
+
+      return false;
+    };
+
+    // Initialize page
+    (async () => {
+      const isAuthenticated = await checkAuth();
+      if (isAuthenticated) {
+        loginSection.style.display = 'none';
+        accessButtons.style.display = 'block';
+      } else {
+        passwordInput.focus();
+      }
+    })();
 
     // Login
     const attemptLogin = async () => {
+      const username = usernameInput.value.trim();
       const password = passwordInput.value.trim();
-      
-      if (!password) {
-        errorMsg.textContent = 'Please enter a password';
+
+      if (!username || !password) {
+        errorMsg.textContent = 'Please enter username and password';
         errorMsg.style.display = 'block';
         return;
       }
 
       loginBtn.disabled = true;
-      loginBtn.textContent = 'Checking...';
+      loginBtn.textContent = 'Logging in...';
       errorMsg.style.display = 'none';
 
       try {
-        const res = await fetch('/api/auth/check', {
+        const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password })
+          body: JSON.stringify({ username, password })
         });
 
         if (res.ok) {
-          sessionStorage.setItem('triviaAuth', 'true');
-          passwordSection.style.display = 'none';
+          const data = await res.json();
+
+          // Check if user is admin
+          if (data.user.account_type !== 'admin') {
+            errorMsg.textContent = 'Admin access required';
+            errorMsg.style.display = 'block';
+            return;
+          }
+
+          // Store token
+          localStorage.setItem('triviaAuthToken', data.token);
+
+          // Show access buttons
+          loginSection.style.display = 'none';
           accessButtons.style.display = 'block';
         } else {
-          errorMsg.textContent = 'Invalid password';
+          const error = await res.json();
+          errorMsg.textContent = error.error || 'Invalid credentials';
           errorMsg.style.display = 'block';
           passwordInput.value = '';
           passwordInput.focus();
@@ -192,17 +249,28 @@
     passwordInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') attemptLogin();
     });
-
-    // Logout
-    logoutBtn.addEventListener('click', () => {
-      sessionStorage.removeItem('triviaAuth');
-      location.reload();
+    usernameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') passwordInput.focus();
     });
 
-    // Auto-focus password input
-    if (!isLoggedIn) {
-      passwordInput.focus();
-    }
+    // Logout
+    logoutBtn.addEventListener('click', async () => {
+      const token = localStorage.getItem('triviaAuthToken');
+
+      if (token) {
+        try {
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        } catch (err) {
+          console.error('Logout error:', err);
+        }
+      }
+
+      localStorage.removeItem('triviaAuthToken');
+      location.reload();
+    });
   </script>
 </body>
 </html>

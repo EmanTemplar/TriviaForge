@@ -1003,6 +1003,152 @@ app.post('/api/import-quiz', upload.single('file'), async (req, res) => {
 });
 
 // --------------------
+// Authentication Middleware
+// --------------------
+const requireAuth = async (req, res, next) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT us.token, us.user_id, u.username, u.account_type FROM user_sessions us JOIN users u ON us.user_id = u.id WHERE us.token = $1 AND us.expires_at > NOW()',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid or expired session' });
+    }
+
+    // Update last_used_at
+    await pool.query(
+      'UPDATE user_sessions SET last_used_at = NOW() WHERE token = $1',
+      [token]
+    );
+
+    req.user = result.rows[0];
+    next();
+  } catch (err) {
+    console.error('Auth middleware error:', err);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+};
+
+const requireAdmin = async (req, res, next) => {
+  await requireAuth(req, res, () => {
+    if (req.user.account_type !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    next();
+  });
+};
+
+// --------------------
+// Routes: Authentication
+// --------------------
+
+// Login endpoint
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    // For now, import bcrypt dynamically (will be available after npm install)
+    const bcrypt = await import('bcrypt');
+
+    // Find user by username
+    const userResult = await pool.query(
+      'SELECT id, username, password_hash, account_type FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Check if password_hash exists (not a guest account)
+    if (!user.password_hash) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Verify password
+    const isValid = await bcrypt.compare(password, user.password_hash);
+
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Create session token
+    const sessionResult = await pool.query(
+      `INSERT INTO user_sessions (user_id, expires_at)
+       VALUES ($1, NOW() + INTERVAL '${process.env.SESSION_TIMEOUT || 3600000} milliseconds')
+       RETURNING token, expires_at`,
+      [user.id]
+    );
+
+    const session = sessionResult.rows[0];
+
+    res.json({
+      token: session.token,
+      user: {
+        id: user.id,
+        username: user.username,
+        account_type: user.account_type
+      },
+      expires_at: session.expires_at
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Logout endpoint
+app.post('/api/auth/logout', requireAuth, async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    await pool.query('DELETE FROM user_sessions WHERE token = $1', [token]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Logout error:', err);
+    res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
+// Get current user
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  res.json({
+    user: {
+      id: req.user.user_id,
+      username: req.user.username,
+      account_type: req.user.account_type
+    }
+  });
+});
+
+// Legacy password check endpoint (for backward compatibility with landing.html)
+app.post('/api/auth/check', async (req, res) => {
+  const { password } = req.body;
+
+  // Simple comparison with environment variable for now
+  // This will be replaced with proper login flow
+  if (password === ADMIN_PASSWORD) {
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ error: 'Invalid password' });
+  }
+});
+
+// --------------------
 // Routes: Completed Sessions
 // --------------------
 
@@ -1710,6 +1856,60 @@ function getActiveRoomsSummary() {
 
 
 // --------------------
+// Initialize Admin Password on Startup
+// --------------------
+async function initializeAdminPassword() {
+  if (!ADMIN_PASSWORD) {
+    console.log('⚠️  ADMIN_PASSWORD not set - admin login will not work');
+    return;
+  }
+
+  try {
+    // Check if admin user exists
+    const adminResult = await pool.query(
+      "SELECT id, password_hash FROM users WHERE username = 'admin'"
+    );
+
+    if (adminResult.rows.length === 0) {
+      console.log('ℹ️  No admin user found in database - will be created by init scripts');
+      return;
+    }
+
+    const admin = adminResult.rows[0];
+
+    // Check if password hash is the placeholder or NULL
+    const needsUpdate = !admin.password_hash || admin.password_hash.startsWith('$2b$10$rKzF5EqZQZZ');
+
+    if (needsUpdate) {
+      console.log('🔐 Updating admin password from environment variable...');
+
+      // Import bcrypt dynamically
+      const bcrypt = await import('bcrypt');
+      const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
+
+      await pool.query(
+        'UPDATE users SET password_hash = $1 WHERE username = $2',
+        [passwordHash, 'admin']
+      );
+
+      console.log('✅ Admin password updated successfully');
+    } else {
+      console.log('✅ Admin password already configured');
+    }
+  } catch (err) {
+    // If bcrypt is not installed yet, skip this step
+    if (err.code === 'ERR_MODULE_NOT_FOUND') {
+      console.log('⚠️  bcrypt not installed yet - admin password will be set after npm install');
+    } else {
+      console.error('❌ Error initializing admin password:', err.message);
+    }
+  }
+}
+
+// --------------------
 // Start Server
 // --------------------
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+(async () => {
+  await initializeAdminPassword();
+  server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+})();
