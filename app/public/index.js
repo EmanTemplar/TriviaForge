@@ -1138,6 +1138,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       const lastSeenDate = user.lastSeen ? new Date(user.lastSeen).toLocaleString() : 'Never';
 
       // Action buttons based on account type
+      const resetPasswordBtn = user.accountType === 'player'
+        ? `<button onclick="resetPassword('${user.id}', '${user.username}')" style="background: rgba(76,175,80,0.3); padding: 0.5rem 1rem; margin-right: 0.5rem;">🔑 Reset Password</button>`
+        : '';
+
       const downgradeBtn = user.accountType === 'player'
         ? `<button onclick="downgradeUser('${user.id}', '${user.username}')" style="background: rgba(255,165,0,0.3); padding: 0.5rem 1rem; margin-right: 0.5rem;">⬇️ Downgrade to Guest</button>`
         : '';
@@ -1158,6 +1162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
           </div>
           <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+            ${resetPasswordBtn}
             ${downgradeBtn}
             <button onclick="deleteUser('${user.id}', '${user.username}')" style="background: rgba(255,0,0,0.3); padding: 0.5rem 1rem;">🗑️ Delete</button>
           </div>
@@ -1215,6 +1220,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Failed to downgrade user:', err);
       alert('Failed to downgrade user. Please try again.');
+    }
+  };
+
+  // Reset password function (for registered players)
+  window.resetPassword = async (userId, username) => {
+    const confirmed = confirm(`Are you sure you want to reset the password for "${username}"?\n\nThis will:\n- Delete their current password\n- Log them out from all devices\n- Prompt them to set a new password on next login\n\nThis action cannot be undone.`);
+
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/users/${userId}/reset-password`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        alert('Failed to reset password: ' + (data.error || 'Unknown error'));
+        return;
+      }
+
+      const data = await res.json();
+      alert(`Password reset successfully for "${username}".\n\n${data.message}`);
+      loadUsers(); // Reload the user list
+    } catch (err) {
+      console.error('Failed to reset password:', err);
+      alert('Failed to reset password. Please try again.');
     }
   };
 

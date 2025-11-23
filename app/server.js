@@ -1361,6 +1361,15 @@ app.post('/api/auth/player-login', async (req, res) => {
       return res.status(403).json({ error: 'This account cannot login with a password' });
     }
 
+    // Check if password needs to be reset (password_hash is NULL)
+    if (user.password_hash === null) {
+      return res.status(428).json({
+        error: 'Password reset required',
+        requiresPasswordReset: true,
+        message: 'Your password has been reset by an administrator. Please set a new password.'
+      });
+    }
+
     // Verify password
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
@@ -1397,6 +1406,81 @@ app.post('/api/auth/player-login', async (req, res) => {
   } catch (err) {
     console.error('Player login error:', err);
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Set new password after reset (for players with NULL password_hash)
+app.post('/api/auth/set-new-password', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    // Import bcrypt dynamically
+    const bcrypt = await import('bcrypt');
+
+    // Find user
+    const userResult = await pool.query(
+      'SELECT id, username, password_hash, account_type FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Only allow registered players
+    if (user.account_type !== 'player') {
+      return res.status(403).json({ error: 'This account cannot set a password' });
+    }
+
+    // Check if password is in reset state (NULL)
+    if (user.password_hash !== null) {
+      return res.status(400).json({ error: 'Password is not in reset state. Use the login form instead.' });
+    }
+
+    // Hash the new password
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    // Update password in database
+    await pool.query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      [passwordHash, user.id]
+    );
+
+    // Create session token
+    const sessionResult = await pool.query(
+      `INSERT INTO user_sessions (user_id, expires_at)
+       VALUES ($1, NOW() + INTERVAL '${process.env.SESSION_TIMEOUT || 3600000} milliseconds')
+       RETURNING token, expires_at`,
+      [user.id]
+    );
+
+    const token = sessionResult.rows[0].token;
+
+    console.log(`Player ${username} set new password after reset`);
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        accountType: user.account_type
+      }
+    });
+  } catch (err) {
+    console.error('Set new password error:', err);
+    res.status(500).json({ error: 'Failed to set new password' });
   }
 });
 
@@ -1542,6 +1626,44 @@ app.post('/api/users/:userId/downgrade', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Error downgrading user:', err);
     res.status(500).json({ error: 'Failed to downgrade user' });
+  }
+});
+
+// Reset a user's password (admin only)
+app.post('/api/users/:userId/reset-password', requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Check user exists and is a registered player
+    const userCheck = await pool.query(
+      'SELECT username, account_type FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (userCheck.rows[0].account_type !== 'player') {
+      return res.status(400).json({ error: 'User is not a registered player' });
+    }
+
+    const username = userCheck.rows[0].username;
+
+    // Reset password (set to NULL) - user will be prompted to set new password on next login
+    await pool.query(
+      'UPDATE users SET password_hash = NULL WHERE id = $1',
+      [userId]
+    );
+
+    // Invalidate all user sessions
+    await pool.query('DELETE FROM user_sessions WHERE user_id = $1', [userId]);
+
+    console.log(`Password reset for user ${username} (ID: ${userId}) by admin`);
+    res.json({ success: true, message: 'Password reset successfully. User will be prompted to set a new password on next login.' });
+  } catch (err) {
+    console.error('Error resetting password:', err);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 
@@ -2075,14 +2197,16 @@ io.on('connection', (socket) => {
     try {
       // Check if user already exists
       const userResult = await pool.query(
-        'SELECT id FROM users WHERE username = $1',
+        'SELECT id, account_type FROM users WHERE username = $1',
         [playerUsername]
       );
 
       if (userResult.rows.length > 0) {
         // User already exists
         userId = userResult.rows[0].id;
-        console.log(`Guest user "${playerUsername}" already exists with ID: ${userId}`);
+        const accountType = userResult.rows[0].account_type;
+        const accountTypeLabel = accountType === 'player' ? 'Registered player' : 'Guest user';
+        console.log(`${accountTypeLabel} "${playerUsername}" already exists with ID: ${userId}`);
       } else {
         // Create new guest user
         const createResult = await pool.query(
