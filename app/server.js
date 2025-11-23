@@ -1290,6 +1290,112 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
   });
 });
 
+// Check if username exists and requires authentication
+app.post('/api/auth/check-username', async (req, res) => {
+  try {
+    const { username } = req.body;
+
+    if (!username) {
+      return res.status(400).json({ error: 'Username required' });
+    }
+
+    const result = await pool.query(
+      'SELECT id, username, account_type FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (result.rows.length === 0) {
+      // Username doesn't exist - can be used as new guest
+      return res.json({ exists: false, requiresAuth: false });
+    }
+
+    const user = result.rows[0];
+
+    // If account is registered (player type), requires authentication
+    if (user.account_type === 'player') {
+      return res.json({
+        exists: true,
+        requiresAuth: true,
+        accountType: 'player'
+      });
+    }
+
+    // Guest account - can be used without auth
+    return res.json({
+      exists: true,
+      requiresAuth: false,
+      accountType: 'guest'
+    });
+  } catch (err) {
+    console.error('Username check error:', err);
+    res.status(500).json({ error: 'Failed to check username' });
+  }
+});
+
+// Player login (for registered accounts)
+app.post('/api/auth/player-login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    // Find user
+    const userResult = await pool.query(
+      'SELECT id, username, password_hash, account_type FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Only allow registered players to login
+    if (user.account_type !== 'player') {
+      return res.status(403).json({ error: 'This account cannot login with a password' });
+    }
+
+    // Verify password
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Create session token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + parseInt(SESSION_TIMEOUT));
+
+    await pool.query(
+      'INSERT INTO user_sessions (user_id, token, expires_at) VALUES ($1, $2, $3)',
+      [user.id, token, expiresAt]
+    );
+
+    // Update last_seen (if column exists)
+    await pool.query(
+      'UPDATE users SET updated_at = NOW() WHERE id = $1',
+      [user.id]
+    );
+
+    console.log(`Player ${username} logged in successfully`);
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        accountType: user.account_type
+      }
+    });
+  } catch (err) {
+    console.error('Player login error:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
 // Verify player token (for auto-login)
 app.post('/api/auth/verify-player', async (req, res) => {
   try {
