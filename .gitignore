@@ -16,8 +16,9 @@ app/sessions/
 app/quizzes/*.json
 app/quizzes/completed/*.json
 
-# Archive folder
+# Archive folders
 app/archive/
+screenshots/archive/
 
 # Logs
 logs/
