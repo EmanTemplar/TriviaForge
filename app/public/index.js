@@ -1173,7 +1173,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Delete user function
   window.deleteUser = async (userId, username) => {
-    const confirmed = confirm(`Are you sure you want to delete user "${username}"?\n\nThis action cannot be undone and will remove:\n- The user account\n- All game participation records\n- All associated data`);
+    const confirmed = await customConfirm(
+      `Are you sure you want to delete user "${username}"?\n\nThis action cannot be undone and will remove:\n- The user account\n- All game participation records\n- All associated data`,
+      'Delete User'
+    );
 
     if (!confirmed) return;
 
@@ -1185,21 +1188,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (!res.ok) {
         const data = await res.json();
-        alert('Failed to delete user: ' + (data.error || 'Unknown error'));
+        await customAlert('Failed to delete user: ' + (data.error || 'Unknown error'), 'Error');
         return;
       }
 
-      alert(`User "${username}" has been deleted successfully.`);
+      await customAlert(`User "${username}" has been deleted successfully.`, 'Success');
       loadUsers(); // Reload the user list
     } catch (err) {
       console.error('Failed to delete user:', err);
-      alert('Failed to delete user. Please try again.');
+      await customAlert('Failed to delete user. Please try again.', 'Error');
     }
   };
 
   // Downgrade user function (player -> guest)
   window.downgradeUser = async (userId, username) => {
-    const confirmed = confirm(`Are you sure you want to downgrade "${username}" to a guest account?\n\nThis will:\n- Remove their password\n- Change their account type to Guest\n- Keep their game history`);
+    const confirmed = await customConfirm(
+      `Are you sure you want to downgrade "${username}" to a guest account?\n\nThis will:\n- Remove their password\n- Change their account type to Guest\n- Keep their game history`,
+      'Downgrade to Guest'
+    );
 
     if (!confirmed) return;
 
@@ -1211,21 +1217,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (!res.ok) {
         const data = await res.json();
-        alert('Failed to downgrade user: ' + (data.error || 'Unknown error'));
+        await customAlert('Failed to downgrade user: ' + (data.error || 'Unknown error'), 'Error');
         return;
       }
 
-      alert(`User "${username}" has been downgraded to guest account.`);
+      await customAlert(`User "${username}" has been downgraded to guest account.`, 'Success');
       loadUsers(); // Reload the user list
     } catch (err) {
       console.error('Failed to downgrade user:', err);
-      alert('Failed to downgrade user. Please try again.');
+      await customAlert('Failed to downgrade user. Please try again.', 'Error');
     }
   };
 
   // Reset password function (for registered players)
   window.resetPassword = async (userId, username) => {
-    const confirmed = confirm(`Are you sure you want to reset the password for "${username}"?\n\nThis will:\n- Delete their current password\n- Log them out from all devices\n- Prompt them to set a new password on next login\n\nThis action cannot be undone.`);
+    const confirmed = await customConfirm(
+      `Are you sure you want to reset the password for "${username}"?\n\nThis will:\n- Delete their current password\n- Log them out from all devices\n- Prompt them to set a new password on next login\n\nThis action cannot be undone.`,
+      'Reset Password'
+    );
 
     if (!confirmed) return;
 
@@ -1237,16 +1246,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (!res.ok) {
         const data = await res.json();
-        alert('Failed to reset password: ' + (data.error || 'Unknown error'));
+        await customAlert('Failed to reset password: ' + (data.error || 'Unknown error'), 'Error');
         return;
       }
 
       const data = await res.json();
-      alert(`Password reset successfully for "${username}".\n\n${data.message}`);
+      await customAlert(`Password reset successfully for "${username}".\n\n${data.message}`, 'Success');
       loadUsers(); // Reload the user list
     } catch (err) {
       console.error('Failed to reset password:', err);
-      alert('Failed to reset password. Please try again.');
+      await customAlert('Failed to reset password. Please try again.', 'Error');
     }
   };
 
