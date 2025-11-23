@@ -615,9 +615,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     selectedQuiz = quiz;
     questionEditor.style.display = 'block';
-    shuffleControls.style.display = 'block'; // Show shuffle controls when quiz is selected
+    shuffleControls.style.display = 'flex'; // Show shuffle controls when quiz is selected
 
-    const res = await fetch(`/api/quizzes/${quiz.filename}`);
+    const res = await fetch(`/api/quizzes/${quiz.filename}`, {
+      headers: getAuthHeaders()
+    });
     const data = await res.json();
     selectedQuiz.questions = data.questions || [];
 

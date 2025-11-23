@@ -72,17 +72,6 @@
           <textarea id="quizDescription" placeholder="Quiz Description" style="flex:1; max-width: 100%; padding-right:1rem;"></textarea>
         </div>
 
-        <!-- Shuffle Controls -->
-        <div id="shuffleControls" style="display: none; margin: 1rem 0; padding: 1rem; background: rgba(255,165,0,0.1); border-radius: 5px; border: 1px solid rgba(255,165,0,0.3);">
-          <h3 style="margin-top: 0; font-size: 1rem; color: #ffa500;">Randomization Tools</h3>
-          <button id="shuffleQuestionsBtn" style="width: 100%; margin-bottom: 0.5rem; background: rgba(255,165,0,0.2); border: 1px solid rgba(255,165,0,0.5);">
-            🔀 Shuffle All Questions
-          </button>
-          <button id="shuffleAllChoicesBtn" style="width: 100%; background: rgba(255,165,0,0.2); border: 1px solid rgba(255,165,0,0.5);">
-            🎲 Shuffle All Choices (All Questions)
-          </button>
-        </div>
-
         <div id="quizList"></div>
       </section>
       <!-- Right Column: Question Editor and Questions List -->
@@ -110,7 +99,18 @@
 
         <!-- Questions List (Bottom 2/3) -->
         <section id="questionsListSection">
-          <h2>Questions</h2>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0;">Questions</h2>
+            <!-- Shuffle Controls -->
+            <div id="shuffleControls" style="display: none; gap: 0.5rem;">
+              <button id="shuffleQuestionsBtn" style="padding: 0.6rem 1rem; background: rgba(255,165,0,0.2); border: 1px solid rgba(255,165,0,0.5); color: #ffa500; font-weight: 500;">
+                🔀 Shuffle Questions
+              </button>
+              <button id="shuffleAllChoicesBtn" style="padding: 0.6rem 1rem; background: rgba(255,165,0,0.2); border: 1px solid rgba(255,165,0,0.5); color: #ffa500; font-weight: 500;">
+                🎲 Shuffle All Choices
+              </button>
+            </div>
+          </div>
           <div id="questionsList"></div>
         </section>
       </div>
