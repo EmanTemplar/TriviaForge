@@ -1341,6 +1341,9 @@ app.post('/api/auth/player-login', async (req, res) => {
       return res.status(400).json({ error: 'Username and password required' });
     }
 
+    // Import bcrypt dynamically
+    const bcrypt = await import('bcrypt');
+
     // Find user
     const userResult = await pool.query(
       'SELECT id, username, password_hash, account_type FROM users WHERE username = $1',
@@ -1364,14 +1367,15 @@ app.post('/api/auth/player-login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Create session token
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + parseInt(SESSION_TIMEOUT));
-
-    await pool.query(
-      'INSERT INTO user_sessions (user_id, token, expires_at) VALUES ($1, $2, $3)',
-      [user.id, token, expiresAt]
+    // Create session token (let database generate UUID)
+    const sessionResult = await pool.query(
+      `INSERT INTO user_sessions (user_id, expires_at)
+       VALUES ($1, NOW() + INTERVAL '${process.env.SESSION_TIMEOUT || 3600000} milliseconds')
+       RETURNING token, expires_at`,
+      [user.id]
     );
+
+    const token = sessionResult.rows[0].token;
 
     // Update last_seen (if column exists)
     await pool.query(
