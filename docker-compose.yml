@@ -11,9 +11,7 @@ services:
       - ./app/init:/docker-entrypoint-initdb.d:ro
     restart: unless-stopped
   app:
-    build:
-      context: ./app
-      dockerfile: Dockerfile
+    image: emancodetemplar/triviaforge:latest
     container_name: triviagame-app
     ports:
       - "${APP_PORT:-3000}:3000"
@@ -32,10 +30,6 @@ services:
       HOST_IP: ${HOST_IP:-}
       SESSION_TIMEOUT: 3600000
       APP_NAME: TriviaForge
-    volumes:
-      - ./app/public:/app/public
-      - ./app/quizzes:/app/quizzes
-      - ./app/server.js:/app/server.js
     restart: unless-stopped
 volumes:
   pgdata:
