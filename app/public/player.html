@@ -677,6 +677,38 @@
       }
     }
 
+    // Verify if current user has a valid auth token
+    async function verifyAuthToken() {
+      const playerToken = localStorage.getItem('playerAuthToken');
+      const savedUsername = localStorage.getItem('playerUsername');
+
+      if (!playerToken || !savedUsername) {
+        return false;
+      }
+
+      try {
+        const response = await fetch('/api/auth/verify-player', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${playerToken}`
+          }
+        });
+
+        if (response.ok) {
+          return true; // Token is valid
+        } else {
+          // Token expired or invalid, remove it
+          localStorage.removeItem('playerAuthToken');
+          return false;
+        }
+      } catch (err) {
+        console.error('Token verification error:', err);
+        localStorage.removeItem('playerAuthToken');
+        return false;
+      }
+    }
+
     // Show login modal
     function showLoginModal(username) {
       return new Promise((resolve, reject) => {
@@ -774,14 +806,20 @@
         const authCheck = await checkUsernameAuth(username);
 
         if (authCheck.requiresAuth) {
-          // This username belongs to a registered account - require login
-          try {
-            await showLoginModal(username);
-            // Login successful - proceed with join
-          } catch (err) {
-            // Login cancelled or failed
-            return;
+          // This username belongs to a registered account - check if already authenticated
+          const isAuthenticated = await verifyAuthToken();
+
+          if (!isAuthenticated) {
+            // No valid token - require login
+            try {
+              await showLoginModal(username);
+              // Login successful - proceed with join
+            } catch (err) {
+              // Login cancelled or failed
+              return;
+            }
           }
+          // else: already authenticated with valid token, proceed
         } else {
           // Guest account or new username - no auth required
           localStorage.setItem('playerUsername', username);
@@ -820,14 +858,20 @@
         const authCheck = await checkUsernameAuth(username);
 
         if (authCheck.requiresAuth) {
-          // This username belongs to a registered account - require login
-          try {
-            await showLoginModal(username);
-            // Login successful - proceed to manage account
-          } catch (err) {
-            // Login cancelled or failed
-            return;
+          // This username belongs to a registered account - check if already authenticated
+          const isAuthenticated = await verifyAuthToken();
+
+          if (!isAuthenticated) {
+            // No valid token - require login
+            try {
+              await showLoginModal(username);
+              // Login successful - proceed to manage account
+            } catch (err) {
+              // Login cancelled or failed
+              return;
+            }
           }
+          // else: already authenticated with valid token, proceed
         } else {
           // Guest account or new username - allow access
           localStorage.setItem('playerUsername', username);
