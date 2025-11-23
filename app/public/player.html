@@ -70,11 +70,26 @@
       <div id="joinSection">
         <h3>Join Room</h3>
 
-        <label for="playerUsername">Username</label>
-        <input id="playerUsername" type="text" placeholder="Choose a username" />
-        <p style="font-size: 0.85rem; color: #aaa; margin: 0.25rem 0 0.75rem 0;">
-          This will be your account name
-        </p>
+        <!-- Username Section - toggles between input and display -->
+        <div id="usernameInputSection">
+          <label for="playerUsername">Username</label>
+          <input id="playerUsername" type="text" placeholder="Choose a username" />
+          <p style="font-size: 0.85rem; color: #aaa; margin: 0.25rem 0 0.75rem 0;">
+            This will be your account name
+          </p>
+        </div>
+
+        <div id="usernameDisplaySection" style="display: none;">
+          <label>Username (Account)</label>
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+            <div style="flex: 1; padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #4fc3f7; font-weight: 500;">
+              <span id="usernameDisplay"></span>
+            </div>
+            <button id="changeUsernameBtn" type="button" style="padding: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #aaa; cursor: pointer; font-size: 0.85rem; white-space: nowrap;">
+              Change
+            </button>
+          </div>
+        </div>
 
         <label for="playerDisplayName">Display Name</label>
         <input id="playerDisplayName" type="text" placeholder="Name shown in game" />
@@ -203,6 +218,49 @@
     if (savedDisplayName) {
       displayNameInput.value = savedDisplayName;
     }
+
+    // --------------------
+    // Username Display Toggle
+    // --------------------
+    const usernameInputSection = document.getElementById('usernameInputSection');
+    const usernameDisplaySection = document.getElementById('usernameDisplaySection');
+    const usernameDisplay = document.getElementById('usernameDisplay');
+    const changeUsernameBtn = document.getElementById('changeUsernameBtn');
+
+    function updateUsernameDisplay() {
+      const username = localStorage.getItem('playerUsername');
+      if (username) {
+        // Show locked username display
+        usernameDisplay.textContent = username;
+        usernameInputSection.style.display = 'none';
+        usernameDisplaySection.style.display = 'block';
+      } else {
+        // Show username input
+        usernameInputSection.style.display = 'block';
+        usernameDisplaySection.style.display = 'none';
+      }
+    }
+
+    // Handle change username button
+    changeUsernameBtn.addEventListener('click', async () => {
+      const confirmed = await customConfirm(
+        'Changing your username will:\n- Create a new account or switch to a different account\n- Start fresh with no saved progress from your current account\n\nAre you sure you want to change your username?',
+        'Change Username'
+      );
+
+      if (confirmed) {
+        // Clear saved username and show input
+        localStorage.removeItem('playerUsername');
+        localStorage.removeItem('playerAccountType');
+        localStorage.removeItem('playerAuthToken');
+        usernameInput.value = '';
+        updateUsernameDisplay();
+        usernameInput.focus();
+      }
+    });
+
+    // Initialize username display on page load
+    updateUsernameDisplay();
 
     // --------------------
     // Recent Rooms Management
@@ -586,6 +644,9 @@
         displayNameInput.value = '';
         roomInput.value = '';
 
+        // Update username display to show input field again
+        updateUsernameDisplay();
+
         // Reset welcome message
         const waitingMessage = document.getElementById('waitingMessage');
         waitingMessage.textContent = 'Enter your name and room code to begin playing.';
@@ -688,7 +749,8 @@
     // Join room logic
     // ---------------------------
     joinBtn.addEventListener('click', async () => {
-      const username = usernameInput.value.trim();
+      // Get username from locked display or input field
+      const username = localStorage.getItem('playerUsername') || usernameInput.value.trim();
       const displayName = displayNameInput.value.trim();
       const roomCode = roomInput.value.trim();
 
@@ -725,6 +787,8 @@
           localStorage.setItem('playerUsername', username);
           localStorage.setItem('playerDisplayName', displayName);
           localStorage.setItem('playerAccountType', 'Guest');
+          // Update display to lock username after first join
+          updateUsernameDisplay();
         }
 
         // Save display name
@@ -743,7 +807,8 @@
 
     // Manage Account button
     manageAccountBtn.addEventListener('click', async () => {
-      const username = usernameInput.value.trim();
+      // Get username from locked display or input field
+      const username = localStorage.getItem('playerUsername') || usernameInput.value.trim();
 
       if (!username) {
         await customAlert('Please enter a username first.', 'Missing Information');
@@ -773,6 +838,9 @@
           if (displayName) {
             localStorage.setItem('playerDisplayName', displayName);
           }
+
+          // Update display to lock username
+          updateUsernameDisplay();
         }
 
         window.location.href = 'player-manage.html';
