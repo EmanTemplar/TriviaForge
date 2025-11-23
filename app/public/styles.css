@@ -1260,3 +1260,170 @@ select option:hover {
   box-sizing: border-box;
 }
 
+/* ===========================================
+   PLAYER MANAGEMENT PAGE STYLES
+   =========================================== */
+
+/* Management container */
+/* Override body overflow for management pages */
+body:has(.manage-container) {
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: auto;
+  min-height: 100vh;
+}
+
+.manage-container {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Management header */
+.manage-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.manage-header h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  color: #fff;
+}
+
+.manage-header p {
+  margin: 0;
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+/* Account section */
+.account-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.account-section h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.3rem;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+/* Info rows */
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-weight: 500;
+  color: #ccc;
+}
+
+.info-value {
+  color: #fff;
+  font-family: monospace;
+}
+
+/* Form groups */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #ccc;
+  font-weight: 500;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: rgba(0, 123, 255, 0.5);
+}
+
+/* Button groups and buttons */
+.btn-group {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.btn {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: rgba(0, 123, 255, 0.8);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: rgba(0, 123, 255, 1);
+}
+
+.btn-secondary {
+  background: rgba(108, 117, 125, 0.3);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover {
+  background: rgba(108, 117, 125, 0.5);
+}
+
+/* Back link */
+.back-link {
+  display: block;
+  text-align: center;
+  margin-top: 2rem;
+  color: rgba(0, 123, 255, 0.8);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.back-link:hover {
+  color: rgba(0, 123, 255, 1);
+  text-decoration: underline;
+}
+
+/* Statistics placeholder */
+.stats-placeholder {
+  text-align: center;
+  padding: 2rem;
+  color: #888;
+  font-style: italic;
+}
+

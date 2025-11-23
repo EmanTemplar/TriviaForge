@@ -258,6 +258,7 @@ const listCompletedSessions = async () => {
         gs.status,
         gs.created_at,
         gs.completed_at,
+        gs.original_session_id,
         q.title as quiz_title,
         COUNT(DISTINCT gp.id) as player_count,
         COUNT(DISTINCT sq.id) as question_count,
@@ -266,7 +267,7 @@ const listCompletedSessions = async () => {
       JOIN quizzes q ON gs.quiz_id = q.id
       LEFT JOIN game_participants gp ON gs.id = gp.game_session_id
       LEFT JOIN session_questions sq ON gs.id = sq.game_session_id
-      GROUP BY gs.id, gs.room_code, gs.status, gs.created_at, gs.completed_at, q.title
+      GROUP BY gs.id, gs.room_code, gs.status, gs.created_at, gs.completed_at, gs.original_session_id, q.title
       ORDER BY gs.created_at DESC
     `);
 
@@ -277,6 +278,8 @@ const listCompletedSessions = async () => {
       status: row.status,
       created_at: row.created_at,
       completed_at: row.completed_at,
+      resumed_at: row.original_session_id ? row.created_at : null, // If this is a resumed session, created_at is when it was resumed
+      original_session_id: row.original_session_id,
       player_count: parseInt(row.player_count),
       question_count: parseInt(row.question_count),
       presented_count: parseInt(row.presented_count)
@@ -297,6 +300,9 @@ const saveSession = async (roomCode, room) => {
     await client.query('BEGIN');
 
     // 1. Insert or update game_sessions
+    // For resumed sessions, use resumedAt as the created_at timestamp
+    const sessionTimestamp = room.resumedAt || room.createdAt;
+
     const sessionResult = await client.query(`
       INSERT INTO game_sessions (
         quiz_id, room_code, status, current_question_index,
@@ -311,9 +317,9 @@ const saveSession = async (roomCode, room) => {
     `, [
       room.quizId,
       roomCode,
-      room.status || 'in-progress',
+      room.status || 'in_progress',
       room.currentQuestionIndex,
-      room.createdAt,
+      sessionTimestamp,
       room.completedAt || null,
       room.originalSessionId || null
     ]);
@@ -1199,6 +1205,80 @@ app.post('/api/auth/register-player', async (req, res) => {
   }
 });
 
+// Alias for guest registration (same as player registration)
+app.post('/api/auth/register-guest', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const bcrypt = await import('bcrypt');
+
+    // Check if username exists as guest
+    const userResult = await pool.query(
+      'SELECT id, account_type, password_hash FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Guest account not found. Please join a game first.' });
+    }
+
+    const user = userResult.rows[0];
+
+    // If already a player or admin, return error
+    if (user.account_type !== 'guest') {
+      return res.status(400).json({ error: 'This account is already registered' });
+    }
+
+    // If guest already has a password, they're trying to register again
+    if (user.password_hash) {
+      return res.status(400).json({ error: 'This account already has a password' });
+    }
+
+    // Upgrade guest account to player account
+    const passwordHash = await bcrypt.hash(password, 10);
+    await pool.query(
+      `UPDATE users
+       SET account_type = $1, password_hash = $2
+       WHERE id = $3`,
+      ['player', passwordHash, user.id]
+    );
+
+    // Create session token
+    const sessionResult = await pool.query(
+      `INSERT INTO user_sessions (user_id, expires_at)
+       VALUES ($1, NOW() + INTERVAL '${process.env.SESSION_TIMEOUT || 3600000} milliseconds')
+       RETURNING token, expires_at`,
+      [user.id]
+    );
+
+    const session = sessionResult.rows[0];
+
+    console.log(`Guest user "${username}" upgraded to player account`);
+
+    res.json({
+      success: true,
+      token: session.token,
+      user: {
+        id: user.id,
+        username: username,
+        account_type: 'player'
+      },
+      expires_at: session.expires_at
+    });
+  } catch (err) {
+    console.error('Player registration error:', err);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
 // Get current user
 app.get('/api/auth/me', requireAuth, (req, res) => {
   res.json({
@@ -1208,6 +1288,170 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
       account_type: req.user.account_type
     }
   });
+});
+
+// Verify player token (for auto-login)
+app.post('/api/auth/verify-player', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const token = authHeader.substring(7);
+
+    // Check if session exists and is valid
+    const sessionResult = await pool.query(
+      `SELECT s.user_id, s.expires_at, u.username, u.account_type
+       FROM user_sessions s
+       JOIN users u ON s.user_id = u.id
+       WHERE s.token = $1 AND s.expires_at > NOW()`,
+      [token]
+    );
+
+    if (sessionResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    const session = sessionResult.rows[0];
+
+    // Only allow player and admin accounts to auto-login
+    if (session.account_type !== 'player' && session.account_type !== 'admin') {
+      return res.status(403).json({ error: 'Account type not supported for auto-login' });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: session.user_id,
+        username: session.username,
+        account_type: session.account_type
+      }
+    });
+  } catch (err) {
+    console.error('Token verification error:', err);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// Get all users (admin only)
+app.get('/api/users', requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        u.id,
+        u.username,
+        u.account_type,
+        u.created_at,
+        COUNT(DISTINCT gp.game_session_id) as games_played,
+        MAX(gs.created_at) as last_seen
+      FROM users u
+      LEFT JOIN game_participants gp ON u.id = gp.user_id
+      LEFT JOIN game_sessions gs ON gp.game_session_id = gs.id
+      WHERE u.account_type IN ('guest', 'player')
+      GROUP BY u.id, u.username, u.account_type, u.created_at
+      ORDER BY u.created_at DESC
+    `);
+
+    const users = result.rows.map(row => ({
+      id: row.id,
+      username: row.username,
+      accountType: row.account_type,
+      createdAt: row.created_at,
+      gamesPlayed: parseInt(row.games_played),
+      lastSeen: row.last_seen
+    }));
+
+    res.json(users);
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Delete user (admin only)
+app.delete('/api/users/:userId', requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Prevent deleting admin users
+    const userCheck = await pool.query(
+      'SELECT account_type FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (userCheck.rows[0].account_type === 'admin') {
+      return res.status(403).json({ error: 'Cannot delete admin users' });
+    }
+
+    // Delete user and all associated data (cascading deletes handled by database)
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    console.log(`User ${userId} deleted by admin`);
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting user:', err);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+// Downgrade user from player to guest (admin only)
+app.post('/api/users/:userId/downgrade', requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Check user exists and is a player
+    const userCheck = await pool.query(
+      'SELECT account_type FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (userCheck.rows[0].account_type !== 'player') {
+      return res.status(400).json({ error: 'User is not a registered player' });
+    }
+
+    // Downgrade to guest (remove password, change account type)
+    await pool.query(
+      'UPDATE users SET account_type = $1, password_hash = NULL WHERE id = $2',
+      ['guest', userId]
+    );
+
+    // Invalidate all user sessions
+    await pool.query('DELETE FROM user_sessions WHERE user_id = $1', [userId]);
+
+    console.log(`User ${userId} downgraded to guest by admin`);
+    res.json({ success: true, message: 'User downgraded to guest successfully' });
+  } catch (err) {
+    console.error('Error downgrading user:', err);
+    res.status(500).json({ error: 'Failed to downgrade user' });
+  }
+});
+
+// Check which rooms from a list are currently active
+app.post('/api/rooms/check-active', async (req, res) => {
+  try {
+    const { roomCodes } = req.body;
+
+    if (!Array.isArray(roomCodes)) {
+      return res.status(400).json({ error: 'roomCodes must be an array' });
+    }
+
+    // Filter room codes to only include those that exist in liveRooms
+    const activeRooms = roomCodes.filter(code => liveRooms[code] !== undefined);
+
+    res.json({ activeRooms });
+  } catch (err) {
+    console.error('Error checking active rooms:', err);
+    res.status(500).json({ error: 'Failed to check active rooms' });
+  }
 });
 
 // Legacy password check endpoint (for backward compatibility with landing.html)
@@ -1237,7 +1481,23 @@ app.get('/api/sessions', requireAdmin, async (req, res) => {
 app.get('/api/sessions/incomplete', requireAdmin, async (req, res) => {
   const sessions = await listCompletedSessions();
   const incomplete = sessions.filter(s => s.status !== 'completed');
-  res.json(incomplete);
+
+  // Format for frontend compatibility
+  const formatted = incomplete.map(s => ({
+    filename: `session_${s.session_id}.json`, // For backward compatibility
+    sessionId: s.session_id,
+    roomCode: s.room_code,
+    quizTitle: s.quiz_title,
+    status: s.status,
+    createdAt: s.created_at,
+    completedAt: s.completed_at,
+    resumedAt: s.resumed_at || null,
+    playerCount: s.player_count,
+    questionCount: s.question_count,
+    presentedCount: s.presented_count
+  }));
+
+  res.json(formatted);
 });
 
 // Get single session (from database)
@@ -1484,7 +1744,7 @@ io.on('connection', (socket) => {
           currentQuestionIndex: null,
           presentedQuestions: [],
           revealedQuestions: [],
-          status: 'in-progress',
+          status: 'in_progress',
           createdAt: new Date().toISOString()
         };
         console.log(`Room ${roomCode} created for quiz ID ${quizId} (${quiz.title})`);
@@ -1564,10 +1824,12 @@ io.on('connection', (socket) => {
         SELECT
           gp.user_id,
           gp.display_name,
+          u.username,
           pa.question_id,
           sq.presentation_order,
           a.display_order as choice_index
         FROM game_participants gp
+        JOIN users u ON gp.user_id = u.id
         LEFT JOIN participant_answers pa ON gp.id = pa.participant_id
         LEFT JOIN session_questions sq ON pa.question_id = sq.question_id AND sq.game_session_id = $1
         LEFT JOIN answers a ON pa.answer_id = a.id
@@ -1575,14 +1837,15 @@ io.on('connection', (socket) => {
         ORDER BY gp.display_name
       `, [sessionId]);
 
-      // Reconstruct players from database data
+      // Reconstruct players from database data (keyed by username for matching)
       const playersMap = new Map();
       for (const row of participantsResult.rows) {
-        if (!playersMap.has(row.display_name)) {
-          const playerId = `temp_${row.display_name}`;
-          playersMap.set(row.display_name, {
+        if (!playersMap.has(row.username)) {
+          const playerId = `temp_${row.username}`;
+          playersMap.set(row.username, {
             id: playerId,
-            name: row.display_name,
+            username: row.username, // Account username
+            name: row.display_name, // Display name from session
             userId: row.user_id, // Preserve user_id for reconnection
             choice: null,
             connected: false,
@@ -1591,7 +1854,7 @@ io.on('connection', (socket) => {
           });
         }
         if (row.presentation_order !== null && row.choice_index !== null) {
-          playersMap.get(row.display_name).answers[row.presentation_order] = row.choice_index;
+          playersMap.get(row.username).answers[row.presentation_order] = row.choice_index;
         }
       }
 
@@ -1624,7 +1887,7 @@ io.on('connection', (socket) => {
         currentQuestionIndex: null,
         presentedQuestions,
         revealedQuestions,
-        status: 'in-progress',
+        status: 'in_progress',
         createdAt: session.created_at,
         resumedAt: new Date().toISOString(),
         originalRoomCode: session.original_room_code,
@@ -1681,34 +1944,43 @@ io.on('connection', (socket) => {
   });
 
   // Player joins a room
-  socket.on('joinRoom', async ({ roomCode, playerName }) => {
+  socket.on('joinRoom', async ({ roomCode, username, displayName }) => {
     const room = liveRooms[roomCode];
     if (!room) {
       socket.emit('roomError', 'Room not found.');
       return;
     }
 
-    // Create or retrieve guest user account
+    // Support legacy playerName parameter for backward compatibility
+    const playerUsername = username;
+    const playerDisplayName = displayName;
+
+    if (!playerUsername || !playerDisplayName) {
+      socket.emit('roomError', 'Username and display name are required.');
+      return;
+    }
+
+    // Create or retrieve guest user account (using username)
     let userId = null;
     try {
       // Check if user already exists
       const userResult = await pool.query(
-        'SELECT id FROM users WHERE username = $1 AND account_type = $2',
-        [playerName, 'guest']
+        'SELECT id FROM users WHERE username = $1',
+        [playerUsername]
       );
 
       if (userResult.rows.length > 0) {
         // User already exists
         userId = userResult.rows[0].id;
-        console.log(`Guest user "${playerName}" already exists with ID: ${userId}`);
+        console.log(`Guest user "${playerUsername}" already exists with ID: ${userId}`);
       } else {
         // Create new guest user
         const createResult = await pool.query(
           'INSERT INTO users (username, account_type, password_hash) VALUES ($1, $2, NULL) RETURNING id',
-          [playerName, 'guest']
+          [playerUsername, 'guest']
         );
         userId = createResult.rows[0].id;
-        console.log(`Created new guest user "${playerName}" with ID: ${userId}`);
+        console.log(`Created new guest user "${playerUsername}" with ID: ${userId}`);
       }
     } catch (err) {
       console.error('Error creating/retrieving guest user:', err);
@@ -1716,15 +1988,15 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Check if a player with this name already exists in the room
-    const existingPlayer = Object.entries(room.players).find(([, player]) => player.name === playerName);
+    // Check if a player with this username already exists in the room (reconnection scenario)
+    const existingPlayer = Object.entries(room.players).find(([, player]) => player.username === playerUsername);
 
     if (existingPlayer) {
       const [oldSocketId, playerData] = existingPlayer;
 
-      // If player is still connected, reject duplicate name
+      // If player is still connected, reject duplicate username
       if (playerData.connected) {
-        socket.emit('roomError', `Name "${playerName}" is already taken in this room.`);
+        socket.emit('roomError', `Username "${playerUsername}" is already connected in this room.`);
         return;
       }
 
@@ -1740,34 +2012,37 @@ io.on('connection', (socket) => {
       room.players[socket.id] = {
         ...playerData,
         id: socket.id,
+        username: playerUsername, // Account username
+        name: playerDisplayName, // Display name (update in case they changed it)
         userId: userId, // Associate with user account
         connected: true,
         choice: currentChoice // Restore choice if they already answered current question
       };
       socket.join(roomCode);
-      console.log(`${playerName} reconnected to room ${roomCode} (${Object.keys(playerData.answers || {}).length} previous answers preserved)`);
+      console.log(`${playerDisplayName} (${playerUsername}) reconnected to room ${roomCode} (${Object.keys(playerData.answers || {}).length} previous answers preserved)`);
     } else {
       // Check if this is a resumed session with temp player entry
       let existingAnswers = {};
-      const tempPlayerId = `temp_${playerName}`;
+      const tempPlayerId = `temp_${playerUsername}`;
       if (room.players[tempPlayerId] && room.players[tempPlayerId].isResumed) {
         // Player is rejoining a resumed session - keep their old answers
         existingAnswers = room.players[tempPlayerId].answers || {};
         delete room.players[tempPlayerId]; // Remove temp entry
-        console.log(`${playerName} rejoined resumed session with ${Object.keys(existingAnswers).length} previous answers`);
+        console.log(`${playerDisplayName} (${playerUsername}) rejoined resumed session with ${Object.keys(existingAnswers).length} previous answers`);
       }
 
       // New player joining
       room.players[socket.id] = {
         id: socket.id,
-        name: playerName,
+        username: playerUsername, // Account username
+        name: playerDisplayName, // Display name shown in games
         userId: userId, // Associate with user account
         choice: null,
         connected: true,
         answers: existingAnswers
       };
       socket.join(roomCode);
-      console.log(`${playerName} joined room ${roomCode}`);
+      console.log(`${playerDisplayName} (${playerUsername}) joined room ${roomCode}`);
     }
 
     io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
@@ -1775,14 +2050,14 @@ io.on('connection', (socket) => {
 
     // Send the player's answer history so they know which questions they've already answered
     const answeredQuestionIndices = Object.keys(room.players[socket.id].answers || {}).map(idx => parseInt(idx));
-    console.log(`[RESUME DEBUG] Sending answer history to ${playerName}:`, answeredQuestionIndices, 'Full answers:', room.players[socket.id].answers);
+    console.log(`[RESUME DEBUG] Sending answer history to ${playerDisplayName} (${playerUsername}):`, answeredQuestionIndices, 'Full answers:', room.players[socket.id].answers);
     socket.emit('answerHistoryRestored', { answeredQuestions: answeredQuestionIndices });
 
     // If there's a current question active, send it to the new player
     if (room.currentQuestionIndex !== null) {
       const question = room.quizData.questions[room.currentQuestionIndex];
       socket.emit('questionPresented', { questionIndex: room.currentQuestionIndex, question });
-      console.log(`Sent current question ${room.currentQuestionIndex} to ${playerName}`);
+      console.log(`Sent current question ${room.currentQuestionIndex} to ${playerDisplayName} (${playerUsername})`);
     }
   });
 
@@ -1898,10 +2173,12 @@ io.on('connection', (socket) => {
     // Auto-save if there are answers
     if (sessionHasAnswers(room)) {
       try {
-        room.status = room.status || 'closed';
-        room.completedAt = new Date().toISOString();
+        // Manual close: keep as in_progress unless already completed
+        // (This allows the session to be resumed later)
+        room.status = room.status === 'completed' ? 'completed' : 'in_progress';
+        room.completedAt = room.status === 'completed' ? new Date().toISOString() : null;
         await saveSession(roomCode, room);
-        console.log(`Session auto-saved before closing room ${roomCode}`);
+        console.log(`Session auto-saved before closing room ${roomCode} with status: ${room.status}`);
       } catch (err) {
         console.error('Error auto-saving session:', err);
       }

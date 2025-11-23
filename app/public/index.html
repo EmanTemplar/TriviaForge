@@ -37,6 +37,9 @@
     <button id="optionsTab" class="tab-btn" style="padding: 1rem 2rem; background: transparent; border: none; color: #aaa; cursor: pointer; border-bottom: 3px solid transparent;">
       Quiz Options
     </button>
+    <button id="usersTab" class="tab-btn" style="padding: 1rem 2rem; background: transparent; border: none; color: #aaa; cursor: pointer; border-bottom: 3px solid transparent;">
+      User Management
+    </button>
   </div>
 
   <!-- Main Container -->
@@ -161,6 +164,25 @@
         </div>
       </section>
     </div>
+
+    <!-- User Management Section -->
+    <div id="usersManagement" class="tab-content" style="display: none; width: 100%;">
+      <section style="width: 100%;">
+        <h2>User Management</h2>
+        <p style="color: #aaa; margin-bottom: 1rem;">View and manage all user accounts (guests and registered players)</p>
+
+        <div style="margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center;">
+          <button id="refreshUsersBtn" style="background: rgba(0,123,255,0.3); padding: 0.75rem 1.5rem;">
+            🔄 Refresh Users
+          </button>
+          <div style="color: #aaa; font-size: 0.9rem;" id="userCount">Loading...</div>
+        </div>
+
+        <div id="usersList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <!-- Users will be populated here -->
+        </div>
+      </section>
+    </div>
   </main>
 
   <!-- Custom Dialog Modal (for alerts and confirms) -->
@@ -214,9 +236,11 @@
     const quizTab = document.getElementById('quizTab');
     const sessionsTab = document.getElementById('sessionsTab');
     const optionsTab = document.getElementById('optionsTab');
+    const usersTab = document.getElementById('usersTab');
     const quizManagement = document.getElementById('quizManagement');
     const sessionsManagement = document.getElementById('sessionsManagement');
     const optionsManagement = document.getElementById('optionsManagement');
+    const usersManagement = document.getElementById('usersManagement');
 
     quizTab.addEventListener('click', () => {
       quizTab.classList.add('active-tab');
@@ -228,9 +252,13 @@
       optionsTab.classList.remove('active-tab');
       optionsTab.style.borderBottomColor = 'transparent';
       optionsTab.style.color = '#aaa';
+      usersTab.classList.remove('active-tab');
+      usersTab.style.borderBottomColor = 'transparent';
+      usersTab.style.color = '#aaa';
       quizManagement.style.display = 'flex';
       sessionsManagement.style.display = 'none';
       optionsManagement.style.display = 'none';
+      usersManagement.style.display = 'none';
     });
 
     sessionsTab.addEventListener('click', () => {
@@ -243,9 +271,13 @@
       optionsTab.classList.remove('active-tab');
       optionsTab.style.borderBottomColor = 'transparent';
       optionsTab.style.color = '#aaa';
+      usersTab.classList.remove('active-tab');
+      usersTab.style.borderBottomColor = 'transparent';
+      usersTab.style.color = '#aaa';
       sessionsManagement.style.display = 'block';
       quizManagement.style.display = 'none';
       optionsManagement.style.display = 'none';
+      usersManagement.style.display = 'none';
       loadSessions(); // Refresh sessions when tab is opened
     });
 
@@ -259,10 +291,34 @@
       sessionsTab.classList.remove('active-tab');
       sessionsTab.style.borderBottomColor = 'transparent';
       sessionsTab.style.color = '#aaa';
+      usersTab.classList.remove('active-tab');
+      usersTab.style.borderBottomColor = 'transparent';
+      usersTab.style.color = '#aaa';
       optionsManagement.style.display = 'block';
       quizManagement.style.display = 'none';
       sessionsManagement.style.display = 'none';
+      usersManagement.style.display = 'none';
       loadOptions(); // Load options when tab is opened
+    });
+
+    usersTab.addEventListener('click', () => {
+      usersTab.classList.add('active-tab');
+      usersTab.style.borderBottomColor = '#007bff';
+      usersTab.style.color = '#fff';
+      quizTab.classList.remove('active-tab');
+      quizTab.style.borderBottomColor = 'transparent';
+      quizTab.style.color = '#aaa';
+      sessionsTab.classList.remove('active-tab');
+      sessionsTab.style.borderBottomColor = 'transparent';
+      sessionsTab.style.color = '#aaa';
+      optionsTab.classList.remove('active-tab');
+      optionsTab.style.borderBottomColor = 'transparent';
+      optionsTab.style.color = '#aaa';
+      usersManagement.style.display = 'block';
+      quizManagement.style.display = 'none';
+      sessionsManagement.style.display = 'none';
+      optionsManagement.style.display = 'none';
+      loadUsers(); // Load users when tab is opened
     });
   </script>
 </body>

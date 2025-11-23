@@ -896,6 +896,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderSessions(sessions);
   };
 
+  // Helper function to format session status
+  const formatStatus = (status) => {
+    const statusMap = {
+      'in_progress': { text: 'In Progress', icon: '⏸️', color: '#4fc3f7' },
+      'completed': { text: 'Completed', icon: '✅', color: '#0f0' },
+      'interrupted': { text: 'Interrupted', icon: '⚠️', color: '#ff0' }
+    };
+    return statusMap[status] || { text: status, icon: '●', color: '#aaa' };
+  };
+
   const renderSessions = (sessions) => {
     if (!sessions.length) {
       sessionsListContainer.innerHTML = '<em style="color: #aaa;">No completed sessions yet</em>';
@@ -903,16 +913,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     sessionsListContainer.innerHTML = sessions.map(session => {
-      const displayDate = new Date(session.created_at).toLocaleString();
-      const statusColor = session.status === 'completed' ? '#0f0' : session.status === 'interrupted' ? '#ff0' : '#aaa';
+      // For resumed sessions, show the resumed_at timestamp; otherwise show created_at
+      const isResumed = session.original_session_id !== null;
+      const displayDate = new Date(isResumed ? session.resumed_at : session.created_at).toLocaleString();
+      const dateLabel = isResumed ? 'Resumed' : 'Started';
+      const statusInfo = formatStatus(session.status);
 
       return `
         <div class="quizCard" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
             <strong>${session.quiz_title}</strong> - Room: ${session.room_code}
+            ${isResumed ? '<span style="color: #ff9800; font-size: 0.85rem; margin-left: 0.5rem;">🔄 Resumed</span>' : ''}
             <div style="font-size: 0.9rem; color: #aaa;">
-              Started: ${displayDate} | Players: ${session.player_count} | Questions: ${session.question_count}
-              <span style="color: ${statusColor}; margin-left: 1rem;">● ${session.status}</span>
+              ${dateLabel}: ${displayDate} | Players: ${session.player_count} | Questions: ${session.question_count}
+              <span style="color: ${statusInfo.color}; margin-left: 1rem;">${statusInfo.icon} ${statusInfo.text}</span>
             </div>
           </div>
           <div style="display: flex; gap: 0.5rem;">
@@ -952,9 +966,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
     }).sort((a, b) => b.correct - a.correct);
 
+    const statusInfo = formatStatus(session.status);
+
     modalContent.innerHTML = `
       <div style="margin-bottom: 1rem;">
-        <p><strong>Status:</strong> ${session.status}</p>
+        <p><strong>Status:</strong> <span style="color: ${statusInfo.color};">${statusInfo.icon} ${statusInfo.text}</span></p>
         <p><strong>Started:</strong> ${new Date(session.createdAt).toLocaleString()}</p>
         ${session.completedAt ? `<p><strong>Completed:</strong> ${new Date(session.completedAt).toLocaleString()}</p>` : ''}
         <p><strong>Total Questions:</strong> ${session.questions.length}</p>
@@ -1080,6 +1096,135 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('answerDisplayTime').value = 30; // fallback to default
     }
   };
+
+  // --------------------
+  // User Management
+  // --------------------
+  const usersListContainer = document.getElementById('usersList');
+  const userCountDisplay = document.getElementById('userCount');
+  const refreshUsersBtn = document.getElementById('refreshUsersBtn');
+
+  const loadUsers = async () => {
+    try {
+      const res = await fetch('/api/users', {
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error('Failed to load users');
+      const users = await res.json();
+      renderUsers(users);
+    } catch (err) {
+      console.error('Failed to load users:', err);
+      usersListContainer.innerHTML = '<em style="color: #f66;">Failed to load users. Please try again.</em>';
+      userCountDisplay.textContent = 'Error loading users';
+    }
+  };
+
+  const renderUsers = (users) => {
+    if (!users.length) {
+      usersListContainer.innerHTML = '<em style="color: #aaa;">No users found</em>';
+      userCountDisplay.textContent = 'Total: 0 users';
+      return;
+    }
+
+    // Count by account type
+    const guestCount = users.filter(u => u.accountType === 'guest').length;
+    const playerCount = users.filter(u => u.accountType === 'player').length;
+    userCountDisplay.textContent = `Total: ${users.length} users (${guestCount} guests, ${playerCount} registered)`;
+
+    usersListContainer.innerHTML = users.map(user => {
+      const accountTypeColor = user.accountType === 'player' ? '#4fc3f7' : '#aaa';
+      const accountTypeIcon = user.accountType === 'player' ? '✓' : '👤';
+      const createdDate = new Date(user.createdAt).toLocaleString();
+      const lastSeenDate = user.lastSeen ? new Date(user.lastSeen).toLocaleString() : 'Never';
+
+      // Action buttons based on account type
+      const downgradeBtn = user.accountType === 'player'
+        ? `<button onclick="downgradeUser('${user.id}', '${user.username}')" style="background: rgba(255,165,0,0.3); padding: 0.5rem 1rem; margin-right: 0.5rem;">⬇️ Downgrade to Guest</button>`
+        : '';
+
+      return `
+        <div class="quizCard" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem;">
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+              <strong style="font-size: 1.1rem;">${user.username}</strong>
+              <span style="color: ${accountTypeColor}; font-size: 0.9rem;">
+                ${accountTypeIcon} ${user.accountType.charAt(0).toUpperCase() + user.accountType.slice(1)}
+              </span>
+            </div>
+            <div style="font-size: 0.85rem; color: #aaa; display: flex; flex-wrap: wrap; gap: 1rem;">
+              <span>📅 Created: ${createdDate}</span>
+              <span>🎮 Games Played: ${user.gamesPlayed}</span>
+              <span>👁️ Last Seen: ${lastSeenDate}</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+            ${downgradeBtn}
+            <button onclick="deleteUser('${user.id}', '${user.username}')" style="background: rgba(255,0,0,0.3); padding: 0.5rem 1rem;">🗑️ Delete</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  // Delete user function
+  window.deleteUser = async (userId, username) => {
+    const confirmed = confirm(`Are you sure you want to delete user "${username}"?\n\nThis action cannot be undone and will remove:\n- The user account\n- All game participation records\n- All associated data`);
+
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        alert('Failed to delete user: ' + (data.error || 'Unknown error'));
+        return;
+      }
+
+      alert(`User "${username}" has been deleted successfully.`);
+      loadUsers(); // Reload the user list
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+      alert('Failed to delete user. Please try again.');
+    }
+  };
+
+  // Downgrade user function (player -> guest)
+  window.downgradeUser = async (userId, username) => {
+    const confirmed = confirm(`Are you sure you want to downgrade "${username}" to a guest account?\n\nThis will:\n- Remove their password\n- Change their account type to Guest\n- Keep their game history`);
+
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/users/${userId}/downgrade`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        alert('Failed to downgrade user: ' + (data.error || 'Unknown error'));
+        return;
+      }
+
+      alert(`User "${username}" has been downgraded to guest account.`);
+      loadUsers(); // Reload the user list
+    } catch (err) {
+      console.error('Failed to downgrade user:', err);
+      alert('Failed to downgrade user. Please try again.');
+    }
+  };
+
+  // Refresh users button
+  if (refreshUsersBtn) {
+    refreshUsersBtn.addEventListener('click', loadUsers);
+  }
+
+  // Make loadUsers globally available for tab switching
+  window.loadUsers = loadUsers;
 
   // --------------------
   // Logout Functionality

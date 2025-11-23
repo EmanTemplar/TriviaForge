@@ -26,6 +26,9 @@
           <em>Not in a room yet</em>
         </div>
       </li>
+      <li style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.5rem; margin-top: 0.5rem;">
+        <a href="#" id="playerLogoutBtn" style="color: #f66;">Logout</a>
+      </li>
     </ul>
   </nav>
 
@@ -35,8 +38,16 @@
     <!-- Left/Top: Question Display -->
     <div class="question-area">
       <div id="waitingScreen">
-        <h2>Waiting for Question...</h2>
-        <p>The presenter will send questions when ready.</p>
+        <h2 id="waitingTitle">Join a Room to Start</h2>
+        <p id="waitingMessage">Enter your name and room code to begin playing.</p>
+
+        <!-- Recent Rooms Section -->
+        <div id="recentRoomsSection" style="margin-top: 2rem; display: none;">
+          <h3 style="font-size: 1.2rem; margin-bottom: 1rem; color: #4fc3f7;">Recent Rooms</h3>
+          <div id="recentRoomsList" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <!-- Recent rooms will be populated here -->
+          </div>
+        </div>
       </div>
 
       <div id="questionDisplay">
@@ -58,13 +69,26 @@
       <!-- Join Section -->
       <div id="joinSection">
         <h3>Join Room</h3>
-        <label for="playerName">Your Name</label>
-        <input id="playerName" type="text" placeholder="Enter your name" />
+
+        <label for="playerUsername">Username</label>
+        <input id="playerUsername" type="text" placeholder="Choose a username" />
+        <p style="font-size: 0.85rem; color: #aaa; margin: 0.25rem 0 0.75rem 0;">
+          This will be your account name
+        </p>
+
+        <label for="playerDisplayName">Display Name</label>
+        <input id="playerDisplayName" type="text" placeholder="Name shown in game" />
+        <p style="font-size: 0.85rem; color: #aaa; margin: 0.25rem 0 0.75rem 0;">
+          This is what other players will see
+        </p>
 
         <label for="roomCodeManual">Room Code</label>
         <input id="roomCodeManual" type="text" placeholder="Enter room code" />
 
         <button id="joinBtn">Join Room</button>
+        <button id="manageAccountBtn" style="margin-top: 0.5rem; background: rgba(0,123,255,0.2); border: 1px solid rgba(0,123,255,0.3);">
+          Manage Account
+        </button>
       </div>
 
       <!-- Room Info -->
@@ -108,7 +132,9 @@
     const joinBtn = document.getElementById('joinBtn');
     const leaveBtn = document.getElementById('leaveBtn');
     const menuLeaveBtn = document.getElementById('menuLeaveBtn');
-    const nameInput = document.getElementById('playerName');
+    const manageAccountBtn = document.getElementById('manageAccountBtn');
+    const usernameInput = document.getElementById('playerUsername');
+    const displayNameInput = document.getElementById('playerDisplayName');
     const roomInput = document.getElementById('roomCodeManual');
 
     const joinSection = document.getElementById('joinSection');
@@ -134,12 +160,190 @@
     const answerFeedback = document.getElementById('answerFeedback');
 
     let currentRoomCode = null;
-    let currentPlayerName = null;
+    let currentUsername = null; // Account username
+    let currentDisplayName = null; // Display name shown in games
     let selectedAnswer = null;
     let answeredQuestions = new Set(); // Track which questions this player has answered
     let answerRevealTimeout = null; // Track the auto-hide timeout
     let lastActivityTime = Date.now(); // Track last activity for inactivity timeout
     let isConnected = false; // Track socket connection status
+
+    // Pre-fill username and display name from localStorage if available
+    const savedUsername = localStorage.getItem('playerUsername');
+    const savedDisplayName = localStorage.getItem('playerDisplayName');
+    const savedAccountType = localStorage.getItem('playerAccountType');
+    if (savedUsername) {
+      usernameInput.value = savedUsername;
+    }
+    if (savedDisplayName) {
+      displayNameInput.value = savedDisplayName;
+    }
+
+    // --------------------
+    // Recent Rooms Management
+    // --------------------
+    const MAX_RECENT_ROOMS = 5;
+    const RECENT_ROOMS_KEY = 'playerRecentRooms';
+
+    function getRecentRooms() {
+      const stored = localStorage.getItem(RECENT_ROOMS_KEY);
+      return stored ? JSON.parse(stored) : [];
+    }
+
+    function saveRecentRoom(roomCode) {
+      let recentRooms = getRecentRooms();
+
+      // Remove if already exists (to update timestamp)
+      recentRooms = recentRooms.filter(room => room.code !== roomCode);
+
+      // Add to front with current timestamp
+      recentRooms.unshift({
+        code: roomCode,
+        timestamp: Date.now(),
+        username: currentUsername,
+        displayName: currentDisplayName
+      });
+
+      // Keep only the most recent rooms
+      recentRooms = recentRooms.slice(0, MAX_RECENT_ROOMS);
+
+      localStorage.setItem(RECENT_ROOMS_KEY, JSON.stringify(recentRooms));
+      // Note: We don't call displayRecentRooms() here to avoid race conditions
+      // Recent rooms are displayed explicitly on page load and when leaving a room
+    }
+
+    async function displayRecentRooms() {
+      let recentRooms = getRecentRooms();
+      const recentRoomsSection = document.getElementById('recentRoomsSection');
+      const recentRoomsList = document.getElementById('recentRoomsList');
+
+      if (recentRooms.length === 0) {
+        recentRoomsSection.style.display = 'none';
+        return;
+      }
+
+      // Check which rooms are still active
+      try {
+        const roomCodes = recentRooms.map(room => room.code);
+        const response = await fetch('/api/rooms/check-active', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomCodes })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const activeRoomCodes = data.activeRooms;
+
+          // Filter to only show active rooms
+          recentRooms = recentRooms.filter(room => activeRoomCodes.includes(room.code));
+
+          // Update localStorage to remove inactive rooms
+          if (recentRooms.length !== getRecentRooms().length) {
+            localStorage.setItem(RECENT_ROOMS_KEY, JSON.stringify(recentRooms));
+          }
+
+          // If no active rooms remain, hide the section
+          if (recentRooms.length === 0) {
+            recentRoomsSection.style.display = 'none';
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error checking active rooms:', err);
+        // On error, show all rooms (fallback to current behavior)
+      }
+
+      recentRoomsSection.style.display = 'block';
+
+      recentRoomsList.innerHTML = recentRooms.map(room => {
+        const timeAgo = getTimeAgo(room.timestamp);
+        return `
+          <button onclick="quickJoinRoom('${room.code}')" style="
+            padding: 1rem;
+            background: rgba(79, 195, 247, 0.1);
+            border: 1px solid rgba(79, 195, 247, 0.3);
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+          " onmouseover="this.style.background='rgba(79, 195, 247, 0.2)'" onmouseout="this.style.background='rgba(79, 195, 247, 0.1)'">
+            <div style="text-align: left;">
+              <div style="font-size: 1.1rem; font-weight: bold; color: #4fc3f7;">Room ${room.code}</div>
+              <div style="font-size: 0.85rem; color: #aaa; margin-top: 0.25rem;">Joined ${timeAgo}</div>
+            </div>
+            <div style="font-size: 0.9rem; color: #4fc3f7;">→ Quick Join</div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function getTimeAgo(timestamp) {
+      const seconds = Math.floor((Date.now() - timestamp) / 1000);
+      if (seconds < 60) return 'just now';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes} min ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+      const days = Math.floor(hours / 24);
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    }
+
+    window.quickJoinRoom = async (roomCode) => {
+      if (!savedUsername || !savedDisplayName) {
+        await customAlert('Please enter your username and display name first.', 'Missing Information');
+        return;
+      }
+
+      currentUsername = savedUsername;
+      currentDisplayName = savedDisplayName;
+      currentRoomCode = roomCode;
+      roomInput.value = roomCode;
+
+      socket.emit('joinRoom', { roomCode, username: savedUsername, displayName: savedDisplayName });
+    };
+
+    // Display recent rooms on page load
+    displayRecentRooms();
+
+    // --------------------
+    // Registered Player Auto-Login
+    // --------------------
+    async function autoLoginRegisteredPlayer() {
+      const playerToken = localStorage.getItem('playerAuthToken');
+
+      if (playerToken && savedAccountType === 'registered') {
+        try {
+          // Verify token is still valid
+          const response = await fetch('/api/auth/verify-player', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${playerToken}`
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            // Show welcome message
+            const waitingMessage = document.getElementById('waitingMessage');
+            waitingMessage.innerHTML = `Welcome back, <strong style="color: #4fc3f7;">${data.user.username}</strong>! 👋<br><span style="font-size: 0.9rem;">Your account is ready. Enter a room code to join.</span>`;
+          } else {
+            // Token expired or invalid, remove it
+            localStorage.removeItem('playerAuthToken');
+          }
+        } catch (err) {
+          console.error('Auto-login error:', err);
+          localStorage.removeItem('playerAuthToken');
+        }
+      }
+    }
+
+    // Run auto-login check
+    autoLoginRegisteredPlayer();
 
     // --------------------
     // Custom Dialog Functions
@@ -325,21 +529,84 @@
     });
 
     // ---------------------------
+    // Logout functionality
+    // ---------------------------
+    const playerLogoutBtn = document.getElementById('playerLogoutBtn');
+    if (playerLogoutBtn) {
+      playerLogoutBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        menu.classList.remove('open'); // Close menu first
+
+        const confirmed = await customConfirm(
+          'Are you sure you want to logout?\n\nThis will:\n- Clear your saved username and display name\n- Clear your recent rooms list\n- Log you out of your account (if registered)',
+          'Logout'
+        );
+
+        if (!confirmed) return;
+
+        // Leave room if currently in one
+        if (currentRoomCode) {
+          handleLeaveRoom();
+        }
+
+        // Clear all player data from localStorage
+        localStorage.removeItem('playerUsername');
+        localStorage.removeItem('playerDisplayName');
+        localStorage.removeItem('playerAccountType');
+        localStorage.removeItem('playerAuthToken');
+        localStorage.removeItem('playerRecentRooms');
+
+        // Clear form inputs
+        usernameInput.value = '';
+        displayNameInput.value = '';
+        roomInput.value = '';
+
+        // Reset welcome message
+        const waitingMessage = document.getElementById('waitingMessage');
+        waitingMessage.textContent = 'Enter your name and room code to begin playing.';
+
+        await customAlert('You have been logged out successfully.', 'Logged Out');
+      });
+    }
+
+    // ---------------------------
     // Join room logic
     // ---------------------------
     joinBtn.addEventListener('click', async () => {
-      const playerName = nameInput.value.trim();
+      const username = usernameInput.value.trim();
+      const displayName = displayNameInput.value.trim();
       const roomCode = roomInput.value.trim();
 
-      if (!playerName || !roomCode) {
-        await customAlert('Enter your name and room code.', 'Missing Information');
+      if (!username) {
+        await customAlert('Please enter a username.', 'Missing Information');
         return;
       }
 
-      currentPlayerName = playerName;
+      if (!displayName) {
+        await customAlert('Please enter a display name.', 'Missing Information');
+        return;
+      }
+
+      if (!roomCode) {
+        await customAlert('Please enter a room code.', 'Missing Information');
+        return;
+      }
+
+      currentUsername = username;
+      currentDisplayName = displayName;
       currentRoomCode = roomCode;
 
-      socket.emit('joinRoom', { roomCode, playerName });
+      // Save to localStorage for account management page
+      localStorage.setItem('playerUsername', username);
+      localStorage.setItem('playerDisplayName', displayName);
+      localStorage.setItem('playerAccountType', 'Guest');
+
+      socket.emit('joinRoom', { roomCode, username, displayName });
+    });
+
+    // Manage Account button
+    manageAccountBtn.addEventListener('click', () => {
+      window.location.href = 'player-manage.html';
     });
 
     // Room joined successfully
@@ -350,7 +617,7 @@
       joinSection.style.display = 'none';
       roomInfo.style.display = 'block';
       displayRoomCode.textContent = roomCode;
-      displayPlayerName.textContent = currentPlayerName;
+      displayPlayerName.textContent = currentDisplayName;
 
       // Update navbar (mobile)
       navRoomInfo.classList.add('active');
@@ -363,10 +630,22 @@
       // Hide sidebar on mobile after joining
       sidebar.classList.add('in-room');
 
+      // Update waiting screen text now that player is in a room
+      const waitingTitle = document.getElementById('waitingTitle');
+      const waitingMessage = document.getElementById('waitingMessage');
+      if (waitingTitle) waitingTitle.textContent = 'Waiting for Question...';
+      if (waitingMessage) waitingMessage.textContent = 'The presenter will send questions when ready.';
+
       // Update players list (both sidebar and menu)
       updatePlayerList(players);
 
       statusMessage.textContent = `${players.length} player(s) in room`;
+
+      // Save to recent rooms
+      saveRecentRoom(roomCode);
+
+      // Hide recent rooms section while in a room
+      document.getElementById('recentRoomsSection').style.display = 'none';
     });
 
     // ---------------------------
@@ -404,7 +683,8 @@
       socket.disconnect();
       socket.connect();
       currentRoomCode = null;
-      currentPlayerName = null;
+      currentUsername = null;
+      currentDisplayName = null;
       selectedAnswer = null;
       answeredQuestions.clear();
 
@@ -423,9 +703,18 @@
       // Show sidebar again on mobile (for join form)
       sidebar.classList.remove('in-room');
 
+      // Reset waiting screen text
+      const waitingTitle = document.getElementById('waitingTitle');
+      const waitingMessage = document.getElementById('waitingMessage');
+      if (waitingTitle) waitingTitle.textContent = 'Join a Room to Start';
+      if (waitingMessage) waitingMessage.textContent = 'Enter your name and room code to begin playing.';
+
       resetToWaiting();
       updatePlayerList([]);
       statusMessage.textContent = 'Ready to join';
+
+      // Show recent rooms section again
+      displayRecentRooms();
     }
 
     // Desktop leave button
@@ -518,7 +807,7 @@
     // Answer revealed by presenter
     // ---------------------------
     socket.on('questionRevealed', ({ questionIndex, question, results }) => {
-      const myResult = results.find(r => r.name === currentPlayerName);
+      const myResult = results.find(r => r.name === currentDisplayName);
       const correctChoice = question.correctChoice;
 
       // Show feedback

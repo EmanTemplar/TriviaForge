@@ -346,41 +346,67 @@
 
   // Load quiz list
   async function loadQuizzes() {
-    const res = await fetch('/api/quizzes');
-    const quizzes = await res.json();
-    quizSelector.innerHTML = '<option value="">Select a quiz</option>';
-    quizzes.forEach(q => {
-      const opt = document.createElement('option');
-      opt.value = q.filename;
-      opt.textContent = q.title;
-      quizSelector.appendChild(opt);
-    });
+    try {
+      const token = localStorage.getItem('triviaAuthToken');
+      const res = await fetch('/api/quizzes', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!res.ok) {
+        console.error('Failed to load quizzes:', res.status);
+        return;
+      }
+
+      const quizzes = await res.json();
+      quizSelector.innerHTML = '<option value="">Select a quiz</option>';
+      quizzes.forEach(q => {
+        const opt = document.createElement('option');
+        opt.value = q.filename;
+        opt.textContent = q.title;
+        quizSelector.appendChild(opt);
+      });
+    } catch (err) {
+      console.error('Error loading quizzes:', err);
+    }
   }
   loadQuizzes();
 
   // Load incomplete sessions
   async function loadIncompleteSessions() {
-    const res = await fetch('/api/sessions/incomplete');
-    incompleteSessions = await res.json();
-
-    if (incompleteSessions.length === 0) {
-      incompleteSessionSelector.innerHTML = '<option value="">No incomplete sessions</option>';
-      resumeSessionBtn.disabled = true;
-      resumeSessionBtn.style.opacity = '0.5';
-    } else {
-      incompleteSessionSelector.innerHTML = '<option value="">Select session to resume</option>';
-      incompleteSessions.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.filename;
-        const displayDate = s.resumedAt ? new Date(s.resumedAt).toLocaleString() : new Date(s.createdAt).toLocaleString();
-        const dateLabel = s.resumedAt ? 'Resumed' : 'Started';
-        const resumedIcon = s.resumedAt ? '↻ ' : '';
-        const status = s.status === 'interrupted' ? '⚠️ Interrupted' : '⏸️ In Progress';
-        opt.textContent = `${resumedIcon}${s.quizTitle} (${s.roomCode}) - ${status} - ${dateLabel}: ${displayDate}`;
-        incompleteSessionSelector.appendChild(opt);
+    try {
+      const token = localStorage.getItem('triviaAuthToken');
+      const res = await fetch('/api/sessions/incomplete', {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      resumeSessionBtn.disabled = false;
-      resumeSessionBtn.style.opacity = '1';
+
+      if (!res.ok) {
+        console.error('Failed to load incomplete sessions:', res.status);
+        return;
+      }
+
+      incompleteSessions = await res.json();
+
+      if (incompleteSessions.length === 0) {
+        incompleteSessionSelector.innerHTML = '<option value="">No incomplete sessions</option>';
+        resumeSessionBtn.disabled = true;
+        resumeSessionBtn.style.opacity = '0.5';
+      } else {
+        incompleteSessionSelector.innerHTML = '<option value="">Select session to resume</option>';
+        incompleteSessions.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.filename;
+          const displayDate = s.resumedAt ? new Date(s.resumedAt).toLocaleString() : new Date(s.createdAt).toLocaleString();
+          const dateLabel = s.resumedAt ? 'Resumed' : 'Started';
+          const resumedIcon = s.resumedAt ? '↻ ' : '';
+          const status = s.status === 'interrupted' ? '⚠️ Interrupted' : '⏸️ In Progress';
+          opt.textContent = `${resumedIcon}${s.quizTitle} (${s.roomCode}) - ${status} - ${dateLabel}: ${displayDate}`;
+          incompleteSessionSelector.appendChild(opt);
+        });
+        resumeSessionBtn.disabled = false;
+        resumeSessionBtn.style.opacity = '1';
+      }
+    } catch (err) {
+      console.error('Error loading incomplete sessions:', err);
     }
   }
   loadIncompleteSessions();
