@@ -3,10 +3,10 @@
 A real-time, interactive trivia game platform built with Socket.IO, designed for educators, event organizers, and trivia enthusiasts.
 
 <!-- Screenshot Placeholder: Landing Page -->
-![Landing Page](screenshots/landing-page.png)
+![Landing Page](screenshots/landing-page.png?v=202511)
 
 <!-- Screenshot Placeholder: Main Game Interface -->
-![TriviaForge Main Interface](screenshots/main-interface.png)
+![TriviaForge Main Interface](screenshots/main-interface.png?v=202511)
 
 ## Features
 
@@ -19,7 +19,7 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 - **Password Reset**: Reset player passwords and manage account types
 
 <!-- Screenshot Placeholder: Admin Dashboard -->
-![Admin Dashboard](screenshots/admin-dashboard.png)
+![Admin Dashboard](screenshots/admin-dashboard.png?v=202511)
 
 ### For Presenters
 - **Live Quiz Control**: Present questions, reveal answers, and navigate through quizzes in real-time
@@ -29,7 +29,7 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 - **Multi-room Support**: Manage multiple concurrent trivia sessions
 
 <!-- Screenshot Placeholder: Presenter View -->
-![Presenter View](screenshots/presenter-view.png)
+![Presenter View](screenshots/presenter-view.png?v=202511)
 
 ### For Players
 - **Mobile-Optimized Interface**: Responsive design that works seamlessly on all devices
@@ -45,17 +45,17 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 <table>
   <tr>
     <td width="33%" align="center">
-      <img src="screenshots/player-mobile-waiting.png" alt="Player Waiting" width="100%"/>
+      <img src="screenshots/player-mobile-waiting.png?v=202511" alt="Player Waiting" width="100%"/>
       <br/>
       <em>Waiting for Question</em>
     </td>
     <td width="33%" align="center">
-      <img src="screenshots/player-questions.png" alt="Player Answering" width="100%"/>
+      <img src="screenshots/player-questions.png?v=202511" alt="Player Answering" width="100%"/>
       <br/>
       <em>Answering Questions</em>
     </td>
     <td width="33%" align="center">
-      <img src="screenshots/player-mobile.png" alt="Player Overview" width="100%"/>
+      <img src="screenshots/player-mobile.png?v=202511" alt="Player Overview" width="100%"/>
       <br/>
       <em>Interface Overview</em>
     </td>
@@ -68,7 +68,7 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 - **Reveal Animations**: Engaging answer reveals with visual feedback
 
 <!-- Screenshot Placeholder: Display/Spectator View -->
-![Spectator Display](screenshots/spectator-display.png)
+![Spectator Display](screenshots/spectator-display.png?v=202511)
 
 ## Technology Stack
 
@@ -250,7 +250,7 @@ If you prefer using Docker Desktop's graphical interface:
 4. Review and save the imported quiz
 
 <!-- Screenshot Placeholder: Quiz Creation -->
-![Quiz Creation Interface](screenshots/quiz-creation.png)
+![Quiz Creation Interface](screenshots/quiz-creation.png?v=202511)
 
 ### Running a Live Session
 
@@ -276,7 +276,7 @@ If you prefer using Docker Desktop's graphical interface:
    - Session data is automatically saved
 
 <!-- Screenshot Placeholder: Live Session Flow -->
-![Live Session in Progress](screenshots/live-session.png)
+![Live Session in Progress](screenshots/live-session.png?v=202511)
 
 ### Resuming an Interrupted Session
 
@@ -290,7 +290,7 @@ If a session is interrupted (server restart, connection loss, etc.):
 6. Continue from where you left off
 
 <!-- Screenshot Placeholder: Resume Session -->
-![Resume Session Feature](screenshots/resume-session.png)
+![Resume Session Feature](screenshots/resume-session.png?v=202511)
 
 ### Viewing Past Sessions
 
@@ -305,7 +305,7 @@ All completed and interrupted sessions are saved and can be reviewed:
    - Individual question results
 
 <!-- Screenshot Placeholder: Past Sessions -->
-![Past Sessions History](screenshots/past-sessions.png)
+![Past Sessions History](screenshots/past-sessions.png?v=202511)
 
 ## File Structure
 
