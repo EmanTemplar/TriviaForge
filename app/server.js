@@ -742,13 +742,27 @@ app.put('/api/quizzes/:filename', requireAdmin, async (req, res) => {
       [title, description, quizId]
     );
 
-    // Delete old quiz-question relationships and questions (cascades to answers)
-    await client.query(`
-      DELETE FROM questions
-      WHERE id IN (
-        SELECT question_id FROM quiz_questions WHERE quiz_id = $1
-      )
-    `, [quizId]);
+    // Get list of questions currently associated with this quiz
+    const oldQuestionsResult = await client.query(
+      'SELECT question_id FROM quiz_questions WHERE quiz_id = $1',
+      [quizId]
+    );
+    const oldQuestionIds = oldQuestionsResult.rows.map(row => row.question_id);
+
+    // Delete quiz-question relationships first
+    await client.query('DELETE FROM quiz_questions WHERE quiz_id = $1', [quizId]);
+
+    // Try to delete old questions that are NOT referenced by session_questions
+    // (Questions used in sessions will be preserved for historical data)
+    if (oldQuestionIds.length > 0) {
+      await client.query(`
+        DELETE FROM questions
+        WHERE id = ANY($1::int[])
+        AND NOT EXISTS (
+          SELECT 1 FROM session_questions WHERE question_id = questions.id
+        )
+      `, [oldQuestionIds]);
+    }
 
     // Insert new questions with answers
     for (let i = 0; i < questions.length; i++) {
