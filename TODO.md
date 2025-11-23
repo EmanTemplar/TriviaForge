@@ -57,9 +57,82 @@ This document tracks planned features, improvements, and tasks for future develo
 
 ---
 
+### 4. User Authentication & Account Management
+**Status:** ✅ Completed (v2.1.0 - Phase 2)
+**Description:** Implemented comprehensive user authentication system with guest and registered player accounts, session management, and admin controls.
+
+**Implementation:**
+- **Player Authentication System:**
+  - Guest accounts created automatically on first join
+  - Optional registration to upgrade guest accounts
+  - Password-protected registered accounts (bcrypt hashing)
+  - Separate username (account) and display name (in-game)
+  - Account type indicators (guest/player/admin)
+
+- **Session Management:**
+  - JWT-based authentication tokens (UUID from PostgreSQL)
+  - Configurable session timeout (default: 1 hour)
+  - Token verification endpoint for persistent login
+  - Auto-login for registered players with valid tokens
+  - Logout functionality with session cleanup
+
+- **User Management Interface (Admin):**
+  - View all users (guests and registered players)
+  - User statistics (games played, last seen, created date)
+  - Password reset functionality (sets password to NULL)
+  - Downgrade players to guest accounts
+  - Delete user accounts with confirmation
+  - Custom modal dialogs for all actions
+
+- **Password Management:**
+  - Admin-initiated password reset
+  - Set password modal for players after reset
+  - Password requirements (minimum 6 characters)
+  - HTTP 428 status for password reset detection
+  - Session invalidation on password reset
+
+- **Player Features:**
+  - Recent rooms list with active filtering
+  - Quick rejoin functionality
+  - Player account management page
+  - Display name updates
+  - Guest account registration
+  - Auto-login welcome message
+
+- **Security Features:**
+  - Protected API endpoints with middleware
+  - Authentication checks for registered usernames
+  - Token expiration and cleanup
+  - Secure password storage (bcrypt)
+  - Session persistence across page reloads
+
+- **Database Schema:**
+  - Extended users table with account_type field
+  - user_sessions table for authentication tokens
+  - Foreign key constraints and indexes
+  - Timezone-aware timestamp migration (TIMESTAMPTZ)
+
+**Features Delivered:**
+- Complete authentication flow for players
+- Guest-to-registered account upgrade path
+- Admin user management dashboard
+- Password reset workflow
+- Session persistence (1-2+ hours)
+- Recent rooms with activity detection
+- Custom modal system (replacing browser alerts)
+- Proper log messages for account types
+
+**Bug Fixes:**
+- Fixed foreign key constraint violation when updating quizzes
+- Fixed quiz questions loading authentication issue
+- Fixed misleading log messages (guest vs registered)
+- Reorganized UI shuffle button placement
+
+---
+
 ## Medium Priority
 
-### 4. Migrate to Database Backend
+### 5. Migrate to Database Backend
 **Status:** ✅ Completed (v2.0.0 - Phase 1)
 **Description:** Replaced JSON file-based storage with PostgreSQL database for improved data integrity, performance, and scalability.
 
@@ -105,16 +178,16 @@ This document tracks planned features, improvements, and tasks for future develo
 - Auto-updating timestamps via database triggers
 - Prepared for future analytics and reporting
 
-**Phase 2 (Future):**
-- [ ] Implement full user authentication system
-- [ ] Add role-based access control (RBAC)
+**Phase 2 (Authentication & User Management):**
+- [x] Implement full user authentication system (✅ Completed v2.1.0)
+- [x] Add role-based access control (guest/player/admin) (✅ Completed v2.1.0)
 - [ ] Create database backup/restore strategy
 - [ ] Add database migration versioning
 - [ ] Performance monitoring and query optimization
 
 ---
 
-### 5. Live Quiz Progress Dashboard for Presenter
+### 6. Live Quiz Progress Dashboard for Presenter
 **Status:** Planned
 **Description:** Add a real-time progress dashboard for presenters to view current quiz results and player performance during an active session.
 
@@ -150,7 +223,7 @@ This document tracks planned features, improvements, and tasks for future develo
 
 ---
 
-### 6. Player Progress Tracker
+### 7. Player Progress Tracker
 **Status:** Planned
 **Description:** Add a progress indicator for players to track their own performance throughout the quiz.
 
@@ -193,7 +266,7 @@ This document tracks planned features, improvements, and tasks for future develo
 
 ## Long-term / Major Refactors
 
-### 7. React Migration for Frontend
+### 8. React Migration for Frontend
 **Status:** Under Consideration
 **Description:** Restructure the HTML/JavaScript codebase using React to improve scalability, maintainability, and developer experience.
 
@@ -233,7 +306,7 @@ This document tracks planned features, improvements, and tasks for future develo
 
 ---
 
-### 8. GitHub Actions - Docker Auto-Build & Push
+### 9. GitHub Actions - Docker Auto-Build & Push
 **Status:** Planned
 **Description:** Set up GitHub Actions workflow to automatically build and push Docker images to Docker Hub on commits/releases.
 

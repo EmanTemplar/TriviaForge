@@ -15,6 +15,8 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 - **Excel Import**: Bulk import quizzes from professionally formatted Excel templates (supports 2-10 answer choices)
 - **Session Management**: Resume interrupted sessions with full state preservation
 - **Real-time Monitoring**: Track active rooms and player participation live
+- **User Management**: View and manage all user accounts (guest and registered players)
+- **Password Reset**: Reset player passwords and manage account types
 
 <!-- Screenshot Placeholder: Admin Dashboard -->
 ![Admin Dashboard](screenshots/admin-dashboard.png)
@@ -35,6 +37,10 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 - **Answer Locking**: Prevents re-answering after submission (even on reconnection)
 - **Reconnection Support**: Automatically restore progress when rejoining
 - **Progress Tracking**: Visual indicators for answered questions
+- **Account System**: Guest accounts with optional registration for persistent profiles
+- **Recent Rooms**: Quick rejoin to recently played active rooms
+- **Account Management**: Update display names and manage account settings
+- **Session Persistence**: Stay logged in for extended periods without re-authentication
 
 <table>
   <tr>
@@ -308,13 +314,17 @@ TriviaForge/
 ├── app/
 │   ├── public/           # Frontend files
 │   │   ├── index.html    # Admin panel
+│   │   ├── landing.html  # Landing page
 │   │   ├── presenter.html # Presenter interface
 │   │   ├── player.html   # Player interface
+│   │   ├── player-manage.html # Player account management
 │   │   ├── display.html  # Spectator/display view
 │   │   ├── styles.css    # Shared styles
 │   │   └── *.js          # Client-side scripts
 │   ├── init/             # Database initialization
-│   │   └── tables.sql    # PostgreSQL schema
+│   │   ├── tables.sql    # PostgreSQL schema
+│   │   ├── migrate_timestamps.sql # Timezone migration
+│   │   └── update-admin-password.sql # Admin password update
 │   ├── quizzes/          # Legacy quiz storage (deprecated)
 │   ├── sessions/         # Legacy session storage (deprecated)
 │   ├── server.js         # Main server application
@@ -371,9 +381,18 @@ Environment variables can be set in multiple ways (listed by precedence, highest
 - Automatic session state saving to PostgreSQL database
 - Player answer history preservation with transactions
 - Reconnection support with progress restoration
-- Timestamp tracking for created and resumed sessions
+- Timestamp tracking for created and resumed sessions (timezone-aware)
 - Status indicators (In Progress, Interrupted, Completed)
 - Session analytics with participant performance views
+
+### User Management
+- Guest accounts created automatically on first join
+- Optional registration for persistent accounts
+- Password-protected registered player accounts
+- Session tokens with configurable timeout (default 1 hour)
+- Admin password reset functionality
+- Account type management (guest/registered/admin)
+- Recent rooms tracking with active session filtering
 
 ### Answer Integrity
 - Server-side validation prevents answer manipulation
@@ -417,8 +436,15 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 
 ## Roadmap
 
-Potential future features (as of Nov. 2025):
-- [ ] User authentication and accounts
+Completed features:
+- [x] **User authentication and accounts** (Phase 2 - Nov 2025)
+  - Guest and registered player accounts
+  - Session persistence with JWT tokens
+  - Password reset functionality
+  - User management interface
+  - Recent rooms with active filtering
+
+Potential future features:
 - [ ] Question media support (images, audio)
 - [ ] Leaderboard and scoring systems
 - [ ] Timer-based questions
@@ -426,6 +452,7 @@ Potential future features (as of Nov. 2025):
 - [ ] Export results to CSV/PDF
 - [ ] Swapping Between Dark & Light mode
 - [ ] Internationalization
+- [ ] Player statistics and performance analytics
 
 ## Credits
 
