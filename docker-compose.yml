@@ -9,6 +9,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./app/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trivia -d trivia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
   app:
     image: emancodetemplar/triviaforge:latest
@@ -16,20 +21,20 @@ services:
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:
-      - db
-    env_file:
-      - .env
+      db:
+        condition: service_healthy
     environment:
-      # These can be overridden in Docker Desktop UI or via .env file
+      # Environment variables with sensible defaults
+      # Can be overridden via shell environment or Docker Desktop UI
       APP_PORT: 3000
       NODE_ENV: production
       DATABASE_URL: postgres://trivia:trivia@db:5432/trivia
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
-      TZ: America/New_York
-      SERVER_URL: ${SERVER_URL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+      TZ: ${TZ:-America/New_York}
+      SERVER_URL: ${SERVER_URL:-http://localhost:3000}
       HOST_IP: ${HOST_IP:-}
-      SESSION_TIMEOUT: 3600000
-      APP_NAME: TriviaForge
+      SESSION_TIMEOUT: ${SESSION_TIMEOUT:-3600000}
+      APP_NAME: ${APP_NAME:-TriviaForge}
     restart: unless-stopped
 volumes:
   pgdata:

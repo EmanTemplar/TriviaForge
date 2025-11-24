@@ -87,41 +87,72 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 
 ### Quick Start with Docker (Recommended)
 
+**Choose your preferred setup method:**
+
+#### Option A: Docker Desktop UI (Easiest for Beginners)
+
 1. **Clone the repository**
    ```bash
    git clone git@github.com:EmanTemplar/TriviaForge.git
    cd TriviaForge
    ```
 
-2. **Configure environment variables**
+2. **Open Docker Desktop**
+   - Navigate to the directory containing `docker-compose.yml` or import the project
 
-   Create a `.env` file in the root directory:
+3. **Configure environment variables via Docker Desktop UI**
+
+   Before starting, set these environment variables in Docker Desktop:
+   - Click on the `triviagame-app` service configuration
+   - Go to the **Environment** or **Configuration** tab
+   - Add/edit these variables:
+
+   | Variable | Recommended Value | Required |
+   |----------|------------------|----------|
+   | `ADMIN_PASSWORD` | `your_secure_password_here` | **Yes** |
+   | `SERVER_URL` | `http://YOUR_IP:3000` | **Yes** |
+   | `HOST_IP` | `YOUR_IP_ADDRESS` | Optional |
+   | `TZ` | `America/New_York` | Optional |
+
+   Find your IP address:
+   - **Windows**: Run `ipconfig` in Command Prompt
+   - **Mac/Linux**: Run `ifconfig` or `ip addr` in Terminal
+
+4. **Start the containers**
+   - Click the **Start** or **Play** button in Docker Desktop
+   - Wait 30-60 seconds for database initialization to complete
+   - Check the logs to confirm successful startup
+
+5. **Access the application**
+   - Admin Panel: `http://localhost:3000/index.html`
+   - Use the ADMIN_PASSWORD you set in step 3
+
+#### Option B: Command Line with .env File
+
+1. **Clone the repository**
+   ```bash
+   git clone git@github.com:EmanTemplar/TriviaForge.git
+   cd TriviaForge
+   ```
+
+2. **Create and configure .env file**
+
    ```bash
    cp .env.example .env
    ```
 
    Edit the `.env` file with your configuration:
    ```env
-   # Server Configuration
+   # Required Settings
+   ADMIN_PASSWORD=your_secure_password_here
+   SERVER_URL=http://192.168.1.100:3000  # Use your actual IP
+
+   # Optional Settings (defaults shown)
    APP_PORT=3000
    NODE_ENV=production
-
-   # Database Configuration
-   DATABASE_URL=postgres://trivia:trivia@db:5432/trivia
-
-   # Admin Security
-   ADMIN_PASSWORD=your_secure_password_here
-
-   # Network Configuration
-   HOST_IP=192.168.1.100           # Your server's IP address for QR codes
-   SERVER_URL=http://localhost:3000 # Full server URL (overrides HOST_IP)
-
-   # Session Configuration
-   SESSION_TIMEOUT=3600000         # 1 hour in milliseconds
-
-   # Application
+   TZ=America/New_York
+   SESSION_TIMEOUT=3600000
    APP_NAME=TriviaForge
-   TZ=America/New_York            # Timezone for database timestamps
    ```
 
 3. **Start the application**
@@ -129,73 +160,40 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
    docker-compose up -d
    ```
 
-   The database schema will be automatically initialized on first run.
+   The database schema will be automatically initialized on first run (takes 30-60 seconds).
 
-4. **Access the application**
+4. **Verify startup**
+   ```bash
+   docker-compose logs -f app
+   ```
+   Wait for the message: `Server running on port 3000`
+
+5. **Access the application**
    - Admin Panel: `http://localhost:3000/index.html`
    - Presenter: `http://localhost:3000/presenter.html`
    - Player: `http://localhost:3000/player.html`
    - Display: `http://localhost:3000/display.html`
 
-5. **View logs** (optional)
-   ```bash
-   docker-compose logs -f app
-   ```
+#### Common Docker Commands
 
-6. **Stop the application**
-   ```bash
-   docker-compose down
-   ```
+**View logs:**
+```bash
+docker-compose logs -f        # All services
+docker-compose logs -f app    # Just the application
+docker-compose logs -f db     # Just the database
+```
 
-### Quick Start with Docker Desktop GUI
+**Stop the application:**
+```bash
+docker-compose down           # Stop and remove containers
+docker-compose down -v        # Also remove database volume (fresh start)
+```
 
-If you prefer using Docker Desktop's graphical interface:
-
-1. **Clone the repository** (same as above)
-   ```bash
-   git clone git@github.com:EmanTemplar/TriviaForge.git
-   cd TriviaForge
-   ```
-
-2. **Open Docker Desktop**
-   - Navigate to the directory containing `docker-compose.yml`
-   - Or import the project directly in Docker Desktop
-
-3. **Configure environment variables via Docker Desktop UI**
-
-   In Docker Desktop:
-   - Click on the `triviagame-app` service
-   - Go to the **Configuration** or **Environment** tab
-   - Add the following environment variables:
-
-   | Variable | Value | Required |
-   |----------|-------|----------|
-   | `ADMIN_PASSWORD` | `your_secure_password_here` | **Yes** |
-   | `SERVER_URL` | `http://YOUR_IP:3000` | **Yes** |
-   | `HOST_IP` | `YOUR_IP_ADDRESS` | No |
-   | `TZ` | `America/New_York` | No |
-   | `SESSION_TIMEOUT` | `3600000` | No |
-   | `APP_NAME` | `TriviaForge` | No |
-   | `APP_PORT` | `3000` | No |
-   | `NODE_ENV` | `production` | No |
-
-   **Important:**
-   - `ADMIN_PASSWORD` is required for admin login
-   - `SERVER_URL` should be set to your server's accessible URL (e.g., `http://192.168.1.100:3000`)
-   - Variables set in Docker Desktop UI override `.env` file values
-
-4. **Start the containers**
-   - Click the **Start** or **Play** button in Docker Desktop
-   - The database will initialize automatically on first run
-
-5. **Access the application**
-   - Same URLs as Docker Compose method above
-   - Check logs in Docker Desktop's **Logs** tab if issues occur
-
-6. **Stop the application**
-   - Click the **Stop** button in Docker Desktop
-
-**Note:** You can use **both** methods - create a `.env` file for defaults and override specific variables in Docker Desktop UI as needed. Docker Desktop UI values take precedence.
+**Restart after changes:**
+```bash
+docker-compose restart        # Restart existing containers
+docker-compose up -d          # Recreate containers if needed
+```
 
 ### Manual Setup (Without Docker)
 
