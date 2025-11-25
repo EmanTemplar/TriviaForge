@@ -80,7 +80,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgres://trivia:trivia@db:5432/trivia',
   max: 10, // Maximum number of database connections in the pool (NOT player limit)
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection cannot be established
+  connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection cannot be established (increased for initial startup)
 });
 
 // Event handlers for connection pool
@@ -92,15 +92,8 @@ pool.on('error', (err) => {
   console.error('❌ Unexpected PostgreSQL pool error:', err);
 });
 
-// Test initial connection on startup
-try {
-  const testConnection = await pool.query('SELECT NOW() as current_time');
-  console.log('🗄️  Database connection test successful at:', testConnection.rows[0].current_time);
-} catch (err) {
-  console.error('❌ Failed to connect to PostgreSQL database:', err.message);
-  console.error('⚠️  Application will continue but database features will not work');
-  console.error('💡 Make sure PostgreSQL container is running: docker-compose up -d db');
-}
+// Database connection and initialization happens in db-init.js
+// No early connection test here to avoid confusing timeout errors
 
 // --------------------
 // Database Helper Functions
@@ -201,18 +194,7 @@ const listQuizzesFromDB = async () => {
   return result.rows;
 };
 
-// Test query with sample data
-try {
-  const sampleQuiz = await getQuizById(1);
-  if (sampleQuiz) {
-    console.log('✅ Sample query successful! Quiz:', sampleQuiz.title);
-    console.log(`   └─ ${sampleQuiz.questions.length} question(s) loaded`);
-  } else {
-    console.log('ℹ️  No quiz with ID 1 found (this is normal for a fresh database)');
-  }
-} catch (err) {
-  console.error('❌ Sample query failed:', err.message);
-}
+// Sample query test moved to after database initialization
 
 // Configure multer for file uploads
 const upload = multer({
@@ -1920,8 +1902,8 @@ const io = new Server(server, {
 const liveRooms = {}; // { roomCode: { quizFilename, quizId, quizData (from DB), players: {}, presenterId, currentQuestionIndex, presentedQuestions: [], status, createdAt } }
 let quizOptions = { answerDisplayTime: 30 }; // Default options
 
-// Load quiz options on startup from database
-(async () => {
+// Quiz options will be loaded after database initialization
+async function loadQuizOptions() {
   try {
     const result = await pool.query(
       "SELECT setting_value FROM app_settings WHERE setting_key = 'answer_display_time'"
@@ -1937,7 +1919,7 @@ let quizOptions = { answerDisplayTime: 30 }; // Default options
     console.error('Error loading quiz options from database:', err);
     console.log('📋 Using default quiz options');
   }
-})();
+}
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
@@ -2545,6 +2527,9 @@ async function initializeAdminPassword() {
 (async () => {
   // Initialize database schema if needed (runs SQL files from app/init/)
   await initializeDatabase(pool);
+
+  // Load quiz options from database
+  await loadQuizOptions();
 
   // Update admin password from environment variable
   await initializeAdminPassword();

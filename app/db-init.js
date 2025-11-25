@@ -40,10 +40,30 @@ async function runSQLFile(pool, filePath) {
   }
 }
 
+async function waitForDatabase(pool, maxRetries = 30, delayMs = 1000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await pool.query('SELECT 1');
+      console.log('✅ Database connection established');
+      return true;
+    } catch (error) {
+      if (attempt === maxRetries) {
+        console.error(`❌ Failed to connect to database after ${maxRetries} attempts`);
+        throw error;
+      }
+      console.log(`⏳ Waiting for database... (attempt ${attempt}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
 export async function initializeDatabase(pool) {
   try {
-    console.log('🔍 Checking if database needs initialization...');
+    // Wait for database to be ready
+    console.log('🔍 Waiting for database to be ready...');
+    await waitForDatabase(pool);
 
+    console.log('🔍 Checking if database needs initialization...');
     const isInitialized = await isDatabaseInitialized(pool);
 
     if (isInitialized) {

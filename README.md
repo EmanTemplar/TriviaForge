@@ -87,9 +87,15 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 
 ### Quick Start with Docker (Recommended)
 
+> **Important**: TriviaForge requires **TWO containers** to run:
+> 1. `triviagame-app` - The Node.js application (pulls from Docker Hub)
+> 2. `triviagame-db` - PostgreSQL 15 database (pulls from Docker Hub)
+>
+> You **MUST** use docker-compose to start both containers together.
+
 **Choose your preferred setup method:**
 
-#### Option A: Docker Desktop UI (Easiest for Beginners)
+#### Option A: Command Line (Recommended)
 
 1. **Clone the repository**
    ```bash
@@ -97,82 +103,97 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
    cd TriviaForge
    ```
 
-2. **Open Docker Desktop**
-   - Navigate to the directory containing `docker-compose.yml` or import the project
+2. **⚠️ IMPORTANT: Configure environment variables BEFORE starting**
 
-3. **Configure environment variables via Docker Desktop UI**
-
-   Before starting, set these environment variables in Docker Desktop:
-   - Click on the `triviagame-app` service configuration
-   - Go to the **Environment** or **Configuration** tab
-   - Add/edit these variables:
-
-   | Variable | Recommended Value | Required |
-   |----------|------------------|----------|
-   | `ADMIN_PASSWORD` | `your_secure_password_here` | **Yes** |
-   | `SERVER_URL` | `http://YOUR_IP:3000` | **Yes** |
-   | `HOST_IP` | `YOUR_IP_ADDRESS` | Optional |
-   | `TZ` | `America/New_York` | Optional |
-
-   Find your IP address:
-   - **Windows**: Run `ipconfig` in Command Prompt
-   - **Mac/Linux**: Run `ifconfig` or `ip addr` in Terminal
-
-4. **Start the containers**
-   - Click the **Start** or **Play** button in Docker Desktop
-   - Wait 30-60 seconds for database initialization to complete
-   - Check the logs to confirm successful startup
-
-5. **Access the application**
-   - Admin Panel: `http://localhost:3000/index.html`
-   - Use the ADMIN_PASSWORD you set in step 3
-
-#### Option B: Command Line with .env File
-
-1. **Clone the repository**
-   ```bash
-   git clone git@github.com:EmanTemplar/TriviaForge.git
-   cd TriviaForge
-   ```
-
-2. **Create and configure .env file**
-
+   Create your `.env` file from the template:
    ```bash
    cp .env.example .env
    ```
 
-   Edit the `.env` file with your configuration:
-   ```env
-   # Required Settings
-   ADMIN_PASSWORD=your_secure_password_here
-   SERVER_URL=http://192.168.1.100:3000  # Use your actual IP
+   **Now open the `.env` file in a text editor and configure these REQUIRED settings:**
 
-   # Optional Settings (defaults shown)
-   APP_PORT=3000
-   NODE_ENV=production
-   TZ=America/New_York
-   SESSION_TIMEOUT=3600000
-   APP_NAME=TriviaForge
+   ```env
+   # REQUIRED: Set your admin password (login won't work without this!)
+   ADMIN_PASSWORD=your_secure_password_here
+
+   # REQUIRED: Set your server IP for QR codes to work
+   SERVER_URL=http://192.168.1.100:3000  # Replace with YOUR actual IP
+
+   # Optional: Set your host IP (helps with network detection)
+   HOST_IP=192.168.1.100  # Replace with YOUR actual IP
    ```
+
+   Find your IP address:
+   - **Windows**: Run `ipconfig` in Command Prompt (look for IPv4 Address)
+   - **Mac/Linux**: Run `ifconfig` or `ip addr` in Terminal
+
+   **Do not proceed until you've set `ADMIN_PASSWORD` and `SERVER_URL` in your .env file!**
 
 3. **Start the application**
    ```bash
    docker-compose up -d
    ```
 
-   The database schema will be automatically initialized on first run (takes 30-60 seconds).
+   This will:
+   - Pull `postgres:15` from Docker Hub
+   - Pull `emancodetemplar/triviaforge:latest` from Docker Hub
+   - Start the database and wait for it to be healthy
+   - Initialize the database schema automatically (takes 30-60 seconds)
+   - Start the application
 
 4. **Verify startup**
    ```bash
    docker-compose logs -f app
    ```
-   Wait for the message: `Server running on port 3000`
+
+   Wait for these success messages:
+   - `✅ Database connection established`
+   - `✅ Database initialization completed successfully`
+   - `Server running on port 3000`
 
 5. **Access the application**
+   - Landing Page: `http://localhost:3000` (or use your SERVER_URL)
    - Admin Panel: `http://localhost:3000/index.html`
-   - Presenter: `http://localhost:3000/presenter.html`
-   - Player: `http://localhost:3000/player.html`
-   - Display: `http://localhost:3000/display.html`
+   - Use the ADMIN_PASSWORD you set in your .env file
+
+#### Option B: Docker Desktop UI
+
+1. **Clone the repository**
+   ```bash
+   git clone git@github.com:EmanTemplar/TriviaForge.git
+   cd TriviaForge
+   ```
+
+2. **⚠️ IMPORTANT: Configure .env file FIRST**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Open `.env` in a text editor and set at minimum:
+   - `ADMIN_PASSWORD=your_secure_password`
+   - `SERVER_URL=http://YOUR_IP:3000`
+   - `HOST_IP=YOUR_IP`
+
+   (See Option A step 2 for details)
+
+3. **Start via Docker Desktop**
+   - Open Docker Desktop
+   - Open a terminal in the TriviaForge directory
+   - Run: `docker-compose up -d`
+   - OR drag the project folder into Docker Desktop (if supported)
+
+4. **Monitor in Docker Desktop UI**
+   - Go to **Containers** tab
+   - You should see both containers running:
+     - `triviagame-app`
+     - `triviagame-db`
+   - Click on `triviagame-app` to view logs
+   - Wait for: `Server running on port 3000`
+
+5. **Access the application**
+   - Landing Page: `http://localhost:3000`
+   - Use the ADMIN_PASSWORD from your .env file
 
 #### Common Docker Commands
 
@@ -319,17 +340,17 @@ TriviaForge/
 │   │   ├── display.html  # Spectator/display view
 │   │   ├── styles.css    # Shared styles
 │   │   └── *.js          # Client-side scripts
-│   ├── init/             # Database initialization
-│   │   ├── tables.sql    # PostgreSQL schema
-│   │   ├── migrate_timestamps.sql # Timezone migration
-│   │   └── update-admin-password.sql # Admin password update
+│   ├── init/             # Database initialization SQL scripts
+│   │   ├── 01-tables.sql # PostgreSQL schema
+│   │   ├── 02-migrate_timestamps.sql # Timezone migration
+│   │   └── 03-update-admin-password.sql # Admin password update
 │   ├── quizzes/          # Legacy quiz storage (deprecated)
-│   ├── sessions/         # Legacy session storage (deprecated)
 │   ├── server.js         # Main server application
+│   ├── db-init.js        # Database initialization module
 │   ├── Dockerfile        # Docker container definition
 │   └── package.json      # Dependencies
-├── docker-compose.yml    # Docker orchestration
-├── .env.example          # Environment variables template
+├── docker-compose.yml    # Docker orchestration configuration
+├── .env.example          # Environment variables template (copy to .env)
 ├── LICENSE               # PolyForm Noncommercial License
 ├── CONTRIBUTING.md       # Contribution guidelines
 ├── TODO.md               # Feature roadmap
