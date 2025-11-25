@@ -1,6 +1,6 @@
 services:
   db:
-    image: emancodetemplar/triviaforge-db:latest
+    image: postgres:15
     container_name: triviagame-db
     environment:
       POSTGRES_USER: trivia

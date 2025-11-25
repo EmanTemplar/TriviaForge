@@ -11,6 +11,7 @@ import multer from 'multer';
 import ExcelJS from 'exceljs';
 import pkg from 'pg';
 const { Pool } = pkg;
+import { initializeDatabase } from './db-init.js';
 
 // --------------------
 // Helper: Auto-detect local IP
@@ -2542,6 +2543,11 @@ async function initializeAdminPassword() {
 // Start Server
 // --------------------
 (async () => {
+  // Initialize database schema if needed (runs SQL files from app/init/)
+  await initializeDatabase(pool);
+
+  // Update admin password from environment variable
   await initializeAdminPassword();
+
   server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 })();

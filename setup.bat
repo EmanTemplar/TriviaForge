@@ -69,20 +69,6 @@ echo Step 4: Pulling required Docker images...
 echo This may take a few minutes on first run...
 echo.
 
-echo Pulling TriviaForge PostgreSQL image...
-docker pull emancodetemplar/triviaforge-db:latest
-if errorlevel 1 (
-    echo [X] Failed to pull TriviaForge PostgreSQL image
-    echo This could be due to:
-    echo   - No internet connection
-    echo   - Docker Hub is down or rate-limited
-    echo   - Firewall blocking Docker Hub access
-    pause
-    exit /b 1
-)
-echo [OK] TriviaForge PostgreSQL image downloaded
-
-echo.
 echo Pulling TriviaForge application image...
 docker pull emancodetemplar/triviaforge:latest
 if errorlevel 1 (
@@ -95,11 +81,13 @@ if errorlevel 1 (
     exit /b 1
 )
 echo [OK] TriviaForge application image downloaded
+echo.
+echo NOTE: PostgreSQL 15 will be automatically pulled by docker-compose
 
-REM Database initialization files are now baked into the Docker image
+REM Database is initialized automatically by the app container on first startup
 echo.
 echo Step 5: Database initialization verification...
-echo [OK] Database initialization files are included in Docker image
+echo [OK] Database initialization handled by application container
 
 REM Summary
 echo.

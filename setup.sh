@@ -92,18 +92,6 @@ echo "Step 4: Pulling required Docker images..."
 echo "This may take a few minutes on first run..."
 echo ""
 
-print_info "Pulling TriviaForge PostgreSQL image..."
-if docker pull emancodetemplar/triviaforge-db:latest; then
-    print_success "TriviaForge PostgreSQL image downloaded"
-else
-    print_error "Failed to pull TriviaForge PostgreSQL image"
-    echo "This could be due to:"
-    echo "  - No internet connection"
-    echo "  - Docker Hub is down or rate-limited"
-    echo "  - Firewall blocking Docker Hub access"
-    exit 1
-fi
-
 print_info "Pulling TriviaForge application image..."
 if docker pull emancodetemplar/triviaforge:latest; then
     print_success "TriviaForge application image downloaded"
@@ -116,12 +104,15 @@ else
     exit 1
 fi
 
-# Database initialization files are now baked into the Docker image
+echo ""
+print_info "PostgreSQL 15 will be automatically pulled by docker-compose"
+
+# Database is initialized automatically by the app container on first startup
 echo ""
 echo "Step 5: Database initialization verification..."
-print_success "Database initialization files are included in Docker image"
+print_success "Database initialization handled by application container"
 
-# Line endings are handled during Docker image build
+# Setup complete
 echo ""
 echo "Step 6: Environment verification complete..."
 print_success "All checks passed"
