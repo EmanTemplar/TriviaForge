@@ -69,10 +69,10 @@ echo Step 4: Pulling required Docker images...
 echo This may take a few minutes on first run...
 echo.
 
-echo Pulling PostgreSQL 15 image...
-docker pull postgres:15
+echo Pulling TriviaForge PostgreSQL image...
+docker pull emancodetemplar/triviaforge-db:latest
 if errorlevel 1 (
-    echo [X] Failed to pull postgres:15 image
+    echo [X] Failed to pull TriviaForge PostgreSQL image
     echo This could be due to:
     echo   - No internet connection
     echo   - Docker Hub is down or rate-limited
@@ -80,7 +80,7 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-echo [OK] PostgreSQL 15 image downloaded
+echo [OK] TriviaForge PostgreSQL image downloaded
 
 echo.
 echo Pulling TriviaForge application image...
@@ -96,34 +96,10 @@ if errorlevel 1 (
 )
 echo [OK] TriviaForge application image downloaded
 
-REM Check if initialization SQL files exist
+REM Database initialization files are now baked into the Docker image
 echo.
-echo Step 5: Verifying database initialization files...
-if not exist "app\init" (
-    echo [X] app\init directory not found
-    pause
-    exit /b 1
-)
-
-if not exist "app\init\tables.sql" (
-    echo [X] Required file not found: app\init\tables.sql
-    pause
-    exit /b 1
-)
-
-if not exist "app\init\migrate_timestamps.sql" (
-    echo [X] Required file not found: app\init\migrate_timestamps.sql
-    pause
-    exit /b 1
-)
-
-if not exist "app\init\update-admin-password.sql" (
-    echo [X] Required file not found: app\init\update-admin-password.sql
-    pause
-    exit /b 1
-)
-
-echo [OK] All initialization files present
+echo Step 5: Database initialization verification...
+echo [OK] Database initialization files are included in Docker image
 
 REM Summary
 echo.

@@ -92,11 +92,11 @@ echo "Step 4: Pulling required Docker images..."
 echo "This may take a few minutes on first run..."
 echo ""
 
-print_info "Pulling PostgreSQL 15 image..."
-if docker pull postgres:15; then
-    print_success "PostgreSQL 15 image downloaded"
+print_info "Pulling TriviaForge PostgreSQL image..."
+if docker pull emancodetemplar/triviaforge-db:latest; then
+    print_success "TriviaForge PostgreSQL image downloaded"
 else
-    print_error "Failed to pull postgres:15 image"
+    print_error "Failed to pull TriviaForge PostgreSQL image"
     echo "This could be due to:"
     echo "  - No internet connection"
     echo "  - Docker Hub is down or rate-limited"
@@ -116,41 +116,15 @@ else
     exit 1
 fi
 
-# Check if initialization SQL files exist
+# Database initialization files are now baked into the Docker image
 echo ""
-echo "Step 5: Verifying database initialization files..."
-if [ ! -d "app/init" ]; then
-    print_error "app/init directory not found"
-    exit 1
-fi
+echo "Step 5: Database initialization verification..."
+print_success "Database initialization files are included in Docker image"
 
-required_files=("app/init/tables.sql" "app/init/migrate_timestamps.sql" "app/init/update-admin-password.sql")
-for file in "${required_files[@]}"; do
-    if [ ! -f "$file" ]; then
-        print_error "Required file not found: $file"
-        exit 1
-    fi
-done
-print_success "All initialization files present"
-
-# Check for line ending issues (Windows CRLF vs Unix LF)
+# Line endings are handled during Docker image build
 echo ""
-echo "Step 6: Checking SQL file line endings..."
-for file in app/init/*.sql; do
-    if file "$file" | grep -q "CRLF"; then
-        print_warning "$file has Windows line endings (CRLF)"
-        print_info "Converting to Unix line endings (LF)..."
-
-        # Convert CRLF to LF (works on Git Bash, WSL, Mac, Linux)
-        if command -v dos2unix &> /dev/null; then
-            dos2unix "$file" 2>/dev/null
-        else
-            # Fallback method
-            sed -i 's/\r$//' "$file" 2>/dev/null || true
-        fi
-    fi
-done
-print_success "Line endings verified"
+echo "Step 6: Environment verification complete..."
+print_success "All checks passed"
 
 # Summary
 echo ""

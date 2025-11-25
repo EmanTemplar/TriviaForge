@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:15
+    image: emancodetemplar/triviaforge-db:latest
     container_name: triviagame-db
     environment:
       POSTGRES_USER: trivia
@@ -8,7 +8,6 @@ services:
       POSTGRES_DB: trivia
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./app/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U trivia -d trivia"]
       interval: 5s
