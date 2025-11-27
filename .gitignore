@@ -39,3 +39,6 @@ desktop.ini
 # Temporary files
 *.tmp
 .temp/
+
+# Development/Internal documentation (for AI agents and internal use only)
+DEV-SUMMARY.md

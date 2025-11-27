@@ -22,6 +22,9 @@ archive/
 .git/
 .gitignore
 
+# Development/Internal documentation (for AI agents and internal use only)
+../DEV-SUMMARY.md
+
 # IDE files
 .vscode/
 .idea/

@@ -15,7 +15,15 @@ services:
       retries: 10
     restart: unless-stopped
   app:
-    image: emancodetemplar/triviaforge:latest
+    # LOCAL DEVELOPMENT: Build from local Dockerfile
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: triviaforge:local
+
+    # PRODUCTION/DOCKER HUB: Uncomment below and comment out 'build' section above
+    # image: emancodetemplar/triviaforge:latest
+
     container_name: triviagame-app
     ports:
       - "${APP_PORT:-3000}:3000"

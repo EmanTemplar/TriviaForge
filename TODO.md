@@ -224,43 +224,52 @@ This document tracks planned features, improvements, and tasks for future develo
 ---
 
 ### 7. Player Progress Tracker
-**Status:** Planned
-**Description:** Add a progress indicator for players to track their own performance throughout the quiz.
+**Status:** ✅ Completed (v2.1.6)
+**Description:** Implemented server-side session tracking and comprehensive progress modal for players to view their performance throughout the quiz.
 
-**Current Limitation:**
-- Players only see if their last answer was correct/incorrect
-- No running total of their performance
-- Cannot see how many questions remain
+**Implementation:**
+- **Backend API**: `GET /api/player/progress/:roomCode` endpoint retrieves complete question history with correct/incorrect/pending status
+- **Server-side Tracking**: Uses `room.presentedQuestions` and `room.revealedQuestions` arrays to track question presentation and answer reveal status
+- **Modal Interface**: Full-screen progress modal displaying:
+  - Statistics dashboard: Correct count, Incorrect count, Accuracy %, Answered count
+  - Question-by-question history with status indicators:
+    - ✓ Correct
+    - ✗ Incorrect
+    - ⏳ Waiting for reveal (answer submitted, not yet revealed)
+    - ○ Not answered
+  - Player's answer for each question displayed alongside correct answer after reveal
 
-**Proposed Features:**
-- Compact progress widget in player interface
-- Display personal statistics:
-  - Questions answered: X/Y
-  - Correct answers: X
-  - Incorrect answers: X
-  - Current accuracy percentage
-  - Questions remaining
-- Update in real-time after each answer is revealed
-- Visual progress bar or indicator
-- Motivational feedback based on performance
+- **Persistent Data**: Progress data persists across player disconnections/reconnections within the same session
+- **UI Components**:
+  - Progress button in navbar (center-aligned, visible only when in active room)
+  - Alternative button in sidebar for accessibility
+  - Modal opens on button click with smooth animation
 
-**UI Placement Options:**
-- Small widget in top corner of player interface
-- Section in mobile hamburger menu
-- Sticky footer bar with collapsed/expanded states
-- Sidebar on desktop view
+- **Data Integrity**: Server-side calculation based on actual room state, not client-side estimation
 
-**Use Cases:**
-- Self-assessment and motivation
-- Track personal improvement
-- Set personal goals during quiz
-- Understand performance before final results
+**Features Delivered:**
+- Complete session-based progress tracking without client-side storage
+- Statistics dashboard with accuracy metrics
+- Detailed question-by-question history with visual status icons
+- Persistent across disconnections and rejoin attempts
+- Mobile-optimized modal display
+- Real-time answer status indicators
+- Server-side validation prevents data manipulation
 
-**Technical Considerations:**
-- Client-side calculation based on revealed answers
-- Persist in player session state
-- Reset when joining new quiz
-- Consider accessibility for different screen sizes
+**Technical Details:**
+- **Frontend**: Fetches from `GET /api/player/progress/:roomCode` endpoint
+- **Backend**: Queries `room.presentedQuestions.includes(index)` and `room.revealedQuestions.includes(index)` arrays
+- **Data Storage**: Persists in server's `liveRooms` object during active sessions
+- **API Response**: Returns array of questions with presentation status, reveal status, and player's answer
+- **Files Modified**:
+  - `app/server.js` - Added `/api/player/progress/:roomCode` endpoint (lines 1889-1953)
+  - `app/public/player.html` - Added progress modal, button, and fetch/display logic
+  - `app/public/styles.css` - Added modal styling and responsive layout
+  - `docker-compose.yml` - Fixed to build from local Dockerfile instead of Docker Hub image
+
+**Bug Fixes During Implementation:**
+- Fixed data structure mismatch: Backend was expecting objects with `.index` and `.revealed` properties, but arrays stored simple number indices. Corrected to use `.includes()` method
+- Fixed CSS viewport height: Changed player container from `height: 100vh` to `height: calc(100vh - 60px)` to prevent unwanted 5px scrolling on mobile devices
 
 ---
 

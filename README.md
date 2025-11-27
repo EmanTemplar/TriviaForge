@@ -36,7 +36,7 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 - **Real-time Feedback**: Instant answer submission and result display
 - **Answer Locking**: Prevents re-answering after submission (even on reconnection)
 - **Reconnection Support**: Automatically restore progress when rejoining
-- **Progress Tracking**: Visual indicators for answered questions
+- **Progress Tracking**: Comprehensive modal showing detailed session statistics and question-by-question history with correct/incorrect/pending status (persists across disconnections)
 - **Account System**: Guest accounts with optional registration for persistent profiles
 - **Recent Rooms**: Quick rejoin to recently played active rooms
 - **Account Management**: Update display names and manage account settings

@@ -478,6 +478,7 @@ select option:hover {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 60px);
+  min-height: calc(100vh - 60px);
   padding: 0;
   gap: 0;
   overflow: hidden;
@@ -774,7 +775,7 @@ select option:hover {
 
   .player-container {
     flex-direction: column;
-    height: auto;
+    height: calc(100vh - 60px);
     min-height: calc(100vh - 60px);
     overflow-y: visible;
   }
@@ -845,7 +846,7 @@ select option:hover {
   .player-container {
     flex-direction: row;
     height: calc(100vh - 60px);
-    max-height: calc(100vh - 60px);
+    min-height: calc(100vh - 60px);
   }
 
   .question-area {

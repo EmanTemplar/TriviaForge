@@ -10,6 +10,32 @@
   <!-- Navbar -->
   <nav class="navbar">
     <div class="logo">Trivia Player</div>
+
+    <!-- Progress button container (center of navbar) -->
+    <div id="navProgressContainer" style="
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    ">
+      <button id="progressBtn" style="
+        display: none;
+        padding: 0.5rem 1rem;
+        background: rgba(79, 195, 247, 0.2);
+        border: 1px solid rgba(79, 195, 247, 0.4);
+        border-radius: 8px;
+        color: #4fc3f7;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: all 0.2s;
+        white-space: nowrap;
+      "
+      onmouseover="this.style.background='rgba(79, 195, 247, 0.3)'"
+      onmouseout="this.style.background='rgba(79, 195, 247, 0.2)'"
+      title="View your quiz progress">📊 Progress</button>
+    </div>
+
     <div id="navRoomInfo">
       <span id="navRoomCode">----</span>
       <span id="navConnectionStatus" title="Connection status">●</span>
@@ -111,6 +137,26 @@
         <h3>Room Info</h3>
         <div><strong>Room Code:</strong> <span id="displayRoomCode">----</span></div>
         <div><strong>Your Name:</strong> <span id="displayPlayerName">----</span></div>
+
+        <!-- Progress button in sidebar -->
+        <button id="progressBtnSidebar" style="
+          width: 100%;
+          padding: 0.75rem;
+          margin-top: 1rem;
+          background: rgba(79, 195, 247, 0.2);
+          border: 1px solid rgba(79, 195, 247, 0.4);
+          border-radius: 8px;
+          color: #4fc3f7;
+          cursor: pointer;
+          font-size: 1rem;
+          font-weight: 600;
+          transition: all 0.2s;
+        "
+        onmouseover="this.style.background='rgba(79, 195, 247, 0.3)'"
+        onmouseout="this.style.background='rgba(79, 195, 247, 0.2)'">
+          📊 View Progress
+        </button>
+
         <button id="leaveBtn">Leave Room</button>
       </div>
 
@@ -194,6 +240,38 @@
     </div>
   </div>
 
+  <!-- Progress Modal -->
+  <div id="progressModal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2001; overflow-y: auto;">
+    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 2rem; border-radius: 15px; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
+
+      <!-- Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3 style="margin: 0; color: #fff; font-size: 1.5rem;">📊 Your Progress</h3>
+        <button id="closeProgressModal" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold;">✕ Close</button>
+      </div>
+
+      <!-- Stats Summary -->
+      <div id="progressStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <!-- Stats cards will be populated here -->
+      </div>
+
+      <!-- Question History -->
+      <div>
+        <h4 style="color: #aaa; font-size: 1.1rem; margin: 0 0 1rem 0; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">Question History</h4>
+        <div id="questionHistory" style="display: flex; flex-direction: column; gap: 1rem;">
+          <!-- Question cards will be populated here -->
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="progressEmptyState" style="text-align: center; padding: 3rem 1rem; color: #aaa;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📝</div>
+        <p style="font-size: 1.1rem; margin: 0;">No questions answered yet!</p>
+        <p style="font-size: 0.9rem; margin: 0.5rem 0 0 0;">Your progress will appear here once the presenter starts the quiz.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Socket.IO -->
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -236,6 +314,9 @@
     let answerRevealTimeout = null; // Track the auto-hide timeout
     let lastActivityTime = Date.now(); // Track last activity for inactivity timeout
     let isConnected = false; // Track socket connection status
+
+    // Progress tracking (fetched from backend)
+    let cachedProgress = null; // Cache the last fetched progress
 
     // Pre-fill username and display name from localStorage if available
     const savedUsername = localStorage.getItem('playerUsername');
@@ -540,6 +621,164 @@
       }
       return 30000; // Default 30 seconds
     }
+
+    // ---------------------------
+    // Progress Modal Functions
+    // ---------------------------
+    const progressBtn = document.getElementById('progressBtn');
+    const progressModal = document.getElementById('progressModal');
+    const closeProgressModal = document.getElementById('closeProgressModal');
+    const progressStats = document.getElementById('progressStats');
+    const questionHistoryDiv = document.getElementById('questionHistory');
+    const progressEmptyState = document.getElementById('progressEmptyState');
+
+    async function showProgressModal() {
+      progressModal.style.display = 'flex';
+      await fetchAndDisplayProgress();
+    }
+
+    function hideProgressModal() {
+      progressModal.style.display = 'none';
+    }
+
+    async function fetchAndDisplayProgress() {
+      if (!currentRoomCode || !currentUsername) {
+        progressEmptyState.style.display = 'block';
+        progressStats.style.display = 'none';
+        questionHistoryDiv.parentElement.style.display = 'none';
+        return;
+      }
+
+      try {
+        // Show loading state
+        progressStats.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #aaa;">Loading...</div>';
+        questionHistoryDiv.innerHTML = '';
+
+        // Fetch progress from backend
+        const response = await fetch(`/api/player/progress/${currentRoomCode}?username=${encodeURIComponent(currentUsername)}`);
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch progress');
+        }
+
+        const progress = await response.json();
+        cachedProgress = progress;
+
+        // Filter to only presented questions for display
+        const presentedQuestions = progress.questionHistory.filter(q => q.presented);
+
+        // Show/hide empty state
+        if (presentedQuestions.length === 0) {
+          progressEmptyState.style.display = 'block';
+          progressStats.style.display = 'none';
+          questionHistoryDiv.parentElement.style.display = 'none';
+          return;
+        } else {
+          progressEmptyState.style.display = 'none';
+          progressStats.style.display = 'grid';
+          questionHistoryDiv.parentElement.style.display = 'block';
+        }
+
+        // Calculate stats (only from presented questions)
+        const answeredCount = presentedQuestions.filter(q => q.revealed).length;
+        const correctCount = presentedQuestions.filter(q => q.revealed && q.isCorrect).length;
+        const incorrectCount = presentedQuestions.filter(q => q.revealed && !q.isCorrect).length;
+        const accuracy = answeredCount > 0 ? ((correctCount / answeredCount) * 100).toFixed(1) : '0.0';
+
+        // Render stats cards
+        progressStats.innerHTML = `
+          <div style="background: rgba(0,200,0,0.2); border: 1px solid rgba(0,200,0,0.3); border-radius: 10px; padding: 1rem; text-align: center;">
+            <div style="font-size: 2rem; font-weight: bold; color: #0f0;">${correctCount}</div>
+            <div style="font-size: 0.9rem; color: #aaa;">Correct</div>
+          </div>
+          <div style="background: rgba(200,0,0,0.2); border: 1px solid rgba(200,0,0,0.3); border-radius: 10px; padding: 1rem; text-align: center;">
+            <div style="font-size: 2rem; font-weight: bold; color: #f66;">${incorrectCount}</div>
+            <div style="font-size: 0.9rem; color: #aaa;">Incorrect</div>
+          </div>
+          <div style="background: rgba(79,195,247,0.2); border: 1px solid rgba(79,195,247,0.3); border-radius: 10px; padding: 1rem; text-align: center;">
+            <div style="font-size: 2rem; font-weight: bold; color: #4fc3f7;">${accuracy}%</div>
+            <div style="font-size: 0.9rem; color: #aaa;">Accuracy</div>
+          </div>
+          <div style="background: rgba(255,165,0,0.2); border: 1px solid rgba(255,165,0,0.3); border-radius: 10px; padding: 1rem; text-align: center;">
+            <div style="font-size: 2rem; font-weight: bold; color: #ffa500;">${answeredCount}</div>
+            <div style="font-size: 0.9rem; color: #aaa;">Answered</div>
+          </div>
+        `;
+
+        // Render question history (only presented questions)
+        questionHistoryDiv.innerHTML = presentedQuestions.map((q, idx) => {
+          let statusIcon, statusColor, statusText, statusBg;
+
+          if (q.revealed && q.isCorrect) {
+            statusIcon = '✓';
+            statusColor = '#0f0';
+            statusText = 'Correct';
+            statusBg = 'rgba(0,200,0,0.2)';
+          } else if (q.revealed && !q.isCorrect) {
+            statusIcon = '✗';
+            statusColor = '#f66';
+            statusText = 'Incorrect';
+            statusBg = 'rgba(200,0,0,0.2)';
+          } else if (q.playerChoice !== null) {
+            statusIcon = '⏳';
+            statusColor = '#ffa500';
+            statusText = 'Waiting for reveal';
+            statusBg = 'rgba(255,165,0,0.2)';
+          } else {
+            statusIcon = '○';
+            statusColor = '#666';
+            statusText = 'Not answered';
+            statusBg = 'rgba(100,100,100,0.2)';
+          }
+
+          const choiceLetter = q.playerChoice !== null ? String.fromCharCode(65 + q.playerChoice) : '-';
+          const correctLetter = q.correctChoice !== null && q.revealed ? String.fromCharCode(65 + q.correctChoice) : '?';
+
+          return `
+            <div style="background: ${statusBg}; border: 1px solid ${statusColor}40; border-radius: 10px; padding: 1rem;">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+                <div style="flex: 1;">
+                  <div style="font-weight: bold; color: #fff; font-size: 1rem; margin-bottom: 0.5rem;">Q${q.index + 1}. ${q.text}</div>
+                  <div style="font-size: 0.85rem; color: #aaa; line-height: 1.4;">
+                    ${q.playerChoice !== null ? `<strong style="color: ${statusColor}">Your answer:</strong> ${choiceLetter}. ${q.choices[q.playerChoice]}` : '<em>No answer submitted</em>'}
+                  </div>
+                  ${q.revealed ? `
+                    <div style="font-size: 0.85rem; color: #0f0; margin-top: 0.5rem; line-height: 1.4;">
+                      <strong>Correct answer:</strong> ${correctLetter}. ${q.choices[q.correctChoice]}
+                    </div>
+                  ` : ''}
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center; margin-left: 1rem;">
+                  <div style="font-size: 2rem; color: ${statusColor};">${statusIcon}</div>
+                  <div style="font-size: 0.75rem; color: ${statusColor}; text-align: center; margin-top: 0.25rem;">${statusText}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+      } catch (err) {
+        console.error('Error fetching progress:', err);
+        progressEmptyState.style.display = 'block';
+        progressStats.style.display = 'none';
+        questionHistoryDiv.parentElement.style.display = 'none';
+      }
+    }
+
+    // Event listeners for progress modal
+    progressBtn.addEventListener('click', showProgressModal);
+    const progressBtnSidebar = document.getElementById('progressBtnSidebar');
+    if (progressBtnSidebar) {
+      progressBtnSidebar.addEventListener('click', showProgressModal);
+    }
+    closeProgressModal.addEventListener('click', hideProgressModal);
+
+    // Close modal when clicking outside
+    progressModal.addEventListener('click', (e) => {
+      if (e.target === progressModal) {
+        hideProgressModal();
+      }
+    });
 
     // ---------------------------
     // Connection Status Management
@@ -1033,6 +1272,9 @@
       navRoomInfo.classList.add('active');
       navRoomCode.textContent = roomCode;
 
+      // Show progress button
+      progressBtn.style.display = 'inline-block';
+
       // Show menu items (mobile)
       menuLeaveRoom.style.display = 'block';
       menuPlayersSection.style.display = 'block';
@@ -1098,6 +1340,9 @@
       selectedAnswer = null;
       answeredQuestions.clear();
 
+      // Note: We keep questionHistory intact so if player rejoins the same room,
+      // their progress is still visible. History rebuilds as questions are presented again.
+
       // Hide room info (desktop)
       joinSection.style.display = 'block';
       roomInfo.style.display = 'none';
@@ -1105,6 +1350,9 @@
       // Hide navbar room info (mobile)
       navRoomInfo.classList.remove('active');
       navRoomCode.textContent = '----';
+
+      // Hide progress button (but keep history in memory)
+      progressBtn.style.display = 'none';
 
       // Hide menu items (mobile)
       menuLeaveRoom.style.display = 'none';

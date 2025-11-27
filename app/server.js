@@ -1886,6 +1886,72 @@ app.delete('/api/sessions/:filename', requireAdmin, async (req, res) => {
   }
 });
 
+// Get player progress in current room
+app.get('/api/player/progress/:roomCode', async (req, res) => {
+  try {
+    const { roomCode } = req.params;
+    const { username } = req.query;
+
+    if (!username) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    const room = liveRooms[roomCode];
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found or session ended' });
+    }
+
+    // Find player by username (check all players in room)
+    const player = Object.values(room.players).find(p => p.username === username);
+    if (!player) {
+      return res.status(404).json({ error: 'Player not found in this room' });
+    }
+
+    // Build progress data
+    const progress = {
+      totalQuestions: room.quizData.questions.length,
+      currentQuestionIndex: room.currentQuestionIndex,
+      questionHistory: []
+    };
+
+    // Iterate through ALL questions in the quiz (not just presented ones)
+    // This gives a complete picture of their progress
+    room.quizData.questions.forEach((question, index) => {
+      // Check if this question was presented (presentedQuestions is an array of indices)
+      const wasPresented = room.presentedQuestions && room.presentedQuestions.includes(index);
+      // Check if this question's answer was revealed (revealedQuestions is an array of indices)
+      const wasRevealed = room.revealedQuestions && room.revealedQuestions.includes(index);
+
+      // Get player's answer for this question
+      const playerChoice = player.answers && player.answers[index] !== undefined
+        ? player.answers[index]
+        : null;
+
+      // Determine if answer was correct (only if revealed)
+      let isCorrect = false;
+      if (wasRevealed && playerChoice !== null) {
+        isCorrect = playerChoice === question.correctChoice;
+      }
+
+      progress.questionHistory.push({
+        index: index,
+        text: question.text,
+        choices: question.choices,
+        playerChoice: playerChoice,
+        correctChoice: wasRevealed ? question.correctChoice : null,
+        isCorrect: isCorrect,
+        revealed: wasRevealed,
+        presented: wasPresented
+      });
+    });
+
+    res.json(progress);
+  } catch (err) {
+    console.error('Error fetching player progress:', err);
+    res.status(500).json({ error: 'Failed to fetch progress' });
+  }
+});
+
 // --------------------
 // HTTP + Socket.IO Setup
 // --------------------
