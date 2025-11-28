@@ -231,6 +231,14 @@ This document tracks planned features, improvements, and tasks for future develo
 - Stats color hierarchy: Players/Accuracy in light blue, Total Correct in green (stands out)
 - Improved layout flexibility in Active Rooms section
 - Button repositioned for better layout clarity
+- Added About tab to Admin page with version display and system information
+  - Version badge showing v2.1.7
+  - Key features overview with checklist
+  - Quick start guide (4-step workflow)
+  - Support & documentation links (GitHub, Issues, Discussions)
+  - System information display (Application, Environment, Database, Real-time Protocol)
+  - About text describing TriviaForge capabilities
+  - License information (PolyForm Noncommercial License)
 
 ---
 
