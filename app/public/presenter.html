@@ -70,25 +70,25 @@
 
     <!-- Right Column: Connected Players -->
     <section class="presenter-players">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h2 style="margin: 0;">Connected Players</h2>
-        <button id="presenterProgressBtn" style="
-          display: none;
-          padding: 0.5rem 1rem;
-          background: rgba(79, 195, 247, 0.2);
-          border: 1px solid rgba(79, 195, 247, 0.4);
-          border-radius: 8px;
-          color: #4fc3f7;
-          cursor: pointer;
-          font-size: 0.85rem;
-          font-weight: 600;
-          transition: all 0.2s;
-          white-space: nowrap;
-        "
-        onmouseover="this.style.background='rgba(79, 195, 247, 0.3)'"
-        onmouseout="this.style.background='rgba(79, 195, 247, 0.2)'"
-        title="View live standings for all players">📊 Standings</button>
-      </div>
+      <h2 style="margin: 0 0 0.75rem 0;">Connected Players</h2>
+      <button id="presenterProgressBtn" style="
+        display: none;
+        width: 100%;
+        padding: 0.5rem 1rem;
+        margin-bottom: 1rem;
+        background: rgba(79, 195, 247, 0.2);
+        border: 1px solid rgba(79, 195, 247, 0.4);
+        border-radius: 8px;
+        color: #4fc3f7;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.2s;
+        white-space: nowrap;
+      "
+      onmouseover="this.style.background='rgba(79, 195, 247, 0.3)'"
+      onmouseout="this.style.background='rgba(79, 195, 247, 0.2)'"
+      title="View live standings for all players">📊 Standings</button>
       <div id="playerList" class="live-feed"></div>
     </section>
   </div>
@@ -861,8 +861,8 @@ async function fetchAndDisplayPresenterProgress() {
 
     // Render overall stats
     overallStats.innerHTML = `
-      <div style="background: rgba(0,200,0,0.2); border: 1px solid rgba(0,200,0,0.3); border-radius: 10px; padding: 1rem; text-align: center;">
-        <div style="font-size: 2rem; font-weight: bold; color: #0f0;">${totalPlayers}</div>
+      <div style="background: rgba(79,195,247,0.2); border: 1px solid rgba(79,195,247,0.3); border-radius: 10px; padding: 1rem; text-align: center;">
+        <div style="font-size: 2rem; font-weight: bold; color: #4fc3f7;">${totalPlayers}</div>
         <div style="font-size: 0.9rem; color: #aaa;">Players</div>
       </div>
       <div style="background: rgba(0,200,0,0.2); border: 1px solid rgba(0,200,0,0.3); border-radius: 10px; padding: 1rem; text-align: center;">

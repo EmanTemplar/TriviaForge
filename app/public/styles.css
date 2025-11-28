@@ -450,14 +450,29 @@ select option:hover {
 
 .roomCard {
   background: rgba(255,255,255,0.05);
-  padding: 0.5rem 1rem;
-  margin: 0.3rem 0;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
   border-radius: 8px;
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
   align-items: center;
   cursor: pointer;
   transition: 0.2s;
+}
+
+.roomCard > div:first-child {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.roomCard > div:nth-child(2) {
+  white-space: nowrap;
+}
+
+.roomCard button {
+  flex-shrink: 0;
 }
 
 .roomCard.activeRoom {
