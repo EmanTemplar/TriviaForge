@@ -188,38 +188,49 @@ This document tracks planned features, improvements, and tasks for future develo
 ---
 
 ### 6. Live Quiz Progress Dashboard for Presenter
-**Status:** Planned
-**Description:** Add a real-time progress dashboard for presenters to view current quiz results and player performance during an active session.
+**Status:** ✅ Completed (v2.1.7)
+**Description:** Implemented real-time progress dashboard for presenters to view all players' quiz results and performance during active sessions.
 
-**Current Limitation:**
-- Presenters can only see detailed results when revealing individual answers
-- No overview of overall quiz progress during the session
-- Cannot see which players are ahead or behind in real-time
+**Implementation:**
+- **Backend API**: `GET /api/room/progress/:roomCode` endpoint aggregates all player data
+- **Live Standings Modal**: Full-screen dashboard accessible via "📊 Standings" button in Connected Players section
+- **Overall Class Statistics**:
+  - Total players connected
+  - Total correct answers across all players
+  - Total incorrect answers
+  - Class-wide accuracy percentage
+  - Average correct answers per player
+- **Player Rankings Table**:
+  - Sorted by correct count (primary), then by accuracy (secondary)
+  - Medal recognition for top 3 players (🥇🥈🥉)
+  - Per-player stats: Player name, correct count, incorrect count, accuracy %, answered count
+  - Special row coloring for top performers
+- **Responsive Design**: Table adapts to flexible screen sizes and handles large player groups
+- **Data Integrity**: Uses server-side data only (counts only revealed questions)
 
-**Proposed Features:**
-- Button or section above "Connected Players" to open progress modal
-- Modal shows live leaderboard/standings
-- Display for each player:
-  - Total questions answered
-  - Correct/incorrect count
-  - Current score or percentage
-  - Questions not yet answered
-- Real-time updates as players submit answers
-- Sortable by score, name, or answer count
-- Visual indicators for performance (color-coded)
+**Features Delivered:**
+- Real-time player standings with live rankings
+- Overall class statistics dashboard
+- Per-player performance metrics
+- Medal recognition for top performers
+- Mobile and desktop responsive layout
+- Server-side validation prevents data manipulation
+- Connection status tracking
 
-**Use Cases:**
-- Monitor quiz progress during live sessions
-- Identify struggling players who may need help
-- See overall class/group performance trends
-- Make informed decisions about pacing
-- Provide encouragement to specific players
+**Technical Details:**
+- **Frontend**: Progress modal in presenter.html with auto-updating standings table
+- **Backend**: Aggregates player data from `liveRooms` object, counts only revealed questions
+- **API Response**: Includes room info, total questions, player list with scores
+- **Button Placement**: Full-width button below "Connected Players" header
+- **Files Modified**:
+  - `app/server.js` - Added `/api/room/progress/:roomCode` endpoint (lines 1955-2012)
+  - `app/public/presenter.html` - Standings button, modal, and JavaScript logic
+  - `app/public/styles.css` - Modal styling and responsive layout
 
-**Technical Considerations:**
-- Socket.IO event for requesting current standings
-- Server calculates scores based on revealed questions only
-- Modal component reusable across presenter interface
-- Refresh button or auto-refresh every few seconds
+**UI Improvements (v2.1.7):**
+- Stats color hierarchy: Players/Accuracy in light blue, Total Correct in green (stands out)
+- Improved layout flexibility in Active Rooms section
+- Button repositioned for better layout clarity
 
 ---
 
@@ -275,43 +286,51 @@ This document tracks planned features, improvements, and tasks for future develo
 
 ## Long-term / Major Refactors
 
-### 8. React Migration for Frontend
+### 8. Vue 3 Migration for Frontend
 **Status:** Under Consideration
-**Description:** Restructure the HTML/JavaScript codebase using React to improve scalability, maintainability, and developer experience.
+**Description:** Restructure the HTML/JavaScript codebase using Vue 3 to improve scalability, maintainability, and developer experience while keeping bundle size minimal.
 
 **Benefits:**
 - Component-based architecture
-- Better state management (Context API or Redux)
-- Improved code reusability
+- Reactive state management with Composition API
+- Improved code reusability and organization
 - Better testing capabilities
-- Modern development workflow
+- Modern development workflow with better tooling
 - Easier to onboard new developers
+- Smaller bundle size compared to React
 
 **Considerations:**
 - **Pros:**
-  - Cleaner component structure
-  - Better separation of concerns
-  - Rich ecosystem and tooling
-  - Improved performance with Virtual DOM
+  - Excellent component structure and reusability
+  - Simple, intuitive reactive data binding
+  - Composition API provides better code organization
+  - Smaller learning curve than React
+  - Excellent tooling with Vite
+  - Smaller bundle size (important for web apps)
+  - Great single-file component support (.vue files)
 
 - **Cons:**
   - Significant development time investment
   - Breaking change for contributors familiar with current codebase
   - Need to rebuild all components
-  - Bundle size increase
+  - Smaller ecosystem compared to React (but growing)
 
 **Migration Strategy (if approved):**
-1. Set up React development environment
+1. Set up Vue 3 + Vite development environment
 2. Create component library matching current UI
 3. Migrate page by page (start with Player page)
-4. Implement state management solution
+4. Implement state management with Pinia (lightweight Vue 3 store)
 5. Add TypeScript for type safety
 6. Update documentation and contribution guidelines
+7. Set up socket.io integration with Vue composables
 
-**Alternative Consideration:**
-- Could modernize current vanilla JS with better structure first
-- Consider lighter alternatives (Preact, Alpine.js, Lit)
-- Evaluate if React is necessary for project scale
+**Why Vue 3 over React:**
+- Better reactive state management for real-time features (like live quizzes)
+- Smaller final bundle size (important for web apps)
+- Lower cognitive overhead for team onboarding
+- Excellent balance of features and simplicity
+- Composition API better suited for complex interactive components
+- Superior developer experience with single-file components
 
 ---
 

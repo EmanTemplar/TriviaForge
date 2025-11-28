@@ -24,9 +24,11 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 ### For Presenters
 - **Live Quiz Control**: Present questions, reveal answers, and navigate through quizzes in real-time
 - **Player Management**: See connected players with live status indicators
+- **Live Standings Dashboard**: Real-time leaderboard showing all players' scores, accuracy, and rankings with medal recognition for top performers
 - **QR Code Generation**: Quick player join via scannable QR codes
 - **Session Resume**: Continue interrupted quizzes exactly where you left off
 - **Multi-room Support**: Manage multiple concurrent trivia sessions
+- **Class Performance Analytics**: View overall class statistics (total correct/incorrect, class accuracy percentage, average performance)
 
 <!-- Screenshot Placeholder: Presenter View -->
 ![Presenter View](screenshots/presenter-view.png?v=202511)
