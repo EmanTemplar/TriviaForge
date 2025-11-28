@@ -1952,6 +1952,65 @@ app.get('/api/player/progress/:roomCode', async (req, res) => {
   }
 });
 
+// Get all players' progress in a room (for presenter standings)
+app.get('/api/room/progress/:roomCode', async (req, res) => {
+  try {
+    const { roomCode } = req.params;
+
+    const room = liveRooms[roomCode];
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found or session ended' });
+    }
+
+    // Build progress data for all players
+    const players = Object.values(room.players).map(player => {
+      // Count how many questions this player answered correctly
+      let correctCount = 0;
+      let answeredCount = 0;
+
+      // Iterate through revealed questions to calculate scores
+      if (room.revealedQuestions && Array.isArray(room.revealedQuestions)) {
+        room.revealedQuestions.forEach(questionIndex => {
+          const question = room.quizData.questions[questionIndex];
+          const playerChoice = player.answers && player.answers[questionIndex] !== undefined
+            ? player.answers[questionIndex]
+            : null;
+
+          if (playerChoice !== null) {
+            answeredCount++;
+            if (playerChoice === question.correctChoice) {
+              correctCount++;
+            }
+          }
+        });
+      }
+
+      return {
+        name: player.displayName || player.username,
+        username: player.username,
+        correct: correctCount,
+        answered: answeredCount,
+        connected: player.connected
+      };
+    });
+
+    const roomProgress = {
+      roomCode: roomCode,
+      quizTitle: room.quizData.title,
+      totalQuestions: room.quizData.questions.length,
+      presentedCount: room.presentedQuestions ? room.presentedQuestions.length : 0,
+      revealedCount: room.revealedQuestions ? room.revealedQuestions.length : 0,
+      playerCount: players.length,
+      players: players
+    };
+
+    res.json(roomProgress);
+  } catch (err) {
+    console.error('Error fetching room progress:', err);
+    res.status(500).json({ error: 'Failed to fetch room progress' });
+  }
+});
+
 // --------------------
 // HTTP + Socket.IO Setup
 // --------------------
