@@ -387,6 +387,114 @@ jobs:
 
 ---
 
+### 10. mDNS Service Discovery + Smart QR Code URLs
+**Status:** Planned (Design Phase)
+**Description:** Implement Multicast DNS (mDNS) for easy local network access and smart QR code generation that automatically adapts to network capabilities. Users can access the server via `http://triviaforge.local` without needing to know the IP address. QR codes intelligently detect and use the best URL based on device capabilities.
+
+**Problem Being Solved:**
+- Users currently need to manually enter IP addresses to connect players to quiz sessions
+- QR codes are currently tied to specific IP addresses, making them non-portable
+- New/non-technical users struggle with IP address configuration
+- Corporate networks often block mDNS, leaving no fallback option
+- Older Android devices and some Windows systems don't support .local domains
+
+**Design Approach:**
+
+**1. Server-Side (mDNS Advertisement):**
+- Package selection: `bonjour` (pure JavaScript, no native deps, cross-platform)
+- Advertise service as `triviaforge` with type `_http._tcp`
+- Service name: Configurable via environment variable (default: `triviaforge`)
+- Include metadata: version, hostname, port
+- Graceful initialization: Continue if mDNS fails (non-blocking)
+
+**2. Docker Considerations (Critical):**
+- Don't rely on mDNS inside containers due to network isolation
+- Use `host` network mode on Linux (simplest, native mDNS works)
+- For macOS/Windows with Docker Desktop: Skip mDNS in container, expose port normally
+- Server detects if running in Docker and adjusts mDNS accordingly
+
+**3. QR Code Smart URL Selection:**
+- **Priority Order (what QR code should encode):**
+  1. Check environment variable `SERVER_URL` (user override)
+  2. Try mDNS hostname: `http://triviaforge.local:3000` (if enabled)
+  3. Auto-detect local IP address as fallback: `http://192.168.x.x:3000`
+  4. Allow manual IP entry in presenter UI (last resort)
+
+- **QR Code Generation:**
+  - Generate separate QR codes for different URL types
+  - Display primary QR code (mDNS if available, IP if not)
+  - Provide toggle to show alternative URLs (IP, room code)
+  - Display plain text URLs below QR code for manual entry
+
+**4. Client-Side Fallback Detection:**
+- JavaScript detects if `.local` domain is accessible on the device
+- If not supported: Fall back to room code + manual IP entry
+- Implement detection via hidden iframe or fetch attempt (fast, non-blocking)
+- Cache result in localStorage (5-minute TTL)
+- Show helpful hints: "Your device doesn't support .local addresses. Use room code or manual IP entry."
+
+**5. Configuration Options:**
+- Environment variables:
+  - `MDNS_ENABLED` (default: true) - Enable/disable mDNS advertising
+  - `MDNS_NAME` (default: triviaforge) - Service name to advertise
+  - `SERVER_URL` (optional) - Override all auto-detection
+  - `USE_IP_FALLBACK` (default: true) - Allow IP fallback when mDNS fails
+
+- Docker compose options:
+  - Option 1 (Linux): `network_mode: host` for native mDNS
+  - Option 2 (All platforms): Standard bridge networking + IP fallback
+  - Automatic detection: Server checks `HOSTNAME` env var to detect Docker
+
+**6. Testing Strategy:**
+- Test on: Windows 10+, macOS, Linux, iOS, Android 12+, Android <12
+- Test scenarios:
+  - Corporate network (mDNS blocked) → IP fallback works
+  - Home network (mDNS enabled) → .local domain works
+  - Docker on Linux → host mode with mDNS
+  - Docker on macOS/Windows → Standard networking with IP
+  - Mixed device types in same room
+
+**7. User Experience:**
+- Presenter sees clear status: "Access via: triviaforge.local:3000" (with fallback info)
+- QR code always available, works reliably across device types
+- Admin settings page shows detected IP and mDNS status
+- Error handling: Clear messages if connection fails, suggested alternatives
+
+**Implementation Priority:**
+1. Phase 1: Core mDNS + QR code (bonjour, basic config)
+2. Phase 2: Client-side fallback detection + smart URL selection
+3. Phase 3: Docker optimization + network mode detection
+4. Phase 4: Admin UI for configuration + status display
+
+**Files to Modify:**
+- `app/server.js` - mDNS setup, IP detection, environment handling
+- `app/public/presenter.html` - QR code display, URL alternatives
+- `docker-compose.yml` - Network mode option, env variables
+- `app/.env.example` - Configuration examples
+- Documentation updates for setup instructions
+
+**Success Criteria:**
+- ✅ Beginners can deploy Docker and users auto-discover without IP entry
+- ✅ Works reliably in corporate networks (with IP fallback)
+- ✅ QR code works on all device types
+- ✅ No compilation needed (pure JS mDNS package)
+- ✅ Graceful degradation when mDNS unavailable
+- ✅ Clear, non-technical user messaging
+
+**Dependencies to Add:**
+```json
+{
+  "bonjour": "^0.10.0"
+}
+```
+
+**Excluded (Not Needed):**
+- Complex mDNS browsing (only advertising is needed)
+- Custom DNS configuration (use system default)
+- HomeKit/Bonjour HAP compatibility (general HTTP is sufficient)
+
+---
+
 ## Notes
 
 - Tasks are prioritized based on user impact and implementation complexity
