@@ -1,14 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from './stores/auth.js'
 
-// Pages (will be created in Phase 3+)
-// These are placeholder imports that will be added as we create the pages
-const LoginPage = { template: '<div>Login Page</div>' }
+// Actual page components
+import LoginPage from './pages/LoginPage.vue'
+import DisplayPage from './pages/DisplayPage.vue'
+
+// Placeholder components (to be created in Phase 3+)
 const AdminPage = { template: '<div>Admin Page</div>' }
 const PresenterPage = { template: '<div>Presenter Page</div>' }
 const PlayerPage = { template: '<div>Player Page</div>' }
 const PlayerManagePage = { template: '<div>Player Management Page</div>' }
-const DisplayPage = { template: '<div>Display Page</div>' }
 
 const routes = [
   {
@@ -42,7 +43,7 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/display/:roomCode',
+    path: '/display',
     name: 'display',
     component: DisplayPage,
     meta: { requiresAuth: false }
