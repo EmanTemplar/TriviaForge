@@ -1603,13 +1603,14 @@ const getQuestionStatusText = (q) => {
   }
 
   .question-area {
-    min-height: 50vh;
+    min-height: auto;
+    flex: 0 0 auto;
   }
 
   .sidebar {
     width: 100%;
     min-width: unset;
-    max-height: 40vh;
+    flex: 1;
     overflow-y: auto;
   }
 
