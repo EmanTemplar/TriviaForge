@@ -819,6 +819,8 @@ const getQuestionStatusText = (q) => {
   background: rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   gap: 1rem;
+  position: relative;
+  z-index: 100;
 }
 
 .logo {
@@ -1488,6 +1490,41 @@ const getQuestionStatusText = (q) => {
 }
 
 /* Mobile styles */
+@media (max-width: 1024px) {
+  .hamburger {
+    display: block !important;
+    z-index: 101;
+  }
+
+  .menu {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+    padding: 1rem;
+    gap: 0;
+    display: none !important;
+    z-index: 99;
+  }
+
+  .menu.open {
+    display: flex !important;
+  }
+
+  .menu li {
+    width: 100%;
+    white-space: normal;
+  }
+
+  .menu a {
+    display: block;
+    padding: 0.75rem;
+  }
+}
+
 @media (max-width: 768px) {
   .hamburger {
     display: block;

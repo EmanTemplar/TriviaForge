@@ -627,7 +627,7 @@ const logout = async (e) => {
     console.error('Logout error:', err)
   }
   authStore.logout()
-  router.push('/login')
+  router.push({name: 'login'})
 }
 
 // Socket event handlers

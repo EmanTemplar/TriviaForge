@@ -176,6 +176,8 @@ const performLogout = async () => {
   min-height: 100vh;
   background: linear-gradient(135deg, #1a1a1a, #2b2b2b);
   padding: var(--spacing-md);
+  position: relative;
+  z-index: 100;
 }
 
 .login-box {

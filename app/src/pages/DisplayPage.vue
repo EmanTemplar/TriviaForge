@@ -148,6 +148,8 @@ onUnmounted(() => {
   height: 100vh;
   background: linear-gradient(135deg, #1a1a1a, #2b2b2b);
   overflow: hidden;
+  position: relative;
+  z-index: 100;
 }
 
 .main-display {
