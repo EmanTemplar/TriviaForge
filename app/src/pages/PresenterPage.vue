@@ -11,7 +11,7 @@
         <li><router-link to="/player">Player</router-link></li>
         <li><router-link to="/presenter/room">Presenter</router-link></li>
         <li><router-link to="/display">Spectate</router-link></li>
-        <li style="color: #4fc3f7; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.5rem; margin-top: 0.5rem;">
+        <li class="username-item">
           <span>{{ authStore.username || 'Admin' }}</span>
         </li>
         <li>
@@ -791,6 +791,10 @@ onUnmounted(() => {
 
 .menu a:hover {
   background: rgba(79, 195, 247, 0.2);
+}
+
+.username-item {
+  color: #4fc3f7;
 }
 
 .presenter-container {

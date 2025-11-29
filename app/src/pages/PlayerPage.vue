@@ -34,7 +34,7 @@
             <em v-if="currentPlayers.length === 0">Not in a room yet</em>
           </div>
         </li>
-        <li style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.5rem; margin-top: 0.5rem;">
+        <li v-if="loginUsername" class="logout-item">
           <a href="#" @click.prevent="handleLogout" style="color: #f66;">Logout</a>
         </li>
       </ul>
@@ -490,15 +490,28 @@ onMounted(() => {
     statusMessageType.value = 'error'
     answeredCurrentQuestion.value = true
   })
+
+  document.addEventListener('click', closeMenuIfOutside)
+  document.addEventListener('touchstart', closeMenuIfOutside)
 })
 
 onUnmounted(() => {
   socket.disconnect()
+  document.removeEventListener('click', closeMenuIfOutside)
+  document.removeEventListener('touchstart', closeMenuIfOutside)
 })
 
 // Methods
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
+}
+
+const closeMenuIfOutside = (e) => {
+  const menu = document.querySelector('.menu')
+  const hamburger = e.target.closest('.hamburger')
+  if (menu && menu.classList && menu.classList.contains('open') && !menu.contains(e.target) && !hamburger) {
+    menuOpen.value = false
+  }
 }
 
 const getTimeAgo = (timestamp) => {
@@ -904,6 +917,12 @@ const getQuestionStatusText = (q) => {
 
 .menu a:hover {
   color: #4fc3f7;
+}
+
+.logout-item {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .player-container {
