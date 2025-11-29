@@ -7,9 +7,7 @@ import DisplayPage from './pages/DisplayPage.vue'
 import PlayerPage from './pages/PlayerPage.vue'
 import PresenterPage from './pages/PresenterPage.vue'
 import AdminPage from './pages/AdminPage.vue'
-
-// Placeholder components (to be created in Phase 3+)
-const PlayerManagePage = { template: '<div>Player Management Page</div>' }
+import PlayerManagePage from './pages/PlayerManagePage.vue'
 
 const routes = [
   {

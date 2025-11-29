@@ -1,0 +1,597 @@
+<template>
+  <div class="player-manage-page">
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="logo">TriviaForge - Player Account</div>
+      <div class="hamburger" @click.stop="toggleMenu">&#9776;</div>
+      <ul class="menu" :class="{ open: menuOpen }" id="menu">
+        <li><router-link to="/player">Play</router-link></li>
+        <li><router-link to="/display">Spectate</router-link></li>
+      </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="manage-container">
+      <div class="manage-header">
+        <h1>Player Account</h1>
+        <p>Manage your player profile and settings</p>
+      </div>
+
+      <!-- Account Information -->
+      <div class="account-section">
+        <h2>Account Information</h2>
+        <div class="info-row">
+          <span class="info-label">Username:</span>
+          <span class="info-value">{{ username || '-' }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Account Type:</span>
+          <span class="info-value">{{ accountType === 'guest' ? 'Guest' : 'Registered' }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Current Display Name:</span>
+          <span class="info-value">{{ currentDisplayName || '-' }}</span>
+        </div>
+      </div>
+
+      <!-- Update Display Name -->
+      <div class="account-section">
+        <h2>Update Display Name</h2>
+        <p class="section-description">
+          Your display name is what other players see during games.
+        </p>
+        <form @submit.prevent="updateDisplayName" class="form">
+          <div class="form-group">
+            <label for="newDisplayName">New Display Name</label>
+            <input
+              v-model="newDisplayName"
+              type="text"
+              id="newDisplayName"
+              placeholder="Enter new display name"
+              maxlength="50"
+              required
+            />
+          </div>
+          <div class="btn-group">
+            <button type="submit" class="btn btn-primary">Update Display Name</button>
+            <button type="button" class="btn btn-secondary" @click="cancelUpdate">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Register Account (for Guest users only) -->
+      <div v-if="accountType === 'guest'" class="account-section register-section">
+        <h2>Register Your Account</h2>
+        <p class="section-description">
+          Register to save your account permanently and access it from any device.
+        </p>
+        <form @submit.prevent="registerAccount" class="form">
+          <div class="form-group">
+            <label for="registerPassword">Password</label>
+            <input
+              v-model="registerPassword"
+              type="password"
+              id="registerPassword"
+              placeholder="Choose a password"
+              minlength="6"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="confirmPassword">Confirm Password</label>
+            <input
+              v-model="confirmPassword"
+              type="password"
+              id="confirmPassword"
+              placeholder="Confirm your password"
+              minlength="6"
+              required
+            />
+          </div>
+          <div class="btn-group">
+            <button type="submit" class="btn btn-primary">Register Account</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Player Statistics -->
+      <div class="account-section">
+        <h2>Player Statistics</h2>
+        <div class="stats-placeholder">
+          Statistics will be available in a future update
+        </div>
+      </div>
+
+      <router-link to="/player" class="back-link">← Back to Player</router-link>
+    </div>
+
+    <!-- Dialog Modal -->
+    <Modal v-model="showDialog" size="small" :title="dialogTitle" @close="handleDialogClose">
+      <template #default>
+        <p class="dialog-message">{{ dialogMessage }}</p>
+      </template>
+      <template #footer>
+        <div class="dialog-buttons">
+          <button @click="handleDialogClose" class="btn btn-primary">OK</button>
+        </div>
+      </template>
+    </Modal>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import Modal from '@/components/common/Modal.vue'
+import { useApi } from '@/composables/useApi.js'
+
+const router = useRouter()
+const { post } = useApi()
+
+// UI State
+const menuOpen = ref(false)
+const showDialog = ref(false)
+const dialogTitle = ref('')
+const dialogMessage = ref('')
+
+// User data
+const username = ref('')
+const accountType = ref('guest')
+const currentDisplayName = ref('')
+const newDisplayName = ref('')
+
+// Registration form
+const registerPassword = ref('')
+const confirmPassword = ref('')
+
+// Load user info from localStorage
+const loadUserInfo = () => {
+  const storedUsername = localStorage.getItem('playerUsername')
+  const storedDisplayName = localStorage.getItem('playerDisplayName')
+  const storedAccountType = localStorage.getItem('playerAccountType') || 'guest'
+
+  if (!storedUsername) {
+    // No user info - redirect to player page
+    router.push('/player')
+    return
+  }
+
+  username.value = storedUsername
+  accountType.value = storedAccountType.toLowerCase()
+  currentDisplayName.value = storedDisplayName || storedUsername
+  newDisplayName.value = storedDisplayName || ''
+}
+
+// Update display name
+const updateDisplayName = async () => {
+  const trimmedName = newDisplayName.value.trim()
+
+  if (!trimmedName) {
+    showAlert('Please enter a display name.')
+    return
+  }
+
+  // Update localStorage
+  localStorage.setItem('playerDisplayName', trimmedName)
+  currentDisplayName.value = trimmedName
+
+  // Show success message
+  showAlert(
+    'Display name updated successfully!\n\nNote: This change will take effect the next time you join a room.',
+    'Success'
+  )
+}
+
+// Cancel update
+const cancelUpdate = () => {
+  newDisplayName.value = currentDisplayName.value
+}
+
+// Register account
+const registerAccount = async () => {
+  if (registerPassword.value !== confirmPassword.value) {
+    showAlert('Passwords do not match!')
+    return
+  }
+
+  if (registerPassword.value.length < 6) {
+    showAlert('Password must be at least 6 characters long.')
+    return
+  }
+
+  try {
+    const response = await post('/api/auth/register-guest', {
+      username: username.value,
+      password: registerPassword.value
+    })
+
+    // Update account type in localStorage
+    localStorage.setItem('playerAccountType', 'registered')
+
+    // Save auth token for auto-login
+    if (response.data.token) {
+      localStorage.setItem('playerAuthToken', response.data.token)
+    }
+
+    // Update UI
+    accountType.value = 'registered'
+
+    // Clear password fields
+    registerPassword.value = ''
+    confirmPassword.value = ''
+
+    showAlert(
+      'Account registered successfully!\n\nYou can now log in with your username and password from any device.',
+      'Registration Success'
+    )
+  } catch (err) {
+    showAlert('Registration failed: ' + (err.response?.data?.error || err.message), 'Error')
+    console.error('Registration error:', err)
+  }
+}
+
+// Dialog functions
+const showAlert = (message, title = 'Notification') => {
+  dialogTitle.value = title
+  dialogMessage.value = message
+  showDialog.value = true
+}
+
+const handleDialogClose = () => {
+  showDialog.value = false
+}
+
+// Menu toggle
+const toggleMenu = () => {
+  menuOpen.value = !menuOpen.value
+}
+
+const closeMenuIfOutside = (e) => {
+  const menu = document.getElementById('menu')
+  const hamburger = e.target.closest('.hamburger')
+  if (menu && menu.classList && menu.classList.contains('open') && !menu.contains(e.target) && !hamburger) {
+    menuOpen.value = false
+  }
+}
+
+// Lifecycle
+onMounted(() => {
+  loadUserInfo()
+  document.addEventListener('click', closeMenuIfOutside)
+  document.addEventListener('touchstart', closeMenuIfOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeMenuIfOutside)
+  document.removeEventListener('touchstart', closeMenuIfOutside)
+})
+</script>
+
+<style scoped>
+.player-manage-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #0d1117;
+  color: #c9d1d9;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.navbar {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+}
+
+.logo {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #4fc3f7;
+}
+
+.hamburger {
+  display: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #4fc3f7;
+}
+
+.menu {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 1rem;
+  align-items: center;
+}
+
+.menu li {
+  white-space: nowrap;
+}
+
+.menu a {
+  color: #c9d1d9;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.menu a:hover {
+  background: rgba(79, 195, 247, 0.2);
+}
+
+.manage-container {
+  flex: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 2rem;
+}
+
+.manage-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.manage-header h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+}
+
+.manage-header p {
+  color: #aaa;
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.account-section {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 2rem;
+}
+
+.account-section h2 {
+  margin: 0 0 1.5rem 0;
+  color: #fff;
+  font-size: 1.3rem;
+}
+
+.account-section.register-section {
+  background: rgba(0, 123, 255, 0.05);
+  border-color: rgba(0, 123, 255, 0.2);
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  color: #aaa;
+  font-weight: 600;
+}
+
+.info-value {
+  color: #4fc3f7;
+  font-weight: 500;
+}
+
+.section-description {
+  color: #aaa;
+  font-size: 0.9rem;
+  margin: 0 0 1rem 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  color: #aaa;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input {
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.form-group input::placeholder {
+  color: #666;
+}
+
+.form-group input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(79, 195, 247, 0.5);
+}
+
+.btn-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  font-size: 1rem;
+}
+
+.btn-primary {
+  background: rgba(0, 123, 255, 0.3);
+  border-color: rgba(0, 123, 255, 0.5);
+  color: #fff;
+  flex: 1;
+}
+
+.btn-primary:hover {
+  background: rgba(0, 123, 255, 0.5);
+  border-color: rgba(0, 123, 255, 0.7);
+}
+
+.btn-secondary {
+  background: rgba(100, 100, 100, 0.3);
+  border-color: rgba(100, 100, 100, 0.5);
+  color: #fff;
+  flex: 1;
+}
+
+.btn-secondary:hover {
+  background: rgba(100, 100, 100, 0.5);
+  border-color: rgba(100, 100, 100, 0.7);
+}
+
+.stats-placeholder {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #666;
+  font-style: italic;
+}
+
+.back-link {
+  display: inline-block;
+  color: #4fc3f7;
+  text-decoration: none;
+  margin-top: 2rem;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: #fff;
+}
+
+.dialog-message {
+  margin: 0;
+  color: #aaa;
+  text-align: center;
+  white-space: pre-wrap;
+}
+
+.dialog-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+/* Responsive Design */
+@media (max-width: 900px) {
+  .hamburger {
+    display: block;
+  }
+
+  .menu {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+    padding: 1rem;
+    gap: 0;
+    display: none;
+  }
+
+  .menu.open {
+    display: flex;
+  }
+
+  .menu li {
+    width: 100%;
+    white-space: normal;
+  }
+
+  .menu a {
+    display: block;
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .navbar {
+    padding: 0.75rem;
+  }
+
+  .logo {
+    font-size: 0.95rem;
+  }
+
+  .manage-container {
+    padding: 1rem;
+  }
+
+  .manage-header {
+    margin-bottom: 2rem;
+  }
+
+  .manage-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .manage-header p {
+    font-size: 0.95rem;
+  }
+
+  .account-section {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .account-section h2 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+  }
+
+  .info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.75rem 0;
+  }
+
+  .info-label {
+    margin-bottom: 0.5rem;
+  }
+
+  .btn-group {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .btn {
+    padding: 0.65rem 1rem;
+  }
+}
+</style>
