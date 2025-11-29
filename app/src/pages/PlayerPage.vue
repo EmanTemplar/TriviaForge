@@ -311,12 +311,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useSocket } from '@/composables/useSocket.js'
 import { useApi } from '@/composables/useApi.js'
 import { useUIStore } from '@/stores/ui.js'
 import Modal from '@/components/common/Modal.vue'
 import FormInput from '@/components/common/FormInput.vue'
 
+const router = useRouter()
 const socket = useSocket()
 const { post } = useApi()
 const uiStore = useUIStore()
