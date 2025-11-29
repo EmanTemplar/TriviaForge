@@ -963,6 +963,10 @@ const getQuestionStatusText = (q) => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
 }
 
 .waiting-title {
