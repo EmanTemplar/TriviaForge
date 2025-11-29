@@ -109,7 +109,7 @@ const attemptLogin = async () => {
   isLoading.value = true
 
   try {
-    const response = await post('/api/login', {
+    const response = await post('/api/auth/login', {
       username: username.value.trim(),
       password: password.value.trim()
     })
@@ -149,7 +149,7 @@ const performLogout = async () => {
     // Notify server of logout (optional)
     if (authStore.token) {
       try {
-        await post('/api/logout', {})
+        await post('/api/auth/logout', {})
       } catch (err) {
         console.error('Logout notification failed:', err)
       }
