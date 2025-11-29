@@ -5,10 +5,10 @@ import { useAuthStore } from './stores/auth.js'
 import LoginPage from './pages/LoginPage.vue'
 import DisplayPage from './pages/DisplayPage.vue'
 import PlayerPage from './pages/PlayerPage.vue'
+import PresenterPage from './pages/PresenterPage.vue'
 
 // Placeholder components (to be created in Phase 3+)
 const AdminPage = { template: '<div>Admin Page</div>' }
-const PresenterPage = { template: '<div>Presenter Page</div>' }
 const PlayerManagePage = { template: '<div>Player Management Page</div>' }
 
 const routes = [
@@ -25,10 +25,10 @@ const routes = [
     meta: { requiresAuth: true, requiredRole: 'admin' }
   },
   {
-    path: '/presenter/:roomCode',
+    path: '/presenter',
     name: 'presenter',
     component: PresenterPage,
-    meta: { requiresAuth: true, requiredRole: 'presenter' }
+    meta: { requiresAuth: true, requiredRole: 'admin' }
   },
   {
     path: '/player',
