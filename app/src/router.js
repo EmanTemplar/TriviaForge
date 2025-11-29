@@ -38,7 +38,7 @@ const routes = [
     path: '/manage',
     name: 'player-manage',
     component: PlayerManagePage,
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: false }
   },
   {
     path: '/display',

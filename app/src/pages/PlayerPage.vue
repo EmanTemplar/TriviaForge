@@ -709,7 +709,21 @@ const passwordSetupCancelled = () => {
 }
 
 const handleManageAccount = () => {
-  window.location.href = '/manage'
+  const username = savedUsername.value || usernameInput.value.trim()
+
+  if (!username) {
+    uiStore.addNotification('Please enter a username.', 'warning')
+    return
+  }
+
+  // Save username to localStorage if not already saved
+  if (!savedUsername.value) {
+    localStorage.setItem('playerUsername', username)
+    localStorage.setItem('playerAccountType', 'guest')
+    savedUsername.value = username
+  }
+
+  router.push('/manage')
 }
 
 const handleLeaveRoomClick = async () => {
