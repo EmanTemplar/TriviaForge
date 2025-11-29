@@ -760,6 +760,8 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+  position: relative;
+  z-index: 100;
 }
 
 .logo {
@@ -1623,13 +1625,23 @@ select:focus {
   }
 }
 
-@media (max-width: 900px) {
-  .container {
-    padding: 1rem;
+/* Hide user separator line on desktop */
+.menu li:nth-child(n+5) {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+@media (max-width: 1024px) {
+  .menu li:nth-child(n+5) {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
   }
 
   .hamburger {
-    display: block;
+    display: block !important;
+    z-index: 101;
   }
 
   .menu {
@@ -1642,11 +1654,12 @@ select:focus {
     border-bottom: 1px solid rgba(79, 195, 247, 0.2);
     padding: 1rem;
     gap: 0;
-    display: none;
+    display: none !important;
+    z-index: 99;
   }
 
   .menu.open {
-    display: flex;
+    display: flex !important;
   }
 
   .menu li {
@@ -1657,6 +1670,12 @@ select:focus {
   .menu a {
     display: block;
     padding: 0.75rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .container {
+    padding: 1rem;
   }
 
   .tabs-container {

@@ -284,6 +284,8 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+  position: relative;
+  z-index: 100;
 }
 
 .logo {
@@ -507,6 +509,54 @@ onUnmounted(() => {
 }
 
 /* Responsive Design */
+/* Hide user separator line on desktop */
+.menu li:nth-child(n+5) {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+@media (max-width: 1024px) {
+  .menu li:nth-child(n+5) {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+  }
+
+  .hamburger {
+    display: block !important;
+    z-index: 101;
+  }
+
+  .menu {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+    padding: 1rem;
+    gap: 0;
+    display: none !important;
+    z-index: 99;
+  }
+
+  .menu.open {
+    display: flex !important;
+  }
+
+  .menu li {
+    width: 100%;
+    white-space: normal;
+  }
+
+  .menu a {
+    display: block;
+    padding: 0.75rem;
+  }
+}
+
 @media (max-width: 900px) {
   .hamburger {
     display: block;

@@ -743,6 +743,8 @@ onUnmounted(() => {
   align-items: center;
   border-bottom: 1px solid rgba(79, 195, 247, 0.2);
   flex-wrap: wrap;
+  position: relative;
+  z-index: 100;
 }
 
 .logo {
@@ -1443,19 +1445,23 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 900px) {
-  .presenter-container {
-    grid-template-columns: 1fr;
-  }
+/* Hide user separator line on desktop */
+.menu li:nth-child(n+5) {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
 
-  .presenter-sidebar,
-  .quiz-display,
-  .presenter-players {
-    max-height: 50vh;
+@media (max-width: 1024px) {
+  .menu li:nth-child(n+5) {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
   }
 
   .hamburger {
-    display: block;
+    display: block !important;
+    z-index: 101;
   }
 
   .menu {
@@ -1468,11 +1474,12 @@ onUnmounted(() => {
     border-bottom: 1px solid rgba(79, 195, 247, 0.2);
     padding: 1rem;
     gap: 0;
-    display: none;
+    display: none !important;
+    z-index: 99;
   }
 
   .menu.open {
-    display: flex;
+    display: flex !important;
   }
 
   .menu li {
@@ -1483,6 +1490,18 @@ onUnmounted(() => {
   .menu a {
     display: block;
     padding: 0.75rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .presenter-container {
+    grid-template-columns: 1fr;
+  }
+
+  .presenter-sidebar,
+  .quiz-display,
+  .presenter-players {
+    max-height: 50vh;
   }
 }
 
