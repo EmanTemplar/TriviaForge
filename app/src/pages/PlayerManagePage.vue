@@ -332,6 +332,7 @@ onUnmounted(() => {
   margin: 0 auto;
   width: 100%;
   padding: 2rem;
+  overflow-y: auto;
 }
 
 .manage-header {
