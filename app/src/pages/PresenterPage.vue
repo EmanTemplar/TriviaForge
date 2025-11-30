@@ -648,11 +648,13 @@ const setupSocketListeners = () => {
     }
   })
 
-  socketInstance.on('roomRestored', ({ roomCode, quizTitle, questions, players }) => {
+  socketInstance.on('roomRestored', ({ roomCode, quizTitle, questions, players, presentedQuestions: serverPresentedQuestions, revealedQuestions: serverRevealedQuestions }) => {
     if (roomCode !== currentRoomCode.value) return
     currentQuestions.value = questions || []
     currentQuestionIndex.value = 0
     presentedQuestionIndex.value = null
+    presentedQuestions.value = serverPresentedQuestions || []
+    revealedQuestions.value = serverRevealedQuestions || []
     currentQuizTitle.value = quizTitle
     connectedPlayers.value = players || []
   })

@@ -196,10 +196,18 @@
             <div v-for="user in users" :key="user.id" class="user-item">
               <div class="user-info">
                 <div class="user-name">{{ user.username }}</div>
-                <div class="user-type">{{ user.account_type === 'admin' ? 'Admin' : 'Player' }}</div>
+                <div class="user-type" :class="{ 'type-admin': user.accountType === 'admin', 'type-player': user.accountType === 'player', 'type-guest': user.accountType === 'guest' }">
+                  {{ user.accountType === 'admin' ? 'Admin' : user.accountType === 'player' ? 'Player' : 'Guest' }}
+                </div>
               </div>
               <div class="user-stats">
-                <div v-if="user.last_login" class="user-last-login">Last login: {{ formatDate(user.last_login) }}</div>
+                <div v-if="user.lastSeen" class="user-last-login">Last seen: {{ formatDate(user.lastSeen) }}</div>
+                <div v-else class="user-last-login">Never played</div>
+              </div>
+              <div v-if="user.accountType !== 'admin'" class="user-actions">
+                <button v-if="user.accountType === 'player'" @click="resetUserPassword(user)" class="btn-reset" title="Reset Password">🔑</button>
+                <button v-if="user.accountType === 'player'" @click="downgradeUser(user)" class="btn-downgrade" title="Downgrade to Guest">⬇️</button>
+                <button @click="deleteUser(user)" class="btn-delete" title="Delete User">🗑️</button>
               </div>
             </div>
           </div>
@@ -735,9 +743,67 @@ const saveQuizOptions = async () => {
 const loadUsers = async () => {
   try {
     const response = await get('/api/users')
-    users.value = response.data
+    // Filter out spectators (Display/Spectator Display)
+    users.value = (response.data || []).filter(user => user.username !== 'Display')
   } catch (err) {
     console.error('Error loading users:', err)
+  }
+}
+
+const deleteUser = async (user) => {
+  const confirmed = await showConfirm(
+    `Are you sure you want to delete user "${user.username}"?\n\nThis action cannot be undone.`,
+    'Delete User'
+  )
+
+  if (!confirmed) return
+
+  try {
+    await del(`/api/users/${user.id}`)
+    await showAlert(`User "${user.username}" has been deleted successfully.`, 'User Deleted')
+    await loadUsers() // Refresh the list
+  } catch (err) {
+    const message = err.response?.data?.error || 'Failed to delete user'
+    await showAlert(message, 'Error')
+    console.error('Error deleting user:', err)
+  }
+}
+
+const downgradeUser = async (user) => {
+  const confirmed = await showConfirm(
+    `Downgrade "${user.username}" from Player to Guest?\n\nThis will:\n- Remove their password\n- End all active sessions\n- Keep their game history\n\nThey can be re-registered later.`,
+    'Downgrade to Guest'
+  )
+
+  if (!confirmed) return
+
+  try {
+    await post(`/api/users/${user.id}/downgrade`, {})
+    await showAlert(`User "${user.username}" has been downgraded to guest.`, 'User Downgraded')
+    await loadUsers() // Refresh the list
+  } catch (err) {
+    const message = err.response?.data?.error || 'Failed to downgrade user'
+    await showAlert(message, 'Error')
+    console.error('Error downgrading user:', err)
+  }
+}
+
+const resetUserPassword = async (user) => {
+  const confirmed = await showConfirm(
+    `Reset password for "${user.username}"?\n\nThis will:\n- Clear their current password\n- End all active sessions\n- Prompt them to set a new password on next login`,
+    'Reset Password'
+  )
+
+  if (!confirmed) return
+
+  try {
+    await post(`/api/users/${user.id}/reset-password`, {})
+    await showAlert(`Password reset for "${user.username}".\n\nThey will be prompted to set a new password on next login.`, 'Password Reset')
+    await loadUsers() // Refresh the list
+  } catch (err) {
+    const message = err.response?.data?.error || 'Failed to reset password'
+    await showAlert(message, 'Error')
+    console.error('Error resetting password:', err)
   }
 }
 
@@ -1128,7 +1194,7 @@ onUnmounted(() => {
   background: rgba(200, 0, 0, 0.2);
   border-color: rgba(200, 0, 0, 0.5);
   color: #f66;
-  margin-top: 0.5rem;
+  margin-top: 0rem;
 }
 
 .btn-delete:hover {
@@ -1729,17 +1795,84 @@ select:focus {
 
 .user-type {
   font-size: 0.85rem;
-  color: #aaa;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
   margin-top: 0.25rem;
+  display: inline-block;
+  font-weight: 500;
+}
+
+.user-type.type-admin {
+  background: rgba(255, 0, 0, 0.2);
+  color: #ff6666;
+  border: 1px solid rgba(255, 0, 0, 0.4);
+}
+
+.user-type.type-player {
+  background: rgba(79, 195, 247, 0.2);
+  color: #4fc3f7;
+  border: 1px solid rgba(79, 195, 247, 0.4);
+}
+
+.user-type.type-guest {
+  background: rgba(170, 170, 170, 0.2);
+  color: #aaa;
+  border: 1px solid rgba(170, 170, 170, 0.4);
 }
 
 .user-stats {
   text-align: right;
+  margin-right: 1rem;
 }
 
 .user-last-login {
   font-size: 0.85rem;
   color: #aaa;
+}
+
+.user-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.user-actions button {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.user-actions .btn-reset {
+  background: rgba(255, 193, 7, 0.2);
+  border: 1px solid rgba(255, 193, 7, 0.5);
+}
+
+.user-actions .btn-reset:hover {
+  background: rgba(255, 193, 7, 0.3);
+  transform: scale(1.1);
+}
+
+.user-actions .btn-downgrade {
+  background: rgba(156, 39, 176, 0.2);
+  border: 1px solid rgba(156, 39, 176, 0.5);
+}
+
+.user-actions .btn-downgrade:hover {
+  background: rgba(156, 39, 176, 0.3);
+  transform: scale(1.1);
+}
+
+.user-actions .btn-delete {
+  background: rgba(244, 67, 54, 0.2);
+  border: 1px solid rgba(244, 67, 54, 0.5);
+}
+
+.user-actions .btn-delete:hover {
+  background: rgba(244, 67, 54, 0.3);
+  transform: scale(1.1);
 }
 
 /* About Tab */

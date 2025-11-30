@@ -2298,7 +2298,9 @@ io.on('connection', (socket) => {
       roomCode,
       quizTitle: room.quizData.title,
       questions: room.quizData.questions,
-      players: Object.values(room.players)
+      players: Object.values(room.players),
+      presentedQuestions: room.presentedQuestions || [],
+      revealedQuestions: room.revealedQuestions || []
     });
 
     // If there's a current question active, send it to the viewer
