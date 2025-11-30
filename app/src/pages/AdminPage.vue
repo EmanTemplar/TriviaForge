@@ -622,11 +622,33 @@ const deleteQuestion = async (idx) => {
   }
 }
 
+// Utility function to shuffle array using Fisher-Yates algorithm
+const shuffleArray = (array) => {
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
 const shuffleQuestions = async () => {
   if (!selectedQuiz.value) return
   try {
-    await post(`/api/quizzes/${selectedQuiz.value.filename}/shuffle-questions`, {})
+    // Shuffle questions locally
+    const shuffledQuestions = shuffleArray(currentQuestions.value)
+
+    // Save shuffled questions via PUT endpoint
+    await put(`/api/quizzes/${selectedQuiz.value.filename}`, {
+      title: quizTitle.value,
+      description: quizDescription.value,
+      questions: shuffledQuestions
+    })
+
+    // Reload to refresh display
+    await loadQuizzes()
     selectQuiz(selectedQuiz.value)
+    showAlert('Questions shuffled successfully')
   } catch (err) {
     showAlert('Error shuffling questions: ' + err.message, 'Error')
   }
@@ -635,8 +657,33 @@ const shuffleQuestions = async () => {
 const shuffleAllChoices = async () => {
   if (!selectedQuiz.value) return
   try {
-    await post(`/api/quizzes/${selectedQuiz.value.filename}/shuffle-choices`, {})
+    // Shuffle choices within each question and track correct answer index
+    const updatedQuestions = currentQuestions.value.map(question => {
+      const choiceIndexMap = question.choices.map((_, idx) => idx)
+      const shuffledIndices = shuffleArray(choiceIndexMap)
+      const shuffledChoices = shuffledIndices.map(idx => question.choices[idx])
+
+      // Find where the correct answer ended up
+      const correctChoiceIndex = shuffledIndices.indexOf(question.correctChoice)
+
+      return {
+        ...question,
+        choices: shuffledChoices,
+        correctChoice: correctChoiceIndex
+      }
+    })
+
+    // Save shuffled choices via PUT endpoint
+    await put(`/api/quizzes/${selectedQuiz.value.filename}`, {
+      title: quizTitle.value,
+      description: quizDescription.value,
+      questions: updatedQuestions
+    })
+
+    // Reload to refresh display
+    await loadQuizzes()
     selectQuiz(selectedQuiz.value)
+    showAlert('Choices shuffled successfully')
   } catch (err) {
     showAlert('Error shuffling choices: ' + err.message, 'Error')
   }
