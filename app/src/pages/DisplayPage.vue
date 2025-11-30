@@ -36,11 +36,11 @@
       <!-- Players List -->
       <h3 class="sidebar-title">Players ({{ connectedPlayers }})</h3>
       <div class="players-list">
-        <div v-if="participants.length === 0" class="empty-state">
+        <div v-if="currentPlayers.length === 0" class="empty-state">
           <em>No players yet</em>
         </div>
-        <div v-for="player in participants" :key="player.id" class="player-item">
-          <span class="player-name">{{ player.username }}</span>
+        <div v-for="player in currentPlayers" :key="player.id" class="player-item">
+          <span class="player-name">{{ player.name }}</span>
           <span v-if="player.connected" class="player-status online">●</span>
           <span v-else class="player-status offline">●</span>
         </div>
@@ -56,19 +56,34 @@
         </div>
       </div>
     </div>
+
+    <!-- Room Code Modal -->
+    <Modal :isOpen="showRoomCodeModal" @close="() => {}" title="Enter Room Code">
+      <p style="color: #aaa; margin-bottom: 1.5rem;">
+        Enter the room code to spectate the game
+      </p>
+      <FormInput
+        v-model="roomCodeInput"
+        label="Room Code"
+        type="text"
+        placeholder="Enter 4-character code"
+        @keypress.enter="joinRoom"
+      />
+      <template #footer>
+        <button class="btn-primary" @click="joinRoom">Join Room</button>
+      </template>
+    </Modal>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSocket } from '@/composables/useSocket.js'
-import { useQuestionStore } from '@/stores/question.js'
-import { useRoomStore } from '@/stores/room.js'
 import { useUIStore } from '@/stores/ui.js'
+import Modal from '@/components/common/Modal.vue'
+import FormInput from '@/components/common/FormInput.vue'
 
 const socket = useSocket()
-const questionStore = useQuestionStore()
-const roomStore = useRoomStore()
 const uiStore = useUIStore()
 
 const roomCode = ref(null)
@@ -76,57 +91,106 @@ const qrCodeUrl = ref(null)
 const isConnected = ref(false)
 const isQuestionDisplaying = ref(false)
 const revealedAnswer = ref(null)
+const showRoomCodeModal = ref(false)
+const roomCodeInput = ref('')
+const currentQuestion = ref(null)
+const currentPlayers = ref([])
 
-const currentQuestion = computed(() => roomStore.currentQuestion)
 const currentQuestionAnswers = computed(() => {
-  if (!currentQuestion.value) return []
-  return questionStore.getAnswersForQuestion(currentQuestion.value.id) || []
+  if (!currentQuestion.value || !currentQuestion.value.choices) return []
+  return currentQuestion.value.choices.map((text, index) => ({
+    id: index,
+    text: text
+  }))
 })
-const participants = computed(() => roomStore.participants)
-const connectedPlayers = computed(() => roomStore.connectedParticipants)
+const connectedPlayers = computed(() => {
+  return currentPlayers.value.filter(p => p.connected).length
+})
+
+// Join room as spectator
+const joinRoom = async () => {
+  const code = roomCodeInput.value.trim().toUpperCase()
+  if (!code) {
+    uiStore.addNotification('Please enter a room code', 'warning')
+    return
+  }
+
+  roomCode.value = code
+  showRoomCodeModal.value = false
+
+  // Fetch QR code for the room
+  try {
+    const response = await fetch(`/api/qr/room/${code}`)
+    const data = await response.json()
+    if (data.qrCode) {
+      qrCodeUrl.value = data.qrCode
+    }
+  } catch (error) {
+    console.error('Failed to fetch QR code:', error)
+  }
+
+  // Join the socket.io room to receive presenter events
+  socket.emit('joinRoom', { roomCode: code, username: 'Display', displayName: 'Spectator Display' })
+}
 
 // Initialize Socket.IO connection
 onMounted(() => {
   const socketInstance = socket.connect()
 
-  // Listen for room initialization
-  socket.on('roomCreated', (data) => {
-    roomCode.value = data.room_code
-    qrCodeUrl.value = data.qr_code_url
-    roomStore.setRoom(data.room, data.room_code, data.session_id)
-    isConnected.value = true
-    uiStore.addNotification(`Connected to room ${data.room_code}`, 'success')
+  // Show room code modal on load if no room code
+  showRoomCodeModal.value = true
+
+  // Listen for player list updates (confirms room join)
+  socket.on('playerListUpdate', ({ roomCode: code, players }) => {
+    if (roomCode.value && code === roomCode.value) {
+      currentPlayers.value = players || []
+      if (!isConnected.value) {
+        isConnected.value = true
+        uiStore.addNotification(`Connected to room ${code}`, 'success')
+      }
+    }
+  })
+
+  // Listen for room error
+  socket.on('roomError', (message) => {
+    uiStore.addNotification(message, 'error')
+    showRoomCodeModal.value = true
+    roomCode.value = null
+    isConnected.value = false
   })
 
   // Listen for question presentation
-  socket.on('questionPresented', (data) => {
-    const question = {
-      id: data.question_id,
-      text: data.question_text
+  socket.on('questionPresented', ({ questionIndex, question }) => {
+    // Store the current question with its choices
+    currentQuestion.value = {
+      text: question.text,
+      choices: question.choices || [],
+      correctChoice: question.correctChoice
     }
-    roomStore.setCurrentQuestion(question, data.question_index, data.total_questions)
     isQuestionDisplaying.value = true
     revealedAnswer.value = null
   })
 
   // Listen for answer reveal
-  socket.on('answerRevealed', (data) => {
-    revealedAnswer.value = {
-      id: data.correct_answer_id,
-      text: data.correct_answer_text
+  socket.on('questionRevealed', ({ questionIndex, question }) => {
+    // Show the correct answer
+    if (question.correctChoice !== undefined && currentQuestion.value) {
+      currentQuestion.value.correctChoice = question.correctChoice
+      revealedAnswer.value = {
+        id: question.correctChoice,
+        text: currentQuestion.value.choices[question.correctChoice]
+      }
     }
-  })
-
-  // Listen for participant updates
-  socket.on('participantsUpdated', (data) => {
-    roomStore.updateParticipants(data.participants)
   })
 
   // Listen for room closed
   socket.on('roomClosed', () => {
     isQuestionDisplaying.value = false
     isConnected.value = false
+    currentPlayers.value = []
     uiStore.addNotification('Room has been closed', 'info')
+    showRoomCodeModal.value = true
+    roomCode.value = null
   })
 
   // Handle connection errors
@@ -138,7 +202,7 @@ onMounted(() => {
 
 // Cleanup on unmount
 onUnmounted(() => {
-  roomStore.clearRoom()
+  socket.disconnect()
 })
 </script>
 
@@ -361,6 +425,22 @@ onUnmounted(() => {
 
 .status-disconnected {
   color: #aaa;
+}
+
+/* Modal button styles */
+.btn-primary {
+  padding: 0.75rem 1.5rem;
+  background: rgba(0, 123, 255, 0.3);
+  border: 1px solid rgba(0, 123, 255, 0.5);
+  border-radius: 8px;
+  color: #4fc3f7;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background: rgba(0, 123, 255, 0.5);
 }
 
 @media (max-width: 768px) {
