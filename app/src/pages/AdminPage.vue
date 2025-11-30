@@ -361,7 +361,7 @@ import { useApi } from '@/composables/useApi.js'
 import { useAuthStore } from '@/stores/auth.js'
 
 const router = useRouter()
-const { get, post } = useApi()
+const { get, post, put, delete: delete_ } = useApi()
 const authStore = useAuthStore()
 
 // UI State
@@ -454,7 +454,7 @@ const deleteQuiz = async (filename) => {
   const confirmed = await showConfirm('Delete this quiz? This cannot be undone.', 'Delete Quiz')
   if (confirmed) {
     try {
-      await post(`/api/quizzes/${filename}/delete`, {})
+      await delete_(`/api/quizzes/${filename}`)
       loadQuizzes()
       if (selectedQuiz.value?.filename === filename) {
         selectedQuiz.value = null
@@ -569,20 +569,29 @@ const saveQuestion = async () => {
       correctChoice: parseInt(correctChoice.value)
     }
 
+    // Update local questions array
     if (editingQuestionIdx.value !== null) {
       // Update existing question
-      await post(`/api/quizzes/${selectedQuiz.value.filename}/questions/${editingQuestionIdx.value}`, question)
+      currentQuestions.value[editingQuestionIdx.value] = question
       showAlert('Question updated successfully')
     } else {
       // Add new question
-      await post(`/api/quizzes/${selectedQuiz.value.filename}/questions`, question)
+      currentQuestions.value.push(question)
       showAlert('Question saved successfully')
     }
+
+    // Update quiz on server with all questions
+    await put(`/api/quizzes/${selectedQuiz.value.filename}`, {
+      title: quizTitle.value,
+      description: quizDescription.value,
+      questions: currentQuestions.value
+    })
 
     // Reset form
     clearQuestionForm()
 
-    // Reload questions
+    // Refresh the quiz list to update question count and reload questions
+    await loadQuizzes()
     selectQuiz(selectedQuiz.value)
   } catch (err) {
     showAlert('Error saving question: ' + err.message, 'Error')
@@ -593,7 +602,19 @@ const deleteQuestion = async (idx) => {
   const confirmed = await showConfirm('Delete this question?', 'Delete Question')
   if (confirmed) {
     try {
-      await post(`/api/quizzes/${selectedQuiz.value.filename}/questions/${idx}/delete`, {})
+      // Remove question from local array
+      currentQuestions.value.splice(idx, 1)
+
+      // Update quiz on server with remaining questions
+      await put(`/api/quizzes/${selectedQuiz.value.filename}`, {
+        title: quizTitle.value,
+        description: quizDescription.value,
+        questions: currentQuestions.value
+      })
+
+      showAlert('Question deleted successfully')
+      // Refresh the quiz list to update question count and reload questions
+      await loadQuizzes()
       selectQuiz(selectedQuiz.value)
     } catch (err) {
       showAlert('Error deleting question: ' + err.message, 'Error')
@@ -709,7 +730,7 @@ const showPrompt = (message, title = 'Enter value') => {
 
 const handleDialogConfirm = () => {
   showDialog.value = false
-  dialogResolve?.()
+  dialogResolve?.(true)
   dialogResolve = null
 }
 
@@ -931,10 +952,12 @@ onUnmounted(() => {
 }
 
 .quiz-sidebar {
-  overflow-y: auto;
   padding: 0 1rem 0 0;
   border-right: 1px solid rgba(79, 195, 247, 0.2);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .quiz-sidebar::after {
