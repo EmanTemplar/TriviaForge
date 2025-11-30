@@ -1019,7 +1019,8 @@ onUnmounted(() => {
 }
 
 .question-editor-panel {
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   padding: 0 1rem 0 1rem;
   border-right: 1px solid rgba(79, 195, 247, 0.2);
   min-height: 0;
@@ -1311,7 +1312,7 @@ select:focus {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  overflow-y: auto;
 }
 
 .choice-input-wrapper {
@@ -1423,8 +1424,7 @@ select:focus {
 }
 
 .choices-container {
-  max-height: 200px;
-  overflow-y: auto;
+  height: auto;
   margin-bottom: 0.75rem;
   padding: 0.5rem;
   background: rgba(0, 0, 0, 0.2);
