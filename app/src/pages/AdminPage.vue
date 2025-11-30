@@ -86,6 +86,7 @@
 
           <div class="choices-container">
             <div v-for="(choice, idx) in choices" :key="idx" class="choice-input-wrapper">
+              <span class="choice-label">{{ String.fromCharCode(65 + idx) }}</span>
               <input v-model="choices[idx]" type="text" :placeholder="`Choice ${idx + 1}`" />
             </div>
           </div>
@@ -1315,10 +1316,27 @@ select:focus {
 
 .choice-input-wrapper {
   display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.choice-label {
+  min-width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(79, 195, 247, 0.15);
+  border-radius: 6px;
+  font-weight: 600;
+  color: #4fc3f7;
+  font-size: 0.95rem;
+  border: 1px solid rgba(79, 195, 247, 0.3);
 }
 
 .choice-input-wrapper input {
   margin-bottom: 0;
+  flex: 1;
 }
 
 .correct-choice-wrapper {
