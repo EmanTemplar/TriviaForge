@@ -377,7 +377,7 @@ const answeredQuestions = new Set()
 // Question history
 const questionHistory = ref([])
 const recentRooms = ref([])
-const activeRoomCodes = ref([])
+const activeRoomCodes = ref(null) // null = not loaded yet, [] = no active rooms
 
 // Form inputs
 const usernameInput = ref('')
@@ -536,7 +536,7 @@ onMounted(() => {
 
   // Fallback: if no response within 3 seconds, load recent rooms anyway
   setTimeout(() => {
-    if (recentRooms.value.length === 0 && activeRoomCodes.value.length === 0) {
+    if (activeRoomCodes.value === null) {
       loadRecentRooms()
     }
   }, 3000)
@@ -579,8 +579,8 @@ const loadRecentRooms = () => {
   const stored = localStorage.getItem('playerRecentRooms')
   let rooms = stored ? JSON.parse(stored) : []
 
-  // If we have active room codes from server, filter to only show those
-  if (activeRoomCodes.value && activeRoomCodes.value.length > 0) {
+  // If we've received the active rooms list from server (even if empty)
+  if (activeRoomCodes.value !== null) {
     const filteredRooms = rooms.filter(room => activeRoomCodes.value.includes(room.code))
     // Update localStorage to remove closed rooms
     if (filteredRooms.length < rooms.length) {
@@ -588,8 +588,7 @@ const loadRecentRooms = () => {
     }
     recentRooms.value = filteredRooms
   } else {
-    // If no active rooms from server, show all stored rooms
-    // This is a fallback - ideally we'd have server-side room history
+    // Haven't received server response yet - show stored rooms temporarily
     recentRooms.value = rooms
   }
 }
