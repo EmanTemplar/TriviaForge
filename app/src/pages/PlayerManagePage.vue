@@ -106,7 +106,7 @@
     </div>
 
     <!-- Dialog Modal -->
-    <Modal v-model="showDialog" size="small" :title="dialogTitle" @close="handleDialogClose">
+    <Modal :isOpen="showDialog" size="small" :title="dialogTitle" @close="handleDialogClose">
       <template #default>
         <p class="dialog-message">{{ dialogMessage }}</p>
       </template>

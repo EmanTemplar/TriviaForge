@@ -119,7 +119,7 @@
     </div>
 
     <!-- QR Code Modal -->
-    <Modal v-model="showQRCodeModal" size="medium" title="Scan to Join">
+    <Modal :isOpen="showQRCodeModal" size="medium" title="Scan to Join" @close="showQRCodeModal = false">
       <template #default>
         <div class="qr-content">
           <img v-if="qrCodeData" :src="qrCodeData" alt="QR Code" class="qr-image" />
@@ -130,7 +130,7 @@
     </Modal>
 
     <!-- Presenter Progress Modal (Live Standings) -->
-    <Modal v-model="showProgressModal" size="large" title="📊 Live Standings">
+    <Modal :isOpen="showProgressModal" size="large" title="📊 Live Standings" @close="showProgressModal = false">
       <template #default>
         <div class="progress-modal-content">
           <!-- Overall Stats Summary -->
@@ -195,7 +195,7 @@
     </Modal>
 
     <!-- Custom Dialog Modal -->
-    <Modal v-model="showDialog" size="small" :title="dialogTitle" @close="dialogResolve?.(false)">
+    <Modal :isOpen="showDialog" size="small" :title="dialogTitle" @close="handleDialogCancel">
       <template #default>
         <p class="dialog-message">{{ dialogMessage }}</p>
       </template>
@@ -210,7 +210,7 @@
     </Modal>
 
     <!-- Answer Reveal Modal -->
-    <Modal v-model="showAnswerRevealModal" size="large" title="Answer Revealed!">
+    <Modal :isOpen="showAnswerRevealModal" size="large" title="Answer Revealed!" @close="showAnswerRevealModal = false">
       <template #default>
         <div v-if="answerRevealData" class="answer-reveal-content">
           <div class="correct-answer-box">

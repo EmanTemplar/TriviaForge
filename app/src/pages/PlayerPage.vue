@@ -46,11 +46,11 @@
       <div class="question-area">
         <!-- Waiting Screen -->
         <div v-if="!questionDisplaying" class="waiting-display">
-          <h2 class="waiting-title">Join a Room to Start</h2>
-          <p class="waiting-message">Enter your name and room code to begin playing.</p>
+          <h2 class="waiting-title">{{ inRoom ? 'Waiting for Question' : 'Join a Room to Start' }}</h2>
+          <p class="waiting-message">{{ inRoom ? 'Waiting for the presenter to start the quiz...' : 'Enter your name and room code to begin playing.' }}</p>
 
           <!-- Recent Rooms Section -->
-          <div v-if="recentRooms.length > 0" class="recent-rooms-section">
+          <div v-if="!inRoom && recentRooms.length > 0" class="recent-rooms-section">
             <h3>Recent Rooms</h3>
             <div class="recent-rooms-list">
               <button
@@ -99,7 +99,7 @@
       </div>
 
       <!-- Right/Bottom: Room/Sidebar -->
-      <div class="sidebar">
+      <div class="sidebar" :class="{ 'hidden-mobile-in-room': inRoom }">
         <!-- Join Section -->
         <div v-if="!inRoom" class="join-section">
           <h3>Join Room</h3>
@@ -176,9 +176,8 @@
 
     <!-- Modals -->
     <!-- Login Modal -->
-    <Modal v-if="showLoginModal" @close="loginCancelled" :closeable="false">
-      <template #header>Login Required</template>
-      <template #body>
+    <Modal :isOpen="showLoginModal" @close="loginCancelled" title="Login Required">
+      <template #default>
         <p style="color: #aaa; margin-bottom: 1.5rem;">
           This username belongs to a registered account. Please enter your password to continue.
         </p>
@@ -206,9 +205,8 @@
     </Modal>
 
     <!-- Set Password Modal -->
-    <Modal v-if="showSetPasswordModal" @close="passwordSetupCancelled" :closeable="false">
-      <template #header>Set New Password</template>
-      <template #body>
+    <Modal :isOpen="showSetPasswordModal" @close="passwordSetupCancelled" title="Set New Password">
+      <template #default>
         <p style="color: #aaa; margin-bottom: 1.5rem;">
           Your password has been reset by an administrator. Please set a new password to continue.
         </p>
@@ -243,12 +241,12 @@
 
     <!-- Progress Modal -->
     <Modal
-      v-if="showProgressModalFlag"
+      :isOpen="showProgressModalFlag"
       @close="showProgressModalFlag = false"
       size="large"
-      :title="'📊 Your Progress'"
+      title="📊 Your Progress"
     >
-      <template #body>
+      <template #default>
         <div class="progress-content">
           <!-- Stats Summary -->
           <div v-if="presentedQuestions.length > 0" class="progress-stats">
@@ -324,7 +322,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSocket } from '@/composables/useSocket.js'
 import { useApi } from '@/composables/useApi.js'
@@ -364,6 +362,7 @@ const answeredQuestions = new Set()
 // Question history
 const questionHistory = ref([])
 const recentRooms = ref([])
+const activeRoomCodes = ref([])
 
 // Form inputs
 const usernameInput = ref('')
@@ -508,6 +507,13 @@ onMounted(() => {
     answeredCurrentQuestion.value = true
   })
 
+  socket.on('activeRoomsUpdate', (rooms) => {
+    activeRoomCodes.value = rooms.map(r => r.roomCode)
+  })
+
+  // Request active rooms list to filter recent rooms
+  socket.emit('getActiveRooms')
+
   document.addEventListener('click', closeMenuIfOutside)
   document.addEventListener('touchstart', closeMenuIfOutside)
 })
@@ -516,6 +522,11 @@ onUnmounted(() => {
   socket.disconnect()
   document.removeEventListener('click', closeMenuIfOutside)
   document.removeEventListener('touchstart', closeMenuIfOutside)
+})
+
+// Watch for active rooms changes and reload recent rooms
+watch(activeRoomCodes, () => {
+  loadRecentRooms()
 })
 
 // Methods
@@ -544,7 +555,18 @@ const getTimeAgo = (timestamp) => {
 
 const loadRecentRooms = () => {
   const stored = localStorage.getItem('playerRecentRooms')
-  recentRooms.value = stored ? JSON.parse(stored) : []
+  let rooms = stored ? JSON.parse(stored) : []
+
+  // Filter to only show active rooms
+  if (activeRoomCodes.value.length > 0) {
+    rooms = rooms.filter(room => activeRoomCodes.value.includes(room.code))
+    // Update localStorage to remove closed rooms
+    if (rooms.length < (stored ? JSON.parse(stored).length : 0)) {
+      localStorage.setItem('playerRecentRooms', JSON.stringify(rooms))
+    }
+  }
+
+  recentRooms.value = rooms
 }
 
 const saveRecentRoom = (roomCode) => {
@@ -1638,6 +1660,10 @@ const getQuestionStatusText = (q) => {
     min-width: unset;
     flex: 1;
     overflow-y: auto;
+  }
+
+  .sidebar.hidden-mobile-in-room {
+    display: none;
   }
 
   .choices-container {
