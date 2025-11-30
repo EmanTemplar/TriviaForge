@@ -19,10 +19,10 @@
       <div class="hamburger" @click="toggleMenu">&#9776;</div>
       <ul class="menu" :class="{ open: menuOpen }">
         <li><RouterLink to="/display">Spectate</RouterLink></li>
-        <li v-if="inRoom" id="menuLeaveRoom">
+        <li v-if="inRoom" id="menuLeaveRoom" class="mobile-only-menu-item">
           <a href="#" @click.prevent="handleLeaveRoomClick">Leave Room</a>
         </li>
-        <li v-if="inRoom" id="menuPlayersSection">
+        <li v-if="inRoom" id="menuPlayersSection" class="mobile-only-menu-item">
           <div>Players in Room</div>
           <div id="menuPlayersList" class="menu-players">
             <div v-for="(player, idx) in currentPlayers" :key="player.id" class="player-item">
@@ -1019,6 +1019,13 @@ const getQuestionStatusText = (q) => {
   color: #4fc3f7;
 }
 
+/* Hide mobile-only menu items on desktop */
+@media (min-width: 1025px) {
+  .mobile-only-menu-item {
+    display: none !important;
+  }
+}
+
 .logout-item {
   border-top: none;
   padding-top: 0;
@@ -1630,7 +1637,7 @@ const getQuestionStatusText = (q) => {
   }
 
   .menu {
-    position: absolute;
+    position: fixed;
     top: 60px;
     left: 0;
     right: 0;
@@ -1638,9 +1645,12 @@ const getQuestionStatusText = (q) => {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     border-bottom: 1px solid rgba(79, 195, 247, 0.2);
     padding: 1rem;
-    gap: 0;
+    gap: 0.5rem;
     display: none !important;
-    z-index: 99;
+    z-index: 999;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   }
 
   .menu.open {
@@ -1650,46 +1660,68 @@ const getQuestionStatusText = (q) => {
   .menu li {
     width: 100%;
     white-space: normal;
+    flex-direction: column;
+    align-items: flex-start;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 0.5rem 0;
+  }
+
+  .menu li:last-child {
+    border-bottom: none;
   }
 
   .menu a {
     display: block;
     padding: 0.75rem;
-  }
-}
-
-@media (max-width: 768px) {
-  .hamburger {
-    display: block;
+    width: 100%;
+    border-radius: 8px;
+    transition: background 0.2s;
   }
 
-  .menu {
-    position: fixed;
-    top: 60px;
-    left: 0;
-    right: 0;
-    flex-direction: column;
-    background: rgba(0, 0, 0, 0.9);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    max-height: calc(100vh - 60px);
-    overflow-y: auto;
-    padding: 1rem;
-    gap: 0.5rem;
-    z-index: 999;
-    display: none;
-  }
-
-  .menu.open {
-    display: flex;
-  }
-
-  .menu li {
-    flex-direction: column;
-    gap: 0.25rem;
+  .menu a:hover {
+    background: rgba(79, 195, 247, 0.1);
   }
 
   .menu-players {
     margin-left: 0;
+    margin-top: 0.5rem;
+    width: 100%;
+  }
+
+  .menu-players .player-item {
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    margin-bottom: 0.25rem;
+  }
+
+  /* Leave Room button - red outline */
+  #menuLeaveRoom a {
+    border: 2px solid rgba(255, 102, 102, 0.5);
+    background: rgba(255, 102, 102, 0.05);
+  }
+
+  #menuLeaveRoom a:hover {
+    background: rgba(255, 102, 102, 0.15);
+    border-color: rgba(255, 102, 102, 0.7);
+  }
+
+  /* Logout button - red transparent background */
+  .logout-item a {
+    background: rgba(255, 102, 102, 0.15);
+    border: 2px solid rgba(255, 102, 102, 0.6);
+  }
+
+  .logout-item a:hover {
+    background: rgba(255, 102, 102, 0.25);
+    border-color: rgba(255, 102, 102, 0.8);
+  }
+}
+
+@media (max-width: 768px) {
+  .menu {
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
   }
 
   .player-container {
