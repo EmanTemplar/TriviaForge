@@ -52,17 +52,26 @@ const getLocalIP = () => {
 const app = express();
 app.use(express.json());
 
-// Redirect root to landing page BEFORE static files
-app.get('/', (req, res) => {
-  res.redirect('/landing.html');
-});
-
 // Load .env file from root directory (for both Docker and local development)
 // When running locally, looks for .env in parent directory
 // When running in Docker, environment variables are passed via docker-compose.yml
 dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
 
-app.use(express.static('public'));
+// Serve Vue 3 Vite dist/ folder (production build)
+// This contains the compiled Vue app, styles, and assets
+const distPath = path.join(process.cwd(), 'dist');
+app.use(express.static(distPath));
+
+// SPA Routing fallback: For any non-API request that doesn't match a static file,
+// serve index.html so Vue Router can handle client-side routing
+app.use((req, res, next) => {
+  // Skip API routes - let them 404 if not found
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  // For all other routes, serve index.html (SPA routing)
+  res.sendFile(path.join(distPath, 'index.html'));
+});
 
 const PORT = process.env.APP_PORT || 3000;
 const QUIZ_FOLDER = path.join(process.cwd(), 'quizzes'); // Legacy folder kept for backward compatibility

@@ -170,6 +170,23 @@ select {
   transition: border-color var(--transition-fast), background-color var(--transition-fast);
 }
 
+/* Enhanced select/dropdown styling for better contrast */
+select {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+select option {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+select option:checked {
+  background: linear-gradient(#2563eb, #2563eb) !important;
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
 input:focus,
 textarea:focus,
 select:focus {
@@ -258,7 +275,7 @@ button:disabled {
 /* Container */
 .container {
   width: 100%;
-  max-width: 1200px;
+  max-width: auto;
   margin: 0 auto;
   padding: 0 var(--spacing-md);
 }

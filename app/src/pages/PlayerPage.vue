@@ -306,6 +306,20 @@
         </div>
       </template>
     </Modal>
+
+    <!-- Logout Confirmation Modal -->
+    <Modal :isOpen="showLogoutConfirmModal" @close="showLogoutConfirmModal = false" title="Confirm Logout">
+      <p style="color: #aaa; margin-bottom: 1.5rem;">
+        Are you sure you want to logout?
+      </p>
+      <p style="color: #aaa; margin-bottom: 1.5rem;">
+        This will clear your saved username and account data.
+      </p>
+      <template #footer>
+        <button class="btn-primary" @click="confirmLogout">Logout</button>
+        <button class="btn-secondary" @click="showLogoutConfirmModal = false">Cancel</button>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -334,6 +348,7 @@ const answerRevealed = ref(false)
 const showLoginModal = ref(false)
 const showSetPasswordModal = ref(false)
 const showProgressModalFlag = ref(false)
+const showLogoutConfirmModal = ref(false)
 
 // Room/Player state
 const currentRoomCode = ref(null)
@@ -752,11 +767,12 @@ const handleLeaveRoom = () => {
   loadRecentRooms()
 }
 
-const handleLogout = async () => {
-  const confirmed = confirm(
-    'Are you sure you want to logout?\n\nThis will clear your saved username and account data.'
-  )
-  if (!confirmed) return
+const handleLogout = () => {
+  showLogoutConfirmModal.value = true
+}
+
+const confirmLogout = async () => {
+  showLogoutConfirmModal.value = false
 
   if (inRoom.value) {
     handleLeaveRoom()
@@ -768,6 +784,7 @@ const handleLogout = async () => {
   localStorage.removeItem('playerAuthToken')
   localStorage.removeItem('playerRecentRooms')
 
+  loginUsername.value = ''
   usernameInput.value = ''
   displayNameInput.value = ''
   roomCodeInput.value = ''
@@ -936,9 +953,18 @@ const getQuestionStatusText = (q) => {
 }
 
 .logout-item {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 0.5rem;
-  margin-top: 0.5rem;
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+/* Show separator only on mobile */
+@media (max-width: 1024px) {
+  .logout-item {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 0.5rem;
+    margin-top: 0.5rem;
+  }
 }
 
 .player-container {

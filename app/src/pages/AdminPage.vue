@@ -35,8 +35,8 @@
     <main class="container">
       <!-- Quiz Management Tab -->
       <div v-if="activeTab === 'quiz'" class="tab-content quiz-management">
-        <!-- Left Column: Quiz Creation + List -->
-        <section class="quiz-section">
+        <!-- Left Column: Quiz Creation + Selection (Fixed) -->
+        <aside class="quiz-sidebar" @mousedown.stop="startResize(1, $event)">
           <h2>Create / Select Quiz</h2>
           <button class="btn-primary" @click="showCreateQuizModal">Create New Quiz</button>
 
@@ -69,64 +69,65 @@
               <button @click.stop="deleteQuiz(quiz.filename)" class="btn-delete">Delete</button>
             </div>
           </div>
+        </aside>
+
+        <!-- Middle Column: Question Editor (Fixed) -->
+        <section class="question-editor-panel" @mousedown.stop="startResize(2, $event)">
+          <h2>Question Editor</h2>
+          <textarea v-model="questionText" placeholder="Question Text" class="question-text-input" rows="3"></textarea>
+
+          <div class="choices-header">
+            <h3>Choices</h3>
+            <div class="choice-buttons">
+              <button @click="addChoice" class="btn-add">+ Add</button>
+              <button @click="removeChoice" class="btn-remove">- Remove</button>
+            </div>
+          </div>
+
+          <div class="choices-container">
+            <div v-for="(choice, idx) in choices" :key="idx" class="choice-input-wrapper">
+              <input v-model="choices[idx]" type="text" :placeholder="`Choice ${idx + 1}`" />
+            </div>
+          </div>
+
+          <div class="correct-choice-wrapper">
+            <label for="correctChoice">Correct Answer:</label>
+            <select v-model="correctChoice">
+              <option v-for="(choice, idx) in choices" :key="idx" :value="idx">
+                {{ choice || `Choice ${idx + 1}` }}
+              </option>
+            </select>
+          </div>
+
+          <div class="question-editor-buttons">
+            <button @click="saveQuestion" class="btn-primary">{{ editingQuestionIdx !== null ? 'Update' : 'Add' }}</button>
+            <button v-if="editingQuestionIdx !== null" @click="clearQuestionForm" class="btn-secondary">Cancel</button>
+          </div>
         </section>
 
-        <!-- Right Column: Question Editor -->
-        <div class="questions-editor-section">
-          <!-- Question Editor Form -->
-          <section class="question-editor">
-            <h2>Question Editor</h2>
-            <input v-model="questionText" type="text" placeholder="Question Text" />
-
-            <div class="choices-header">
-              <h3>Choices</h3>
-              <div class="choice-buttons">
-                <button @click="addChoice" class="btn-add">+ Add Choice</button>
-                <button @click="removeChoice" class="btn-remove">- Remove Choice</button>
+        <!-- Right Column: Questions List (Scrollable) -->
+        <aside class="questions-sidebar">
+          <div class="questions-list-header">
+            <h2>Questions</h2>
+            <div v-if="selectedQuiz" class="shuffle-controls">
+              <button @click="shuffleQuestions" class="btn-shuffle" title="Shuffle Questions">🔀</button>
+              <button @click="shuffleAllChoices" class="btn-shuffle" title="Shuffle All Choices">🎲</button>
+            </div>
+          </div>
+          <div class="questions-list">
+            <div v-if="currentQuestions.length === 0" class="empty-state"><em>No questions</em></div>
+            <div v-for="(question, idx) in currentQuestions" :key="idx" class="question-item" :class="{ active: editingQuestionIdx === idx }">
+              <div class="question-content" @click="editQuestion(idx)">
+                <div class="question-text">Q{{ idx + 1 }}</div>
+                <div class="question-preview">{{ question.text }}</div>
+              </div>
+              <div class="question-actions">
+                <button @click="editQuestion(idx)" class="btn-edit" title="Edit">✏️</button>
+                <button @click="deleteQuestion(idx)" class="btn-delete" title="Delete">🗑️</button>
               </div>
             </div>
-
-            <div class="choices-container">
-              <div v-for="(choice, idx) in choices" :key="idx" class="choice-input-wrapper">
-                <input v-model="choices[idx]" type="text" :placeholder="`Choice ${idx + 1}`" />
-              </div>
-            </div>
-
-            <div class="correct-choice-wrapper">
-              <label for="correctChoice">Correct Answer:</label>
-              <select v-model="correctChoice">
-                <option v-for="(choice, idx) in choices" :key="idx" :value="idx">
-                  {{ choice || `Choice ${idx + 1}` }}
-                </option>
-              </select>
-            </div>
-
-            <button @click="saveQuestion" class="btn-primary">Add / Update Question</button>
-          </section>
-
-          <!-- Questions List -->
-          <section class="questions-list-section">
-            <div class="questions-list-header">
-              <h2>Questions</h2>
-              <div v-if="selectedQuiz" class="shuffle-controls">
-                <button @click="shuffleQuestions" class="btn-shuffle">🔀 Shuffle Questions</button>
-                <button @click="shuffleAllChoices" class="btn-shuffle">🎲 Shuffle All Choices</button>
-              </div>
-            </div>
-            <div class="questions-list">
-              <div v-if="currentQuestions.length === 0" class="empty-state"><em>No questions</em></div>
-              <div v-for="(question, idx) in currentQuestions" :key="idx" class="question-item">
-                <div class="question-text">Q{{ idx + 1 }}: {{ question.text }}</div>
-                <ul class="question-choices">
-                  <li v-for="(choice, choiceIdx) in question.choices" :key="choiceIdx" :class="{ correct: question.correctChoice === choiceIdx }">
-                    {{ choice }}
-                  </li>
-                </ul>
-                <button @click="deleteQuestion(idx)" class="btn-delete">Delete</button>
-              </div>
-            </div>
-          </section>
-        </div>
+          </div>
+        </aside>
       </div>
 
       <!-- Completed Sessions Tab -->
@@ -302,13 +303,11 @@
     </main>
 
     <!-- Dialog Modal -->
-    <Modal v-model="showDialog" size="small" :title="dialogTitle" @close="handleDialogCancel">
-      <template #default>
-        <p class="dialog-message">{{ dialogMessage }}</p>
-        <div v-if="dialogShowInput" class="dialog-input-wrapper">
-          <input v-model="dialogInputValue" type="text" class="dialog-input" />
-        </div>
-      </template>
+    <Modal :isOpen="showDialog" size="small" :title="dialogTitle" @close="handleDialogCancel">
+      <p class="dialog-message">{{ dialogMessage }}</p>
+      <div v-if="dialogShowInput" class="dialog-input-wrapper">
+        <input v-model="dialogInputValue" type="text" class="dialog-input" />
+      </div>
       <template #footer>
         <div class="dialog-buttons">
           <button @click="handleDialogCancel" class="btn-secondary">Cancel</button>
@@ -318,40 +317,38 @@
     </Modal>
 
     <!-- Session Detail Modal -->
-    <Modal v-model="showSessionModal" size="large" title="Session Details">
-      <template #default>
-        <div v-if="selectedSession" class="session-detail-content">
-          <div class="session-detail-header">
-            <h3>{{ selectedSession.quizTitle }}</h3>
-            <div class="session-detail-meta">
-              <span>Room: {{ selectedSession.roomCode }}</span>
-              <span>{{ formatDate(selectedSession.completedAt) }}</span>
-            </div>
-          </div>
-
-          <div v-if="selectedSession.playerResults && selectedSession.playerResults.length > 0" class="session-results">
-            <h4>Player Results</h4>
-            <table class="results-table">
-              <thead>
-                <tr>
-                  <th>Player</th>
-                  <th>Correct</th>
-                  <th>Incorrect</th>
-                  <th>Accuracy</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(result, idx) in selectedSession.playerResults" :key="idx">
-                  <td>{{ result.name }}</td>
-                  <td>{{ result.correct }}</td>
-                  <td>{{ (result.answered || 0) - (result.correct || 0) }}</td>
-                  <td>{{ getAccuracy(result) }}%</td>
-                </tr>
-              </tbody>
-            </table>
+    <Modal :isOpen="showSessionModal" size="large" title="Session Details" @close="showSessionModal = false">
+      <div v-if="selectedSession" class="session-detail-content">
+        <div class="session-detail-header">
+          <h3>{{ selectedSession.quizTitle }}</h3>
+          <div class="session-detail-meta">
+            <span>Room: {{ selectedSession.roomCode }}</span>
+            <span>{{ formatDate(selectedSession.completedAt) }}</span>
           </div>
         </div>
-      </template>
+
+        <div v-if="selectedSession.playerResults && selectedSession.playerResults.length > 0" class="session-results">
+          <h4>Player Results</h4>
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Correct</th>
+                <th>Incorrect</th>
+                <th>Accuracy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(result, idx) in selectedSession.playerResults" :key="idx">
+                <td>{{ result.name }}</td>
+                <td>{{ result.correct }}</td>
+                <td>{{ (result.answered || 0) - (result.correct || 0) }}</td>
+                <td>{{ getAccuracy(result) }}%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </Modal>
   </div>
 </template>
@@ -373,6 +370,11 @@ const activeTab = ref('quiz')
 const showDialog = ref(false)
 const showSessionModal = ref(false)
 
+// Column resizing
+const col1Width = ref(280)
+const col2Width = ref(450)
+const resizingColumn = ref(null)
+
 // Dialog state
 const dialogTitle = ref('')
 const dialogMessage = ref('')
@@ -391,6 +393,7 @@ const choices = ref(['', '', '', ''])
 const correctChoice = ref(0)
 const currentQuestions = ref([])
 const importStatus = ref('')
+const editingQuestionIdx = ref(null)
 
 // Sessions
 const completedSessions = ref([])
@@ -501,11 +504,11 @@ const handleExcelUpload = async (e) => {
     const formData = new FormData()
     formData.append('file', file)
 
-    const response = await post('/api/quizzes/import-excel', formData, {
+    const response = await post('/api/import-quiz', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
-    importStatus.value = `Success: ${response.data.quizTitle} created with ${response.data.questionCount} questions`
+    importStatus.value = `Success: ${response.data.title} created with ${response.data.questionCount} questions`
     loadQuizzes()
     setTimeout(() => { importStatus.value = '' }, 3000)
   } catch (err) {
@@ -525,6 +528,23 @@ const removeChoice = () => {
       correctChoice.value = choices.value.length - 1
     }
   }
+}
+
+const editQuestion = (idx) => {
+  const question = currentQuestions.value[idx]
+  questionText.value = question.text
+  choices.value = [...question.choices]
+  correctChoice.value = question.correctChoice
+  editingQuestionIdx.value = idx
+  // Scroll to editor
+  document.querySelector('.question-editor')?.scrollIntoView({ behavior: 'smooth' })
+}
+
+const clearQuestionForm = () => {
+  questionText.value = ''
+  choices.value = ['', '', '', '']
+  correctChoice.value = 0
+  editingQuestionIdx.value = null
 }
 
 const saveQuestion = async () => {
@@ -549,16 +569,21 @@ const saveQuestion = async () => {
       correctChoice: parseInt(correctChoice.value)
     }
 
-    await post(`/api/quizzes/${selectedQuiz.value.filename}/questions`, question)
+    if (editingQuestionIdx.value !== null) {
+      // Update existing question
+      await post(`/api/quizzes/${selectedQuiz.value.filename}/questions/${editingQuestionIdx.value}`, question)
+      showAlert('Question updated successfully')
+    } else {
+      // Add new question
+      await post(`/api/quizzes/${selectedQuiz.value.filename}/questions`, question)
+      showAlert('Question saved successfully')
+    }
 
     // Reset form
-    questionText.value = ''
-    choices.value = ['', '', '', '']
-    correctChoice.value = 0
+    clearQuestionForm()
 
     // Reload questions
     selectQuiz(selectedQuiz.value)
-    showAlert('Question saved successfully')
   } catch (err) {
     showAlert('Error saving question: ' + err.message, 'Error')
   }
@@ -719,6 +744,42 @@ const logout = async (e) => {
   router.push({name: 'login'})
 }
 
+// Column resizing utilities
+const startResize = (column, e) => {
+  const target = e.currentTarget
+  const rect = target.getBoundingClientRect()
+  const rightEdge = rect.right
+  const clickX = e.clientX
+
+  // Only trigger resize if click is near the right edge (within 10px)
+  if (Math.abs(clickX - rightEdge) > 10) return
+
+  resizingColumn.value = { column, startX: e.clientX, startCol1Width: col1Width.value, startCol2Width: col2Width.value }
+  e.preventDefault()
+}
+
+const handleMouseMove = (e) => {
+  if (!resizingColumn.value) return
+
+  const delta = e.clientX - resizingColumn.value.startX
+  const { column, startCol1Width, startCol2Width } = resizingColumn.value
+
+  // Minimum column width is 200px
+  const minWidth = 200
+
+  if (column === 1) {
+    const newWidth = Math.max(minWidth, startCol1Width + delta)
+    col1Width.value = newWidth
+  } else if (column === 2) {
+    const newWidth = Math.max(minWidth, startCol2Width + delta)
+    col2Width.value = newWidth
+  }
+}
+
+const stopResize = () => {
+  resizingColumn.value = null
+}
+
 // Utilities
 const formatDate = (date) => {
   if (!date) return 'N/A'
@@ -735,11 +796,15 @@ onMounted(() => {
   loadQuizzes()
   document.addEventListener('click', closeMenuIfOutside)
   document.addEventListener('touchstart', closeMenuIfOutside)
+  document.addEventListener('mousemove', handleMouseMove)
+  document.addEventListener('mouseup', stopResize)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', closeMenuIfOutside)
   document.removeEventListener('touchstart', closeMenuIfOutside)
+  document.removeEventListener('mousemove', handleMouseMove)
+  document.removeEventListener('mouseup', stopResize)
 })
 </script>
 
@@ -839,8 +904,8 @@ onUnmounted(() => {
 
 .container {
   flex: 1;
-  overflow-y: auto;
-  padding: 2rem;
+  overflow: hidden;
+  padding: 1rem;
 }
 
 .tab-content {
@@ -856,31 +921,79 @@ onUnmounted(() => {
   }
 }
 
-/* Quiz Management Tab */
+/* Quiz Management Tab - 3-Column Layout */
 .quiz-management {
-  display: flex;
-  gap: 2rem;
+  display: grid;
+  grid-template-columns: v-bind(col1Width + 'px') v-bind(col2Width + 'px') 1fr;
+  gap: 0;
+  height: 100%;
+  position: relative;
 }
 
-.quiz-section {
-  flex: 1;
-  max-width: 33%;
-  padding-right: 1rem;
+.quiz-sidebar {
+  overflow-y: auto;
+  padding: 0 1rem 0 0;
+  border-right: 1px solid rgba(79, 195, 247, 0.2);
+  position: relative;
 }
 
-.questions-editor-section {
-  flex: 2;
-  max-width: 66%;
-  padding-left: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
+.quiz-sidebar::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
 }
 
-.quiz-section h2,
-.question-editor h2,
-.questions-list-section h2 {
+.question-editor-panel {
+  overflow-y: auto;
+  padding: 0 1rem 0 1rem;
+  border-right: 1px solid rgba(79, 195, 247, 0.2);
+  min-height: 0;
+  position: relative;
+}
+
+.question-editor-panel::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+}
+
+.questions-sidebar {
+  overflow-y: auto;
+  padding: 0 0 0 1rem;
+  min-height: 0;
+}
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+}
+
+.resize-handle:hover {
+  background: rgba(79, 195, 247, 0.3);
+}
+
+.quiz-sidebar h2,
+.question-editor-panel h2,
+.questions-sidebar h2 {
   margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+}
+
+.question-editor-panel h3 {
+  margin: 1rem 0 0.5rem 0;
+  font-size: 0.95rem;
 }
 
 .btn-primary,
@@ -892,7 +1005,8 @@ onUnmounted(() => {
 .btn-remove,
 .btn-quick,
 .btn-refresh,
-.btn-shuffle {
+.btn-shuffle,
+.btn-edit {
   padding: 0.6rem 1rem;
   border-radius: 8px;
   cursor: pointer;
@@ -1069,9 +1183,10 @@ select:focus {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-height: 400px;
+  max-height: auto;
   overflow-y: auto;
   margin-top: 1rem;
+  flex: 1;
 }
 
 .quiz-item {
@@ -1209,11 +1324,173 @@ select:focus {
   font-weight: 600;
 }
 
+/* Compact Question Editor */
+.question-text-input {
+  font-size: 0.9rem;
+  padding: 0.5rem !important;
+  margin-bottom: 0.75rem;
+  min-height: 80px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.choices-container {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.choice-input-wrapper input {
+  font-size: 0.85rem;
+  padding: 0.4rem !important;
+  margin-bottom: 0.3rem;
+}
+
+.correct-choice-wrapper {
+  margin-bottom: 0.75rem;
+}
+
+.correct-choice-wrapper select {
+  font-size: 0.85rem;
+  padding: 0.4rem !important;
+}
+
+.choice-buttons .btn-add,
+.choice-buttons .btn-remove {
+  padding: 0.4rem 0.6rem !important;
+  font-size: 0.8rem;
+}
+
+.question-editor-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.question-editor-buttons .btn-primary {
+  flex: 1;
+  padding: 0.5rem !important;
+  font-size: 0.9rem;
+  margin-top: 0;
+}
+
+.question-editor-buttons .btn-secondary {
+  flex: 0 0 auto;
+  padding: 0.5rem 0.8rem !important;
+  font-size: 0.8rem;
+}
+
+/* Questions List in Right Sidebar */
+.questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.question-item {
+  padding: 0.75rem;
+  background: rgba(79, 195, 247, 0.05);
+  border: 1px solid rgba(79, 195, 247, 0.2);
+  border-radius: 6px;
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  transition: all 0.2s;
+}
+
+.question-item:hover {
+  background: rgba(79, 195, 247, 0.1);
+  border-color: rgba(79, 195, 247, 0.4);
+}
+
+.question-item.active {
+  background: rgba(79, 195, 247, 0.15);
+  border-color: rgba(79, 195, 247, 0.6);
+  box-shadow: 0 0 8px rgba(79, 195, 247, 0.3);
+}
+
+.question-content {
+  flex: 1;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.question-content .question-text {
+  font-weight: 700;
+  color: #4fc3f7;
+  font-size: 0.9rem;
+  margin-bottom: 0.2rem;
+}
+
+.question-preview {
+  font-size: 0.8rem;
+  color: #aaa;
+  word-break: break-word;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.question-actions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.btn-edit {
+  background: rgba(79, 195, 247, 0.2);
+  border-color: rgba(79, 195, 247, 0.5);
+  color: #4fc3f7;
+  padding: 0.4rem 0.5rem !important;
+  font-size: 0.85rem;
+  min-width: 0;
+}
+
+.btn-edit:hover {
+  background: rgba(79, 195, 247, 0.3);
+}
+
+.question-item .btn-delete {
+  background: rgba(200, 0, 0, 0.2);
+  border-color: rgba(200, 0, 0, 0.5);
+  color: #f66;
+  padding: 0.4rem 0.5rem !important;
+  font-size: 0.85rem;
+  width: auto;
+  margin-top: 0;
+}
+
+.question-item .btn-delete:hover {
+  background: rgba(200, 0, 0, 0.3);
+}
+
+/* Questions List Header */
+.questions-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 0.5rem;
+}
+
+.shuffle-controls {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.shuffle-controls .btn-shuffle {
+  padding: 0.4rem 0.5rem !important;
+  font-size: 1rem;
+  min-width: auto;
+  width: auto;
+}
+
 /* Sessions Tab */
 .sessions-management section,
 .options-management section,
 .users-management section {
-  max-width: 1000px;
+  max-width: auto;
 }
 
 .sessions-list {
@@ -1371,7 +1648,7 @@ select:focus {
 }
 
 .about-section {
-  max-width: 1200px;
+  max-width: auto;
 }
 
 .about-header {
