@@ -318,6 +318,20 @@
         <button class="btn-secondary" @click="showLogoutConfirmModal = false">Cancel</button>
       </template>
     </Modal>
+
+    <!-- Leave Room Confirmation Modal -->
+    <Modal :isOpen="showLeaveRoomConfirmModal" @close="showLeaveRoomConfirmModal = false" title="Leave Room">
+      <p style="color: #aaa; margin-bottom: 1.5rem;">
+        Are you sure you want to leave this room?
+      </p>
+      <p style="color: #aaa; margin-bottom: 1.5rem;">
+        You'll lose your connection and can rejoin if the room is still active.
+      </p>
+      <template #footer>
+        <button class="btn-danger" @click="confirmLeaveRoom">Leave Room</button>
+        <button class="btn-secondary" @click="showLeaveRoomConfirmModal = false">Cancel</button>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -347,6 +361,7 @@ const showLoginModal = ref(false)
 const showSetPasswordModal = ref(false)
 const showProgressModalFlag = ref(false)
 const showLogoutConfirmModal = ref(false)
+const showLeaveRoomConfirmModal = ref(false)
 
 // Room/Player state
 const currentRoomCode = ref(null)
@@ -394,30 +409,12 @@ const incorrectCount = computed(() => presentedQuestions.value.filter(q => q.rev
 const answeredCount = computed(() => presentedQuestions.value.filter(q => q.revealed).length)
 const accuracy = computed(() => answeredCount.value > 0 ? ((correctCount.value / answeredCount.value) * 100).toFixed(1) : '0.0')
 
-// Initialize page
-onMounted(() => {
-  // Restore saved values
-  if (savedUsername.value) {
-    usernameInput.value = ''
-    loginUsername.value = savedUsername.value
-  } else {
-    usernameInput.value = localStorage.getItem('playerUsername') || ''
-  }
-
-  displayNameInput.value = localStorage.getItem('playerDisplayName') || ''
-
-  // Load recent rooms
-  loadRecentRooms()
-
-  // Auto-login registered player
-  autoLoginRegisteredPlayer()
-
-  // Connect socket
-  const socketInstance = socket.connect()
-
-  // Socket events
+// Setup socket event listeners - called on mount and after reconnect
+const setupSocketListeners = () => {
   socket.on('connect', () => {
     isConnected.value = true
+    // Request active rooms list once connected
+    socket.emit('getActiveRooms')
   })
 
   socket.on('disconnect', () => {
@@ -430,6 +427,8 @@ onMounted(() => {
     currentRoomCode.value = roomCode
     currentPlayers.value = players
     statusMessage.value = `${players.length} player(s) in room`
+    // Save room to recent rooms only on successful join
+    saveRecentRoom(roomCode)
   })
 
   socket.on('questionPresented', ({ questionIndex, question }) => {
@@ -508,11 +507,39 @@ onMounted(() => {
   })
 
   socket.on('activeRoomsUpdate', (rooms) => {
-    activeRoomCodes.value = rooms.map(r => r.roomCode)
+    activeRoomCodes.value = Array.isArray(rooms) ? rooms.map(r => r.roomCode) : []
+    // Load recent rooms after receiving active rooms list
+    loadRecentRooms()
   })
+}
 
-  // Request active rooms list to filter recent rooms
-  socket.emit('getActiveRooms')
+// Initialize page
+onMounted(() => {
+  // Restore saved values
+  if (savedUsername.value) {
+    usernameInput.value = ''
+    loginUsername.value = savedUsername.value
+  } else {
+    usernameInput.value = localStorage.getItem('playerUsername') || ''
+  }
+
+  displayNameInput.value = localStorage.getItem('playerDisplayName') || ''
+
+  // Auto-login registered player
+  autoLoginRegisteredPlayer()
+
+  // Connect socket
+  socket.connect()
+
+  // Set up all socket listeners
+  setupSocketListeners()
+
+  // Fallback: if no response within 3 seconds, load recent rooms anyway
+  setTimeout(() => {
+    if (recentRooms.value.length === 0 && activeRoomCodes.value.length === 0) {
+      loadRecentRooms()
+    }
+  }, 3000)
 
   document.addEventListener('click', closeMenuIfOutside)
   document.addEventListener('touchstart', closeMenuIfOutside)
@@ -522,11 +549,6 @@ onUnmounted(() => {
   socket.disconnect()
   document.removeEventListener('click', closeMenuIfOutside)
   document.removeEventListener('touchstart', closeMenuIfOutside)
-})
-
-// Watch for active rooms changes and reload recent rooms
-watch(activeRoomCodes, () => {
-  loadRecentRooms()
 })
 
 // Methods
@@ -557,16 +579,19 @@ const loadRecentRooms = () => {
   const stored = localStorage.getItem('playerRecentRooms')
   let rooms = stored ? JSON.parse(stored) : []
 
-  // Filter to only show active rooms
-  if (activeRoomCodes.value.length > 0) {
-    rooms = rooms.filter(room => activeRoomCodes.value.includes(room.code))
+  // If we have active room codes from server, filter to only show those
+  if (activeRoomCodes.value && activeRoomCodes.value.length > 0) {
+    const filteredRooms = rooms.filter(room => activeRoomCodes.value.includes(room.code))
     // Update localStorage to remove closed rooms
-    if (rooms.length < (stored ? JSON.parse(stored).length : 0)) {
-      localStorage.setItem('playerRecentRooms', JSON.stringify(rooms))
+    if (filteredRooms.length < rooms.length) {
+      localStorage.setItem('playerRecentRooms', JSON.stringify(filteredRooms))
     }
+    recentRooms.value = filteredRooms
+  } else {
+    // If no active rooms from server, show all stored rooms
+    // This is a fallback - ideally we'd have server-side room history
+    recentRooms.value = rooms
   }
-
-  recentRooms.value = rooms
 }
 
 const saveRecentRoom = (roomCode) => {
@@ -584,15 +609,24 @@ const saveRecentRoom = (roomCode) => {
 }
 
 const quickJoinRoom = async (roomCode) => {
-  if (!savedUsername.value || !savedDisplayName.value) {
-    uiStore.addNotification('Please enter your username and display name first.', 'warning')
+  // Get display name from saved value or input field
+  const displayName = savedDisplayName.value || displayNameInput.value.trim()
+
+  if (!savedUsername.value) {
+    uiStore.addNotification('Please enter your username first.', 'warning')
     return
   }
+
+  if (!displayName) {
+    uiStore.addNotification('Please enter your display name first.', 'warning')
+    return
+  }
+
   roomCodeInput.value = roomCode
   currentUsername.value = savedUsername.value
-  currentDisplayName.value = savedDisplayName.value
+  currentDisplayName.value = displayName
   currentRoomCode.value = roomCode
-  socket.emit('joinRoom', { roomCode, username: savedUsername.value, displayName: savedDisplayName.value })
+  socket.emit('joinRoom', { roomCode, username: savedUsername.value, displayName })
 }
 
 const handleChangeUsername = async () => {
@@ -666,7 +700,7 @@ const handleJoinRoom = async () => {
     currentUsername.value = username
     currentDisplayName.value = displayName
     currentRoomCode.value = roomCode
-    saveRecentRoom(roomCode)
+    // Don't save room yet - wait for playerListUpdate confirmation
     socket.emit('joinRoom', { roomCode, username, displayName })
   } catch (err) {
     uiStore.addNotification('Failed to join room. Please try again.', 'error')
@@ -766,15 +800,16 @@ const handleManageAccount = () => {
 }
 
 const handleLeaveRoomClick = async () => {
-  const confirmed = confirm('Leave this room?')
-  if (confirmed) {
-    handleLeaveRoom()
-  }
+  showLeaveRoomConfirmModal.value = true
+}
+
+const confirmLeaveRoom = () => {
+  showLeaveRoomConfirmModal.value = false
+  handleLeaveRoom()
 }
 
 const handleLeaveRoom = () => {
-  socket.disconnect()
-  socket.connect()
+  // Reset local state
   inRoom.value = false
   currentRoomCode.value = null
   currentUsername.value = null
@@ -786,6 +821,16 @@ const handleLeaveRoom = () => {
   statusMessage.value = 'Ready to join'
   statusMessageType.value = ''
   menuOpen.value = false
+
+  // Disconnect and reconnect to clear room state on server
+  socket.disconnect()
+
+  // Re-establish socket connection and listeners after brief delay
+  setTimeout(() => {
+    socket.connect()
+    setupSocketListeners()
+  }, 100)
+
   loadRecentRooms()
 }
 
@@ -1090,6 +1135,7 @@ const getQuestionStatusText = (q) => {
 }
 
 .question-text {
+  text-align: center;
   font-size: clamp(1.5rem, 5vw, 2.5rem);
   margin: 0;
   line-height: 1.3;
