@@ -5,8 +5,8 @@
       <div class="logo">TriviaForge - Player Account</div>
       <div class="hamburger" @click.stop="toggleMenu">&#9776;</div>
       <ul class="menu" :class="{ open: menuOpen }" id="menu">
-        <li><router-link to="/player">Play</router-link></li>
-        <li><router-link to="/display">Spectate</router-link></li>
+        <li><RouterLink to="/player">Play</RouterLink></li>
+        <li><RouterLink to="/display">Spectate</RouterLink></li>
       </ul>
     </nav>
 
@@ -102,7 +102,7 @@
         </div>
       </div>
 
-      <router-link to="/player" class="back-link">← Back to Player</router-link>
+      <RouterLink to="/player" class="back-link">← Back to Player</RouterLink>
     </div>
 
     <!-- Dialog Modal -->

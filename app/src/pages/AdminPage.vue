@@ -5,10 +5,10 @@
       <div class="logo">Trivia Admin</div>
       <div class="hamburger" @click.stop="toggleMenu">&#9776;</div>
       <ul class="menu" :class="{ open: menuOpen }" id="menu">
-        <li><router-link to="/admin">Admin</router-link></li>
-        <li><router-link to="/player">Player</router-link></li>
-        <li><router-link to="/presenter">Presenter</router-link></li>
-        <li><router-link to="/display">Spectate</router-link></li>
+        <li><RouterLink to="/admin">Admin</RouterLink></li>
+        <li><RouterLink to="/player">Player</RouterLink></li>
+        <li><RouterLink to="/presenter">Presenter</RouterLink></li>
+        <li><RouterLink to="/display">Spectate</RouterLink></li>
         <li class="username-item">
           <span>{{ authStore.username || 'Admin' }}</span>
         </li>
@@ -753,8 +753,11 @@ const showAlert = (message, title = 'Notification') => {
   })
 }
 
+let isPromptDialog = false
+
 const showConfirm = (message, title = 'Confirm') => {
   return new Promise((resolve) => {
+    isPromptDialog = false
     dialogTitle.value = title
     dialogMessage.value = message
     dialogShowInput.value = false
@@ -766,25 +769,34 @@ const showConfirm = (message, title = 'Confirm') => {
 
 const showPrompt = (message, title = 'Enter value') => {
   return new Promise((resolve) => {
+    isPromptDialog = true
     dialogTitle.value = title
     dialogMessage.value = message
     dialogShowInput.value = true
     dialogInputValue.value = ''
     dialogConfirmText.value = 'OK'
-    dialogResolve = () => resolve(dialogInputValue.value || null)
+    dialogResolve = resolve
     showDialog.value = true
   })
 }
 
 const handleDialogConfirm = () => {
   showDialog.value = false
-  dialogResolve?.(true)
+  if (isPromptDialog) {
+    dialogResolve?.(dialogInputValue.value || null)
+  } else {
+    dialogResolve?.(true)
+  }
   dialogResolve = null
 }
 
 const handleDialogCancel = () => {
   showDialog.value = false
-  dialogResolve?.(false)
+  if (isPromptDialog) {
+    dialogResolve?.(null)
+  } else {
+    dialogResolve?.(false)
+  }
   dialogResolve = null
 }
 
@@ -1373,6 +1385,7 @@ select:focus {
 .shuffle-controls {
   display: flex;
   gap: 0.5rem;
+  margin-right: 1rem;
 }
 
 .questions-list {

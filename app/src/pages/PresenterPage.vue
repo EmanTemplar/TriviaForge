@@ -7,10 +7,10 @@
       <div v-else class="room-code"></div>
       <div class="hamburger" @click.stop="toggleMenu" id="hamburger">&#9776;</div>
       <ul class="menu" :class="{ open: menuOpen }" id="menu">
-        <li><router-link to="/admin">Admin</router-link></li>
-        <li><router-link to="/player">Player</router-link></li>
-        <li><router-link to="/presenter/room">Presenter</router-link></li>
-        <li><router-link to="/display">Spectate</router-link></li>
+        <li><RouterLink to="/admin">Admin</RouterLink></li>
+        <li><RouterLink to="/player">Player</RouterLink></li>
+        <li><RouterLink to="/presenter/room">Presenter</RouterLink></li>
+        <li><RouterLink to="/display">Spectate</RouterLink></li>
         <li class="username-item">
           <span>{{ authStore.username || 'Admin' }}</span>
         </li>
