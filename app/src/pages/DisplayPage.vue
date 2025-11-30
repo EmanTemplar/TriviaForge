@@ -36,10 +36,10 @@
       <!-- Players List -->
       <h3 class="sidebar-title">Players ({{ connectedPlayers }})</h3>
       <div class="players-list">
-        <div v-if="currentPlayers.length === 0" class="empty-state">
+        <div v-if="nonSpectatorPlayers.length === 0" class="empty-state">
           <em>No players yet</em>
         </div>
-        <div v-for="player in currentPlayers" :key="player.id" class="player-item">
+        <div v-for="player in nonSpectatorPlayers" :key="player.id" class="player-item">
           <span class="player-name">{{ player.name }}</span>
           <span v-if="player.connected" class="player-status online">●</span>
           <span v-else class="player-status offline">●</span>
@@ -104,7 +104,11 @@ const currentQuestionAnswers = computed(() => {
   }))
 })
 const connectedPlayers = computed(() => {
-  return currentPlayers.value.filter(p => p.connected).length
+  return currentPlayers.value.filter(p => p.connected && !p.isSpectator).length
+})
+
+const nonSpectatorPlayers = computed(() => {
+  return currentPlayers.value.filter(p => !p.isSpectator)
 })
 
 // Join room as spectator

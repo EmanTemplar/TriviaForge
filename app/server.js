@@ -1971,37 +1971,39 @@ app.get('/api/room/progress/:roomCode', async (req, res) => {
       return res.status(404).json({ error: 'Room not found or session ended' });
     }
 
-    // Build progress data for all players
-    const players = Object.values(room.players).map(player => {
-      // Count how many questions this player answered correctly
-      let correctCount = 0;
-      let answeredCount = 0;
+    // Build progress data for all players (exclude spectators)
+    const players = Object.values(room.players)
+      .filter(player => !player.isSpectator) // Exclude spectators from standings
+      .map(player => {
+        // Count how many questions this player answered correctly
+        let correctCount = 0;
+        let answeredCount = 0;
 
-      // Iterate through revealed questions to calculate scores
-      if (room.revealedQuestions && Array.isArray(room.revealedQuestions)) {
-        room.revealedQuestions.forEach(questionIndex => {
-          const question = room.quizData.questions[questionIndex];
-          const playerChoice = player.answers && player.answers[questionIndex] !== undefined
-            ? player.answers[questionIndex]
-            : null;
+        // Iterate through revealed questions to calculate scores
+        if (room.revealedQuestions && Array.isArray(room.revealedQuestions)) {
+          room.revealedQuestions.forEach(questionIndex => {
+            const question = room.quizData.questions[questionIndex];
+            const playerChoice = player.answers && player.answers[questionIndex] !== undefined
+              ? player.answers[questionIndex]
+              : null;
 
-          if (playerChoice !== null) {
-            answeredCount++;
-            if (playerChoice === question.correctChoice) {
-              correctCount++;
+            if (playerChoice !== null) {
+              answeredCount++;
+              if (playerChoice === question.correctChoice) {
+                correctCount++;
+              }
             }
-          }
-        });
-      }
+          });
+        }
 
-      return {
-        name: player.displayName || player.username,
-        username: player.username,
-        correct: correctCount,
-        answered: answeredCount,
-        connected: player.connected
-      };
-    });
+        return {
+          name: player.displayName || player.username,
+          username: player.username,
+          correct: correctCount,
+          answered: answeredCount,
+          connected: player.connected
+        };
+      });
 
     const roomProgress = {
       roomCode: roomCode,
@@ -2381,7 +2383,8 @@ io.on('connection', (socket) => {
         name: playerDisplayName, // Display name (update in case they changed it)
         userId: userId, // Associate with user account
         connected: true,
-        choice: currentChoice // Restore choice if they already answered current question
+        choice: currentChoice, // Restore choice if they already answered current question
+        isSpectator: playerUsername === 'Display' || playerDisplayName === 'Spectator Display' // Flag spectators
       };
       socket.join(roomCode);
       console.log(`${playerDisplayName} (${playerUsername}) reconnected to room ${roomCode} (${Object.keys(playerData.answers || {}).length} previous answers preserved)`);
@@ -2404,7 +2407,8 @@ io.on('connection', (socket) => {
         userId: userId, // Associate with user account
         choice: null,
         connected: true,
-        answers: existingAnswers
+        answers: existingAnswers,
+        isSpectator: playerUsername === 'Display' || playerDisplayName === 'Spectator Display' // Flag spectators
       };
       socket.join(roomCode);
       console.log(`${playerDisplayName} (${playerUsername}) joined room ${roomCode}`);
@@ -2413,10 +2417,33 @@ io.on('connection', (socket) => {
     io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
     io.emit('activeRoomsUpdate', getActiveRoomsSummary());
 
-    // Send the player's answer history so they know which questions they've already answered
-    const answeredQuestionIndices = Object.keys(room.players[socket.id].answers || {}).map(idx => parseInt(idx));
-    console.log(`[RESUME DEBUG] Sending answer history to ${playerDisplayName} (${playerUsername}):`, answeredQuestionIndices, 'Full answers:', room.players[socket.id].answers);
-    socket.emit('answerHistoryRestored', { answeredQuestions: answeredQuestionIndices });
+    // Send the player's answer history with detailed information
+    const playerAnswers = room.players[socket.id].answers || {};
+    const answerHistory = Object.entries(playerAnswers).map(([questionIndex, choice]) => {
+      const idx = parseInt(questionIndex);
+      const question = room.quizData.questions[idx];
+      const isRevealed = room.revealedQuestions && room.revealedQuestions.includes(idx);
+      const isCorrect = isRevealed ? choice === question.correctChoice : null;
+
+      const historyItem = {
+        questionIndex: idx,
+        choice,
+        isRevealed,
+        text: question.text,
+        choices: question.choices
+      };
+
+      // Only include correctChoice and isCorrect for revealed questions
+      if (isRevealed) {
+        historyItem.correctChoice = question.correctChoice;
+        historyItem.isCorrect = isCorrect;
+      }
+
+      return historyItem;
+    });
+
+    console.log(`[RESUME DEBUG] Sending answer history to ${playerDisplayName} (${playerUsername}):`, answerHistory);
+    socket.emit('answerHistoryRestored', { answerHistory });
 
     // If there's a current question active, send it to the new player
     if (room.currentQuestionIndex !== null) {
@@ -2594,7 +2621,7 @@ function getActiveRoomsSummary() {
   return Object.entries(liveRooms).map(([roomCode, room]) => ({
     roomCode,
     quizTitle: room.quizData.title,
-    playerCount: Object.keys(room.players).length,
+    playerCount: Object.values(room.players).filter(p => !p.isSpectator).length,
     isActive: room.currentQuestionIndex !== null,
     status: room.status
   }));

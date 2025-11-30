@@ -506,6 +506,43 @@ const setupSocketListeners = () => {
     answeredCurrentQuestion.value = true
   })
 
+  socket.on('answerHistoryRestored', ({ answerHistory }) => {
+    console.log('[PLAYER] Answer history restored:', answerHistory)
+    // Process each answered question (if any)
+    if (answerHistory && answerHistory.length > 0) {
+      answerHistory.forEach((item) => {
+        const { questionIndex, choice, isRevealed, isCorrect, text, choices, correctChoice } = item
+        // Mark question as answered in the local set
+        answeredQuestions.add(questionIndex)
+
+        // Build question data object
+        const questionData = {
+          index: questionIndex,
+          text: text,
+          choices: choices,
+          playerChoice: choice,
+          presented: true,
+          revealed: isRevealed,
+          isCorrect: isCorrect || false
+        }
+
+        // Only include correctChoice if question was revealed
+        if (isRevealed && correctChoice !== undefined) {
+          questionData.correctChoice = correctChoice
+        }
+
+        // Update question history with full details
+        const historyIndex = questionHistory.value.findIndex(q => q.index === questionIndex)
+        if (historyIndex !== -1) {
+          questionHistory.value[historyIndex] = questionData
+        } else {
+          // Add to history if not already there
+          questionHistory.value.push(questionData)
+        }
+      })
+    }
+  })
+
   socket.on('activeRoomsUpdate', (rooms) => {
     activeRoomCodes.value = Array.isArray(rooms) ? rooms.map(r => r.roomCode) : []
     // Load recent rooms after receiving active rooms list
