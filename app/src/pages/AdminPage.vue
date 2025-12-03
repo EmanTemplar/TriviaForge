@@ -131,16 +131,22 @@
         </aside>
       </div>
 
-      <!-- Completed Sessions Tab -->
+      <!-- Session Management Tab -->
       <div v-if="activeTab === 'sessions'" class="tab-content sessions-management">
         <section>
-          <h2>Completed Quiz Sessions</h2>
+          <h2>Session Management</h2>
           <div class="sessions-list">
-            <div v-if="completedSessions.length === 0" class="empty-state"><em>No completed sessions</em></div>
-            <div v-for="session in completedSessions" :key="session.filename" class="session-item" @click="viewSessionDetails(session)">
-              <div class="session-title">{{ session.quizTitle }} ({{ session.roomCode }})</div>
-              <div class="session-date">{{ formatDate(session.completedAt) }}</div>
-              <div class="session-stats">{{ session.playerCount || 0 }} players</div>
+            <div v-if="completedSessions.length === 0" class="empty-state"><em>No sessions found</em></div>
+            <div v-for="session in completedSessions" :key="session.filename" class="session-item">
+              <div class="session-content" @click="viewSessionDetails(session)">
+                <div class="session-header">
+                  <div class="session-title">{{ session.quizTitle }} ({{ session.roomCode }})</div>
+                  <div class="session-status" :class="'status-' + session.status">{{ session.status }}</div>
+                </div>
+                <div class="session-date">{{ formatDate(session.completedAt || session.createdAt) }}</div>
+                <div class="session-stats">{{ session.playerCount || 0 }} players · {{ session.presentedCount || 0 }}/{{ session.questionCount || 0 }} presented</div>
+              </div>
+              <button class="btn-delete-inline" @click.stop="deleteSessionFromList(session)" title="Delete Session">🗑️</button>
             </div>
           </div>
         </section>
@@ -332,15 +338,19 @@
           <h3>{{ selectedSession.quizTitle }}</h3>
           <div class="session-detail-meta">
             <span>Room: {{ selectedSession.roomCode }}</span>
-            <span>{{ formatDate(selectedSession.completedAt) }}</span>
+            <span class="session-status" :class="'status-' + selectedSession.status">{{ selectedSession.status }}</span>
+            <span v-if="selectedSession.completedAt">Completed: {{ formatDate(selectedSession.completedAt) }}</span>
+            <span v-else>Started: {{ formatDate(selectedSession.createdAt) }}</span>
           </div>
         </div>
 
+        <!-- Player Summary -->
         <div v-if="selectedSession.playerResults && selectedSession.playerResults.length > 0" class="session-results">
-          <h4>Player Results</h4>
+          <h4>Player Summary</h4>
           <table class="results-table">
             <thead>
               <tr>
+                <th>Rank</th>
                 <th>Player</th>
                 <th>Correct</th>
                 <th>Incorrect</th>
@@ -348,7 +358,13 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(result, idx) in selectedSession.playerResults" :key="idx">
+              <tr v-for="(result, idx) in rankedPlayers" :key="idx">
+                <td class="rank-cell">
+                  <span v-if="idx === 0" class="medal gold">🥇</span>
+                  <span v-else-if="idx === 1" class="medal silver">🥈</span>
+                  <span v-else-if="idx === 2" class="medal bronze">🥉</span>
+                  <span v-else class="rank-number">{{ idx + 1 }}</span>
+                </td>
                 <td>{{ result.name }}</td>
                 <td>{{ result.correct }}</td>
                 <td>{{ (result.answered || 0) - (result.correct || 0) }}</td>
@@ -357,7 +373,80 @@
             </tbody>
           </table>
         </div>
+        <div v-else class="session-results">
+          <p class="empty-state"><em>No player results available</em></p>
+        </div>
+
+        <!-- Detailed Question Breakdown -->
+        <div v-if="selectedSession.questions && selectedSession.questions.length > 0" class="question-breakdown">
+          <h4>Question Breakdown</h4>
+          <div v-for="(question, qIdx) in selectedSession.questions" :key="qIdx" class="question-detail">
+            <div class="question-header">
+              <strong>Q{{ qIdx + 1 }}:</strong> {{ question.text }}
+            </div>
+            <div class="question-choices">
+              <div
+                v-for="(choice, cIdx) in question.choices"
+                :key="cIdx"
+                :class="['choice-item', { 'choice-correct': cIdx === question.correctChoice }]"
+              >
+                <strong>{{ String.fromCharCode(65 + cIdx) }}.</strong> {{ choice }}
+                <span v-if="cIdx === question.correctChoice" class="correct-indicator">✓ Correct</span>
+              </div>
+            </div>
+            <div v-if="selectedSession.presentedQuestions && selectedSession.presentedQuestions.includes(qIdx)" class="player-answers">
+              <div class="player-answers-header" @click="toggleQuestionExpanded(qIdx)">
+                <strong>Player Responses:</strong>
+                <span class="toggle-arrow" :class="{ expanded: expandedQuestions.has(qIdx) }">▼</span>
+              </div>
+              <div v-if="expandedQuestions.has(qIdx)" class="player-responses-grid">
+                <div
+                  v-for="player in selectedSession.playerResults"
+                  :key="player.name"
+                  :class="['player-response', {
+                    'response-correct': player.answers[qIdx] === question.correctChoice,
+                    'response-incorrect': player.answers[qIdx] !== undefined && player.answers[qIdx] !== question.correctChoice,
+                    'response-unanswered': player.answers[qIdx] === undefined
+                  }]"
+                >
+                  <span class="player-name">{{ player.name }}:</span>
+                  <span class="player-answer">
+                    <template v-if="player.answers[qIdx] !== undefined">
+                      {{ String.fromCharCode(65 + player.answers[qIdx]) }}
+                      <span v-if="player.answers[qIdx] === question.correctChoice" class="answer-result">✓</span>
+                      <span v-else class="answer-result">✗</span>
+                    </template>
+                    <template v-else>
+                      <em>No answer</em>
+                    </template>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="not-presented">
+              <em>Question not presented</em>
+            </div>
+          </div>
+        </div>
       </div>
+      <template #footer>
+        <button class="btn-danger" @click="confirmDeleteSession(selectedSession)">Delete Session</button>
+        <button class="btn-secondary" @click="showSessionModal = false">Close</button>
+      </template>
+    </Modal>
+
+    <!-- Delete Confirmation Modal -->
+    <Modal :isOpen="showDeleteConfirmModal" @close="showDeleteConfirmModal = false" title="Confirm Deletion">
+      <p style="color: #aaa; margin-bottom: 1.5rem;">
+        Are you sure you want to delete session <strong style="color: #fff;">{{ sessionToDelete?.quizTitle }}</strong> ({{ sessionToDelete?.roomCode }})?
+      </p>
+      <p style="color: #f66; margin-bottom: 1.5rem;">
+        This action cannot be undone.
+      </p>
+      <template #footer>
+        <button class="btn-danger" @click="confirmDelete">Delete</button>
+        <button class="btn-secondary" @click="showDeleteConfirmModal = false">Cancel</button>
+      </template>
     </Modal>
   </div>
 </template>
@@ -378,6 +467,8 @@ const menuOpen = ref(false)
 const activeTab = ref('quiz')
 const showDialog = ref(false)
 const showSessionModal = ref(false)
+const showDeleteConfirmModal = ref(false)
+const sessionToDelete = ref(null)
 
 // Column resizing
 const col1Width = ref(280)
@@ -407,6 +498,7 @@ const editingQuestionIdx = ref(null)
 // Sessions
 const completedSessions = ref([])
 const selectedSession = ref(null)
+const expandedQuestions = ref(new Set())
 
 // Options
 const answerDisplayTime = ref(30)
@@ -416,10 +508,25 @@ const optionsSaveMessageType = ref('success')
 // Users
 const users = ref([])
 
+// Computed Properties
+const rankedPlayers = computed(() => {
+  if (!selectedSession.value || !selectedSession.value.playerResults) return []
+  // Sort players by correct answers (descending), then by accuracy (descending)
+  return [...selectedSession.value.playerResults].sort((a, b) => {
+    if (b.correct !== a.correct) {
+      return b.correct - a.correct
+    }
+    // If correct answers are the same, sort by accuracy
+    const accA = a.answered > 0 ? (a.correct / a.answered) * 100 : 0
+    const accB = b.answered > 0 ? (b.correct / b.answered) * 100 : 0
+    return accB - accA
+  })
+})
+
 // Tabs
 const tabs = [
   { id: 'quiz', label: 'Quiz Management' },
-  { id: 'sessions', label: 'Completed Sessions' },
+  { id: 'sessions', label: 'Session Management' },
   { id: 'options', label: 'Quiz Options' },
   { id: 'users', label: 'User Management' },
   { id: 'about', label: 'About' }
@@ -701,16 +808,65 @@ const shuffleAllChoices = async () => {
 // Sessions functions
 const loadSessions = async () => {
   try {
-    const response = await get('/api/sessions/completed')
+    const response = await get('/api/sessions')
     completedSessions.value = response.data
   } catch (err) {
     console.error('Error loading sessions:', err)
   }
 }
 
-const viewSessionDetails = (session) => {
-  selectedSession.value = session
-  showSessionModal.value = true
+const viewSessionDetails = async (session) => {
+  try {
+    // Fetch full session details including player results
+    const response = await get(`/api/sessions/${session.filename}`)
+    selectedSession.value = response.data
+    expandedQuestions.value = new Set() // Clear expanded questions when opening a new session
+    showSessionModal.value = true
+  } catch (err) {
+    console.error('Error loading session details:', err)
+    showAlert('Failed to load session details', 'Error')
+  }
+}
+
+const toggleQuestionExpanded = (questionIndex) => {
+  if (expandedQuestions.value.has(questionIndex)) {
+    expandedQuestions.value.delete(questionIndex)
+  } else {
+    expandedQuestions.value.add(questionIndex)
+  }
+  // Force reactivity
+  expandedQuestions.value = new Set(expandedQuestions.value)
+}
+
+const confirmDeleteSession = (session) => {
+  // Close the session details modal first
+  showSessionModal.value = false
+  // Store the session to delete and show confirmation modal
+  sessionToDelete.value = session
+  showDeleteConfirmModal.value = true
+}
+
+const deleteSessionFromList = (session) => {
+  // Store the session to delete and show confirmation modal
+  sessionToDelete.value = session
+  showDeleteConfirmModal.value = true
+}
+
+const confirmDelete = async () => {
+  if (!sessionToDelete.value) return
+
+  try {
+    await delete_(`/api/sessions/${sessionToDelete.value.filename}`)
+    showDeleteConfirmModal.value = false
+    sessionToDelete.value = null
+    showAlert('Session deleted successfully')
+    await loadSessions() // Reload the list
+  } catch (err) {
+    console.error('Error deleting session:', err)
+    showDeleteConfirmModal.value = false
+    sessionToDelete.value = null
+    showAlert('Failed to delete session', 'Error')
+  }
 }
 
 // Options functions
@@ -1149,6 +1305,7 @@ onUnmounted(() => {
 .btn-primary,
 .btn-secondary,
 .btn-delete,
+.btn-danger,
 .btn-download,
 .btn-upload,
 .btn-add,
@@ -1199,6 +1356,17 @@ onUnmounted(() => {
 
 .btn-delete:hover {
   background: rgba(200, 0, 0, 0.3);
+}
+
+.btn-danger {
+  background: rgba(200, 0, 0, 0.2);
+  border-color: rgba(200, 0, 0, 0.5);
+  color: #f66;
+}
+
+.btn-danger:hover {
+  background: rgba(200, 0, 0, 0.3);
+  border-color: rgba(200, 0, 0, 0.7);
 }
 
 .btn-download,
@@ -1667,16 +1835,41 @@ select:focus {
 }
 
 .session-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   padding: 1rem;
   background: rgba(79, 195, 247, 0.1);
   border: 1px solid rgba(79, 195, 247, 0.3);
   border-radius: 8px;
-  cursor: pointer;
   transition: all 0.2s;
 }
 
 .session-item:hover {
   background: rgba(79, 195, 247, 0.2);
+}
+
+.session-content {
+  flex: 1;
+  cursor: pointer;
+}
+
+.btn-delete-inline {
+  padding: 0.5rem 0.75rem;
+  background: rgba(200, 0, 0, 0.2);
+  border: 1px solid rgba(200, 0, 0, 0.5);
+  border-radius: 6px;
+  color: #f66;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-delete-inline:hover {
+  background: rgba(200, 0, 0, 0.3);
+  border-color: rgba(200, 0, 0, 0.7);
+  transform: scale(1.1);
 }
 
 .session-title {
@@ -1693,6 +1886,47 @@ select:focus {
 .session-stats {
   font-size: 0.9rem;
   color: #4fc3f7;
+}
+
+.session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.session-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.session-status.status-active {
+  background: rgba(0, 255, 0, 0.2);
+  color: #0f0;
+  border: 1px solid rgba(0, 255, 0, 0.4);
+}
+
+.session-status.status-in_progress {
+  background: rgba(0, 255, 0, 0.2);
+  color: #0f0;
+  border: 1px solid rgba(0, 255, 0, 0.4);
+}
+
+.session-status.status-resumed {
+  background: rgba(255, 165, 0, 0.2);
+  color: #ffa500;
+  border: 1px solid rgba(255, 165, 0, 0.4);
+}
+
+.session-status.status-completed {
+  background: rgba(79, 195, 247, 0.2);
+  color: #4fc3f7;
+  border: 1px solid rgba(79, 195, 247, 0.4);
 }
 
 /* Options Tab */
@@ -2121,6 +2355,170 @@ select:focus {
 .results-table td {
   padding: 0.75rem 0.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Question Breakdown */
+.question-breakdown {
+  margin-top: 2rem;
+}
+
+.question-breakdown h4 {
+  margin: 1rem 0;
+  color: #fff;
+}
+
+.question-detail {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(79, 195, 247, 0.3);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.question-header {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: #fff;
+}
+
+.question-choices {
+  margin: 1rem 0;
+  padding-left: 1rem;
+}
+
+.choice-item {
+  padding: 0.5rem;
+  margin: 0.25rem 0;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.choice-item.choice-correct {
+  background: rgba(0, 200, 0, 0.2);
+  border-left: 3px solid #0f0;
+}
+
+.correct-indicator {
+  margin-left: 0.5rem;
+  color: #0f0;
+  font-weight: bold;
+}
+
+.player-answers {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.player-answers-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.player-answers-header:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.toggle-arrow {
+  font-size: 0.8rem;
+  transition: transform 0.3s ease;
+  color: #4fc3f7;
+}
+
+.toggle-arrow.expanded {
+  transform: rotate(180deg);
+}
+
+.player-responses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.player-response {
+  padding: 0.5rem;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.player-response.response-correct {
+  background: rgba(0, 200, 0, 0.2);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.player-response.response-incorrect {
+  background: rgba(200, 0, 0, 0.2);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+}
+
+.player-response.response-unanswered {
+  background: rgba(100, 100, 100, 0.2);
+  border: 1px solid rgba(150, 150, 150, 0.3);
+}
+
+.player-name {
+  font-weight: 500;
+  color: #fff;
+}
+
+.player-answer {
+  font-weight: bold;
+}
+
+.answer-result {
+  margin-left: 0.25rem;
+  font-size: 1.2rem;
+}
+
+.response-correct .answer-result {
+  color: #0f0;
+}
+
+.response-incorrect .answer-result {
+  color: #f66;
+}
+
+.not-presented {
+  color: #aaa;
+  font-style: italic;
+  padding: 0.5rem;
+  text-align: center;
+}
+
+/* Ranking and Medal Styles */
+.rank-cell {
+  text-align: center;
+  font-weight: bold;
+}
+
+.medal {
+  font-size: 1.5rem;
+  display: inline-block;
+}
+
+.medal.gold {
+  filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.6));
+}
+
+.medal.silver {
+  filter: drop-shadow(0 0 3px rgba(192, 192, 192, 0.6));
+}
+
+.medal.bronze {
+  filter: drop-shadow(0 0 3px rgba(205, 127, 50, 0.6));
+}
+
+.rank-number {
+  color: #aaa;
+  font-size: 1rem;
 }
 
 /* Responsive Design */
