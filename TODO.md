@@ -2,6 +2,41 @@
 
 This document tracks planned features, improvements, and tasks for future development.
 
+## Post-Vue 3 Migration Bug Fixes (Completed)
+
+### X. Spectator Filtering, Late Joiner Security, QR Code Restoration
+**Status:** ✅ Completed (2025-12-03)
+**Description:** Fixed critical bugs discovered during Vue 3 migration testing related to spectator display, answer submission security, and QR code functionality.
+
+**Bugs Fixed:**
+1. **Spectator Exclusion from Statistics:**
+   - Spectators were incorrectly counted as players in Live Standings modal
+   - Spectators appeared in Answers Revealed modal player responses
+   - Player count included spectators in status messages
+   - Fixed by adding `nonSpectatorPlayers` computed property to filter `.isSpectator` users
+   - Applied cross-referencing technique for server results without `isSpectator` property
+
+2. **Late Joiner Answer Lock Security:**
+   - Players joining after a question was revealed could still submit answers (cheating exploit)
+   - Fixed by sending `revealed: true` flag from server for late joiners
+   - Client now checks `revealed` or `isRevealed` properties and locks answer choices
+   - Status message clearly indicates "This question has already been revealed"
+
+3. **QR Code Functionality Restoration:**
+   - QR codes pointed to non-existent URLs (`/player.html` instead of `/player`)
+   - No auto-fill or auto-join functionality from QR codes
+   - Fixed by updating server endpoints to `/player` and `/player?room=CODE` format
+   - Implemented Vue Router query parameter handling with `useRoute`
+   - Added auto-join functionality when QR code is scanned
+
+**Files Modified:**
+- `app/src/pages/PresenterPage.vue` - Spectator filtering in modals
+- `app/src/pages/PlayerPage.vue` - Spectator filtering, revealed check, QR auto-join
+- `app/src/pages/DisplayPage.vue` - Spectator filtering, QR auto-join
+- `app/server.js` - QR code endpoints, revealed flag transmission
+
+---
+
 ## Post-Vue 3 Migration Tasks (High Priority)
 
 ### A. Update Docker Build Process for Vue 3
@@ -610,5 +645,5 @@ After Vue 3 migration is deployed to production:
 
 ---
 
-**Last Updated:** November 2025 (Vue 3 Migration Complete)
+**Last Updated:** 2025-12-03 (Bug fixes: Spectator filtering, Late joiner security, QR codes)
 **Maintained By:** TriviaForge Development Team
