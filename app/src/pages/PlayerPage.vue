@@ -25,13 +25,13 @@
         <li v-if="inRoom" id="menuPlayersSection" class="mobile-only-menu-item">
           <div>Players in Room</div>
           <div id="menuPlayersList" class="menu-players">
-            <div v-for="(player, idx) in currentPlayers" :key="player.id" class="player-item">
+            <div v-for="(player, idx) in nonSpectatorPlayers" :key="player.id" class="player-item">
               <span>{{ idx + 1 }}.</span>
               <span class="player-status" :class="{ online: player.connected, offline: !player.connected }">●</span>
               <span>{{ player.name }}</span>
               <span v-if="player.choice !== null">✓</span>
             </div>
-            <em v-if="currentPlayers.length === 0">Not in a room yet</em>
+            <em v-if="nonSpectatorPlayers.length === 0">Not in a room yet</em>
           </div>
         </li>
         <li v-if="loginUsername" class="logout-item">
@@ -159,13 +159,13 @@
         <div class="players-list-container">
           <h3>Players in Room</h3>
           <div class="players-list">
-            <div v-for="(player, idx) in currentPlayers" :key="player.id" class="player-item">
+            <div v-for="(player, idx) in nonSpectatorPlayers" :key="player.id" class="player-item">
               <span class="player-number">{{ idx + 1 }}.</span>
               <span class="player-status" :class="{ online: player.connected, offline: !player.connected }">●</span>
               <span class="player-name">{{ player.name }}</span>
               <span v-if="player.choice !== null" class="player-answer">✓</span>
             </div>
-            <em v-if="currentPlayers.length === 0">Not in a room yet</em>
+            <em v-if="nonSpectatorPlayers.length === 0">Not in a room yet</em>
           </div>
         </div>
 
@@ -337,7 +337,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useSocket } from '@/composables/useSocket.js'
 import { useApi } from '@/composables/useApi.js'
 import { useUIStore } from '@/stores/ui.js'
@@ -345,6 +345,7 @@ import Modal from '@/components/common/Modal.vue'
 import FormInput from '@/components/common/FormInput.vue'
 
 const router = useRouter()
+const route = useRoute()
 const socket = useSocket()
 const { post } = useApi()
 const uiStore = useUIStore()
@@ -409,6 +410,11 @@ const incorrectCount = computed(() => presentedQuestions.value.filter(q => q.rev
 const answeredCount = computed(() => presentedQuestions.value.filter(q => q.revealed).length)
 const accuracy = computed(() => answeredCount.value > 0 ? ((correctCount.value / answeredCount.value) * 100).toFixed(1) : '0.0')
 
+// Filter out spectators from player list
+const nonSpectatorPlayers = computed(() => {
+  return currentPlayers.value.filter(p => !p.isSpectator)
+})
+
 // Setup socket event listeners - called on mount and after reconnect
 const setupSocketListeners = () => {
   socket.on('connect', () => {
@@ -426,17 +432,22 @@ const setupSocketListeners = () => {
     inRoom.value = true
     currentRoomCode.value = roomCode
     currentPlayers.value = players
-    statusMessage.value = `${players.length} player(s) in room`
+    // Exclude spectators from player count
+    const nonSpectatorCount = players.filter(p => !p.isSpectator).length
+    statusMessage.value = `${nonSpectatorCount} player(s) in room`
     // Save room to recent rooms only on successful join
     saveRecentRoom(roomCode)
   })
 
   socket.on('questionPresented', ({ questionIndex, question }) => {
     questionDisplaying.value = true
-    answerRevealed.value = false
+    // Check if this question has already been revealed (for late joiners)
+    const isAlreadyRevealed = question.revealed === true || question.isRevealed === true
+    answerRevealed.value = isAlreadyRevealed
+
     currentQuestion.value = {
       ...question,
-      correctChoice: undefined,
+      correctChoice: isAlreadyRevealed ? question.correctChoice : undefined,
       index: questionIndex
     }
     selectedAnswer.value = null
@@ -449,14 +460,17 @@ const setupSocketListeners = () => {
         text: question.text,
         choices: question.choices,
         playerChoice: null,
-        correctChoice: undefined,
+        correctChoice: isAlreadyRevealed ? question.correctChoice : undefined,
         presented: true,
-        revealed: false,
+        revealed: isAlreadyRevealed,
         isCorrect: false
       })
     }
 
-    if (answeredCurrentQuestion.value) {
+    if (isAlreadyRevealed) {
+      statusMessage.value = 'This question has already been revealed'
+      statusMessageType.value = 'info'
+    } else if (answeredCurrentQuestion.value) {
       statusMessage.value = 'You already answered this question'
       statusMessageType.value = 'warning'
     } else {
@@ -508,6 +522,11 @@ const setupSocketListeners = () => {
 
   socket.on('answerHistoryRestored', ({ answerHistory }) => {
     console.log('[PLAYER] Answer history restored:', answerHistory)
+
+    // Clear existing history to ensure each session is isolated
+    questionHistory.value = []
+    answeredQuestions.clear()
+
     // Process each answered question (if any)
     if (answerHistory && answerHistory.length > 0) {
       answerHistory.forEach((item) => {
@@ -531,14 +550,8 @@ const setupSocketListeners = () => {
           questionData.correctChoice = correctChoice
         }
 
-        // Update question history with full details
-        const historyIndex = questionHistory.value.findIndex(q => q.index === questionIndex)
-        if (historyIndex !== -1) {
-          questionHistory.value[historyIndex] = questionData
-        } else {
-          // Add to history if not already there
-          questionHistory.value.push(questionData)
-        }
+        // Add to history for this session
+        questionHistory.value.push(questionData)
       })
     }
   })
@@ -577,6 +590,21 @@ onMounted(() => {
       loadRecentRooms()
     }
   }, 3000)
+
+  // Check for room code in URL query parameter (from QR code)
+  const roomFromUrl = route.query.room
+  if (roomFromUrl) {
+    roomCodeInput.value = roomFromUrl.toUpperCase()
+    console.log(`Room code from URL: ${roomCodeInput.value}`)
+
+    // Auto-join if user has credentials
+    if (savedUsername.value && savedDisplayName.value) {
+      // Wait a bit for socket to connect
+      setTimeout(() => {
+        quickJoinRoom(roomCodeInput.value)
+      }, 500)
+    }
+  }
 
   document.addEventListener('click', closeMenuIfOutside)
   document.addEventListener('touchstart', closeMenuIfOutside)
@@ -853,6 +881,7 @@ const handleLeaveRoom = () => {
   questionDisplaying.value = false
   selectedAnswer.value = null
   answeredQuestions.clear()
+  questionHistory.value = [] // Clear session-specific history
   currentPlayers.value = []
   statusMessage.value = 'Ready to join'
   statusMessageType.value = ''

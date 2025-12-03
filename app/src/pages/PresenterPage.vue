@@ -108,8 +108,8 @@
         <h2>Connected Players</h2>
         <button v-if="currentRoomCode" class="btn-standings" @click="showPresenterProgress">📊 Standings</button>
         <div id="playerList" class="live-feed">
-          <div v-if="connectedPlayers.length === 0" class="empty-state"><em>No players yet</em></div>
-          <div v-for="player in connectedPlayers" :key="player.name" class="player-item">
+          <div v-if="nonSpectatorPlayers.length === 0" class="empty-state"><em>No players yet</em></div>
+          <div v-for="player in nonSpectatorPlayers" :key="player.name" class="player-item">
             <span class="player-status" :class="{ connected: player.connected, disconnected: !player.connected }">●</span>
             {{ player.name }}
             <span v-if="player.choice !== null" class="player-answered">✓</span>
@@ -300,6 +300,11 @@ const connectedPlayers = ref([])
 const activeRooms = ref([])
 const progressStats = ref(null)
 const sortedPlayers = ref([])
+
+// Computed: Filter out spectators from connected players
+const nonSpectatorPlayers = computed(() => {
+  return connectedPlayers.value.filter(p => !p.isSpectator)
+})
 
 // Answer reveal modal data
 const answerRevealData = ref(null)
@@ -526,14 +531,17 @@ const fetchPresenterProgress = async () => {
     const response = await get(`/api/room/progress/${currentRoomCode.value}`)
     const roomProgress = response.data
 
-    if (!roomProgress.players || roomProgress.players.length === 0 || !roomProgress.players.some(p => p.answered > 0)) {
+    // Filter out spectators from all statistics
+    const nonSpectatorPlayers = roomProgress.players ? roomProgress.players.filter(p => !p.isSpectator) : []
+
+    if (nonSpectatorPlayers.length === 0 || !nonSpectatorPlayers.some(p => p.answered > 0)) {
       progressStats.value = null
       sortedPlayers.value = []
       return
     }
 
-    // Sort players
-    const sorted = [...roomProgress.players].sort((a, b) => {
+    // Sort players (excluding spectators)
+    const sorted = [...nonSpectatorPlayers].sort((a, b) => {
       if (b.correct !== a.correct) return b.correct - a.correct
       if (a.answered === 0 && b.answered === 0) return 0
       const accuracyA = a.answered > 0 ? (a.correct / a.answered) : 0
@@ -542,7 +550,7 @@ const fetchPresenterProgress = async () => {
     })
     sortedPlayers.value = sorted
 
-    // Calculate overall stats
+    // Calculate overall stats (excluding spectators)
     const totalPlayers = sorted.length
     const totalAnswered = sorted.reduce((sum, p) => sum + p.answered, 0)
     const totalCorrect = sorted.reduce((sum, p) => sum + p.correct, 0)
@@ -686,15 +694,26 @@ const setupSocketListeners = () => {
       revealedQuestions.value = serverRevealedQuestions
     }
 
-    // Show answer reveal modal
-    const totalPlayers = results.length
-    const correctCount = results.filter(r => r.is_correct).length
-    const answeredCount = results.filter(r => r.choice !== null).length
+    // Filter out spectators from results by cross-referencing with connectedPlayers
+    const nonSpectatorResults = results.filter(r => {
+      // Check if this result has isSpectator property directly
+      if (r.isSpectator !== undefined) {
+        return !r.isSpectator
+      }
+      // Otherwise, check against connectedPlayers list
+      const player = connectedPlayers.value.find(p => p.name === r.name)
+      return !player || !player.isSpectator
+    })
+
+    // Show answer reveal modal (excluding spectators)
+    const totalPlayers = nonSpectatorResults.length
+    const correctCount = nonSpectatorResults.filter(r => r.is_correct).length
+    const answeredCount = nonSpectatorResults.filter(r => r.choice !== null).length
     const correctPercentage = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0
 
     answerRevealData.value = {
       question,
-      results,
+      results: nonSpectatorResults,
       totalPlayers,
       correctCount,
       answeredCount,

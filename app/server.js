@@ -252,7 +252,7 @@ const listCompletedSessions = async () => {
         gs.completed_at,
         gs.original_session_id,
         q.title as quiz_title,
-        COUNT(DISTINCT gp.id) as player_count,
+        COUNT(DISTINCT CASE WHEN gp.display_name != 'Spectator Display' THEN gp.id END) as player_count,
         COUNT(DISTINCT sq.id) as question_count,
         COUNT(DISTINCT CASE WHEN sq.is_presented THEN sq.id END) as presented_count
       FROM game_sessions gs
@@ -494,7 +494,7 @@ app.post('/api/auth/check', (req, res) => {
 // Generate QR code for player page
 app.get('/api/qr/player', async (req, res) => {
   try {
-    const playerUrl = `${SERVER_URL}/player.html`;
+    const playerUrl = `${SERVER_URL}/player`;
     const qrCode = await QRCode.toDataURL(playerUrl, {
       width: 300,
       margin: 2,
@@ -514,7 +514,7 @@ app.get('/api/qr/player', async (req, res) => {
 app.get('/api/qr/room/:roomCode', async (req, res) => {
   try {
     const roomCode = req.params.roomCode;
-    const roomUrl = `${SERVER_URL}/player.html?room=${roomCode}`;
+    const roomUrl = `${SERVER_URL}/player?room=${roomCode}`;
     const qrCode = await QRCode.toDataURL(roomUrl, {
       width: 300,
       margin: 2,
@@ -1712,7 +1712,23 @@ app.post('/api/auth/check', async (req, res) => {
 // Get all completed sessions
 app.get('/api/sessions', requireAdmin, async (req, res) => {
   const sessions = await listCompletedSessions();
-  res.json(sessions);
+
+  // Format for frontend compatibility
+  const formatted = sessions.map(s => ({
+    filename: `session_${s.session_id}.json`, // For backward compatibility
+    sessionId: s.session_id,
+    roomCode: s.room_code,
+    quizTitle: s.quiz_title,
+    status: s.status,
+    createdAt: s.created_at,
+    completedAt: s.completed_at,
+    resumedAt: s.resumed_at || null,
+    playerCount: s.player_count,
+    questionCount: s.question_count,
+    presentedCount: s.presented_count
+  }));
+
+  res.json(formatted);
 });
 
 // Get incomplete sessions only
@@ -1722,6 +1738,29 @@ app.get('/api/sessions/incomplete', requireAdmin, async (req, res) => {
 
   // Format for frontend compatibility
   const formatted = incomplete.map(s => ({
+    filename: `session_${s.session_id}.json`, // For backward compatibility
+    sessionId: s.session_id,
+    roomCode: s.room_code,
+    quizTitle: s.quiz_title,
+    status: s.status,
+    createdAt: s.created_at,
+    completedAt: s.completed_at,
+    resumedAt: s.resumed_at || null,
+    playerCount: s.player_count,
+    questionCount: s.question_count,
+    presentedCount: s.presented_count
+  }));
+
+  res.json(formatted);
+});
+
+// Get completed sessions only
+app.get('/api/sessions/completed', requireAdmin, async (req, res) => {
+  const sessions = await listCompletedSessions();
+  const completed = sessions.filter(s => s.status === 'completed');
+
+  // Format for frontend compatibility
+  const formatted = completed.map(s => ({
     filename: `session_${s.session_id}.json`, // For backward compatibility
     sessionId: s.session_id,
     roomCode: s.room_code,
@@ -1772,7 +1811,7 @@ app.get('/api/sessions/:filename', requireAdmin, async (req, res) => {
 
     const session = sessionResult.rows[0];
 
-    // Fetch participants with their answers
+    // Fetch participants with their answers (excluding Spectator Display)
     const participantsResult = await pool.query(`
       SELECT
         gp.display_name,
@@ -1785,21 +1824,28 @@ app.get('/api/sessions/:filename', requireAdmin, async (req, res) => {
       LEFT JOIN participant_answers pa ON gp.id = pa.participant_id
       LEFT JOIN session_questions sq ON pa.question_id = sq.question_id AND sq.game_session_id = $1
       LEFT JOIN answers a ON pa.answer_id = a.id
-      WHERE gp.game_session_id = $1
+      WHERE gp.game_session_id = $1 AND gp.display_name != 'Spectator Display'
       ORDER BY gp.display_name, sq.presentation_order
     `, [sessionId]);
 
-    // Group answers by player
+    // Group answers by player and calculate statistics
     const playersMap = new Map();
     for (const row of participantsResult.rows) {
       if (!playersMap.has(row.display_name)) {
         playersMap.set(row.display_name, {
           name: row.display_name,
-          answers: {}
+          answers: {},
+          correct: 0,
+          answered: 0
         });
       }
+      const player = playersMap.get(row.display_name);
       if (row.question_id && row.presentation_order !== null) {
-        playersMap.get(row.display_name).answers[row.presentation_order] = row.choice_index;
+        player.answers[row.presentation_order] = row.choice_index;
+        player.answered++;
+        if (row.is_correct) {
+          player.correct++;
+        }
       }
     }
 
@@ -1844,7 +1890,10 @@ app.get('/api/sessions/:filename', requireAdmin, async (req, res) => {
     }
 
     // Format response to match frontend expectations
+    const playerResults = Array.from(playersMap.values());
+
     const response = {
+      filename: `session_${session.id}.json`, // For deletion and backwards compatibility
       sessionId: session.id,
       roomCode: session.room_code,
       quizTitle: session.quiz_title,
@@ -1856,7 +1905,8 @@ app.get('/api/sessions/:filename', requireAdmin, async (req, res) => {
       presentedQuestions,
       revealedQuestions,
       questions,
-      players: Array.from(playersMap.values())
+      players: playerResults, // For backwards compatibility
+      playerResults // With calculated statistics for modal
     };
 
     res.json(response);
@@ -1868,6 +1918,7 @@ app.get('/api/sessions/:filename', requireAdmin, async (req, res) => {
 
 // Delete session (from database)
 app.delete('/api/sessions/:filename', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
   try {
     // Extract session ID from filename
     const sessionId = req.params.filename.includes('_')
@@ -1878,20 +1929,46 @@ app.delete('/api/sessions/:filename', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Invalid session ID format' });
     }
 
-    // Soft delete: mark session as deleted (or hard delete if preferred)
-    const result = await pool.query(
+    await client.query('BEGIN');
+
+    // Delete child records first to avoid foreign key constraint violations
+    // Delete participant answers
+    await client.query(
+      'DELETE FROM participant_answers WHERE participant_id IN (SELECT id FROM game_participants WHERE game_session_id = $1)',
+      [sessionId]
+    );
+
+    // Delete participants
+    await client.query(
+      'DELETE FROM game_participants WHERE game_session_id = $1',
+      [sessionId]
+    );
+
+    // Delete session questions
+    await client.query(
+      'DELETE FROM session_questions WHERE game_session_id = $1',
+      [sessionId]
+    );
+
+    // Finally delete the session itself
+    const result = await client.query(
       'DELETE FROM game_sessions WHERE id = $1 RETURNING id',
       [sessionId]
     );
 
     if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Session not found' });
     }
 
+    await client.query('COMMIT');
     res.json({ success: true });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('Error deleting session:', err);
-    res.status(500).json({ error: 'Failed to delete session' });
+    res.status(500).json({ error: 'Failed to delete session', details: err.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -2306,7 +2383,16 @@ io.on('connection', (socket) => {
     // If there's a current question active, send it to the viewer
     if (room.currentQuestionIndex !== null) {
       const question = room.quizData.questions[room.currentQuestionIndex];
-      socket.emit('questionPresented', { questionIndex: room.currentQuestionIndex, question });
+      const isRevealed = room.revealedQuestions && room.revealedQuestions.includes(room.currentQuestionIndex);
+
+      // Include revealed status for viewers
+      const questionData = {
+        ...question,
+        revealed: isRevealed,
+        correctChoice: isRevealed ? question.correctChoice : undefined
+      };
+
+      socket.emit('questionPresented', { questionIndex: room.currentQuestionIndex, question: questionData });
     }
   });
 
@@ -2450,8 +2536,17 @@ io.on('connection', (socket) => {
     // If there's a current question active, send it to the new player
     if (room.currentQuestionIndex !== null) {
       const question = room.quizData.questions[room.currentQuestionIndex];
-      socket.emit('questionPresented', { questionIndex: room.currentQuestionIndex, question });
-      console.log(`Sent current question ${room.currentQuestionIndex} to ${playerDisplayName} (${playerUsername})`);
+      const isRevealed = room.revealedQuestions && room.revealedQuestions.includes(room.currentQuestionIndex);
+
+      // Include revealed status to prevent late joiners from answering revealed questions
+      const questionData = {
+        ...question,
+        revealed: isRevealed,
+        correctChoice: isRevealed ? question.correctChoice : undefined
+      };
+
+      socket.emit('questionPresented', { questionIndex: room.currentQuestionIndex, question: questionData });
+      console.log(`Sent current question ${room.currentQuestionIndex} to ${playerDisplayName} (${playerUsername}) - Revealed: ${isRevealed}`);
     }
   });
 

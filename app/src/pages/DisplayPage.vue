@@ -17,7 +17,7 @@
             :key="answer.id"
             :class="['choice-display', { 'choice-correct': revealedAnswer?.id === answer.id }]"
           >
-            {{ answer.text }}
+            <strong>{{ String.fromCharCode(65 + index) }}.</strong> {{ answer.text }}
           </div>
         </div>
       </div>
@@ -78,11 +78,13 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useSocket } from '@/composables/useSocket.js'
 import { useUIStore } from '@/stores/ui.js'
 import Modal from '@/components/common/Modal.vue'
 import FormInput from '@/components/common/FormInput.vue'
 
+const route = useRoute()
 const socket = useSocket()
 const uiStore = useUIStore()
 
@@ -141,8 +143,18 @@ const joinRoom = async () => {
 onMounted(() => {
   const socketInstance = socket.connect()
 
-  // Show room code modal on load if no room code
-  showRoomCodeModal.value = true
+  // Check for room code in URL query parameter (from QR code)
+  const roomFromUrl = route.query.room
+  if (roomFromUrl) {
+    roomCodeInput.value = roomFromUrl.toUpperCase()
+    // Auto-join the room after socket connects
+    setTimeout(() => {
+      joinRoom()
+    }, 500)
+  } else {
+    // Show room code modal on load if no room code
+    showRoomCodeModal.value = true
+  }
 
   // Listen for player list updates (confirms room join)
   socket.on('playerListUpdate', ({ roomCode: code, players }) => {
@@ -253,6 +265,9 @@ onUnmounted(() => {
 
 .question-display-area {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   animation: fadeIn 0.3s ease-in;
 }
 
@@ -275,6 +290,7 @@ onUnmounted(() => {
   gap: 1.5rem;
   width: 100%;
   max-width: 1000px;
+  margin: 0 auto;
   box-sizing: border-box;
 }
 
@@ -284,6 +300,7 @@ onUnmounted(() => {
   border: 3px solid rgba(255, 255, 255, 0.2);
   border-radius: 15px;
   font-size: 1.5rem;
+  text-align: center;
   transition: all 0.3s;
   word-wrap: break-word;
   overflow-wrap: break-word;
