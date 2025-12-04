@@ -13,7 +13,7 @@
 
       <div v-if="inRoom" class="nav-room-info" :class="{ active: inRoom }">
         <span class="nav-room-code">{{ currentRoomCode || '----' }}</span>
-        <span class="nav-connection-status" :class="{ connected: isConnected, disconnected: !isConnected }">●</span>
+        <span class="nav-connection-status" :class="connectionStateClass">{{ connectionStateSymbol }}</span>
       </div>
 
       <div class="hamburger" @click="toggleMenu">&#9776;</div>
@@ -42,6 +42,11 @@
 
     <!-- Main Content -->
     <div class="player-container">
+      <!-- Missed Questions Banner -->
+      <div v-if="missedQuestionsBanner" class="missed-questions-banner">
+        ⚠️ You have missed Questions while Away
+      </div>
+
       <!-- Left/Top: Question Display -->
       <div class="question-area">
         <!-- Waiting Screen -->
@@ -388,6 +393,16 @@ const savedUsername = ref(localStorage.getItem('playerUsername'))
 const savedDisplayName = ref(localStorage.getItem('playerDisplayName'))
 const savedAccountType = ref(localStorage.getItem('playerAccountType'))
 
+// Connection state management
+const connectionState = ref('connected') // 'connected' | 'away' | 'disconnected' | 'warning'
+const isPageVisible = ref(true)
+const visibilitySwitchCount = ref(0)
+const visibilitySwitchTimestamps = ref([])
+const awayTimeout = ref(null)
+const disconnectTimeout = ref(null)
+const warningClearTimeout = ref(null)
+const missedQuestionsBanner = ref(false)
+
 // Login form
 const loginUsername = ref('')
 const loginPassword = ref('')
@@ -415,16 +430,182 @@ const nonSpectatorPlayers = computed(() => {
   return currentPlayers.value.filter(p => !p.isSpectator)
 })
 
+// Connection state computed property for styling
+const connectionStateClass = computed(() => {
+  switch (connectionState.value) {
+    case 'connected': return 'status-connected'
+    case 'away': return 'status-away'
+    case 'disconnected': return 'status-disconnected'
+    case 'warning': return 'status-warning'
+    default: return 'status-disconnected'
+  }
+})
+
+const connectionStateSymbol = computed(() => {
+  switch (connectionState.value) {
+    case 'connected': return '●' // Green
+    case 'away': return '●' // Orange
+    case 'disconnected': return '●' // Red
+    case 'warning': return '⚠' // Yellow warning triangle
+    default: return '○'
+  }
+})
+
+// Connection state management functions
+const updateConnectionState = (newState) => {
+  if (connectionState.value === newState) return
+
+  const oldState = connectionState.value
+  connectionState.value = newState
+
+  console.log(`[CONNECTION] State changed: ${oldState} → ${newState}`)
+
+  // Notify server of state change if in room
+  if (inRoom.value && currentRoomCode.value) {
+    socket.emit('playerStateChange', {
+      roomCode: currentRoomCode.value,
+      username: currentUsername.value,
+      state: newState
+    })
+  }
+
+  // Clear existing timeouts when state changes
+  if (newState === 'connected') {
+    clearTimeout(awayTimeout.value)
+    clearTimeout(disconnectTimeout.value)
+  }
+}
+
+const detectRapidSwitching = () => {
+  const now = Date.now()
+  const tenSecondsAgo = now - 10000
+
+  // Remove timestamps older than 10 seconds
+  visibilitySwitchTimestamps.value = visibilitySwitchTimestamps.value.filter(
+    timestamp => timestamp > tenSecondsAgo
+  )
+
+  // Add current timestamp
+  visibilitySwitchTimestamps.value.push(now)
+
+  // Check if 5+ switches in last 10 seconds
+  if (visibilitySwitchTimestamps.value.length >= 5) {
+    console.log('[CONNECTION] Rapid switching detected!')
+    updateConnectionState('warning')
+
+    // Clear warning after 10 seconds of stable state
+    clearTimeout(warningClearTimeout.value)
+    warningClearTimeout.value = setTimeout(() => {
+      if (connectionState.value === 'warning' && isPageVisible.value) {
+        updateConnectionState('connected')
+      }
+    }, 10000)
+
+    return true
+  }
+
+  return false
+}
+
+const handleVisibilityChange = () => {
+  const wasVisible = isPageVisible.value
+  isPageVisible.value = !document.hidden
+
+  console.log(`[CONNECTION] Page visibility changed: ${wasVisible} → ${isPageVisible.value}`)
+
+  // Detect rapid switching
+  const isRapidSwitching = detectRapidSwitching()
+  if (isRapidSwitching) {
+    return // Warning state already set
+  }
+
+  if (isPageVisible.value) {
+    // Page became visible - returning from away
+    console.log('[CONNECTION] Page visible - returning from away')
+
+    // Clear away timeout
+    clearTimeout(awayTimeout.value)
+
+    // Check if any questions were missed while away
+    const missedQuestions = questionHistory.value.filter(q => q.revealed && q.playerChoice === null && q.missedWhileAway)
+    if (missedQuestions.length > 0) {
+      missedQuestionsBanner.value = true
+      setTimeout(() => {
+        missedQuestionsBanner.value = false
+      }, 5000) // Show banner for 5 seconds
+      console.log(`[CONNECTION] Player missed ${missedQuestions.length} question(s) while away`)
+    }
+
+    // Handle return from away/disconnected state
+    if (connectionState.value === 'disconnected') {
+      // Was truly disconnected - need to rejoin room
+      if (currentRoomCode.value && currentUsername.value && currentDisplayName.value) {
+        console.log('[CONNECTION] Reconnecting after disconnect - rejoining room')
+        updateConnectionState('connected')
+        socket.emit('joinRoom', {
+          roomCode: currentRoomCode.value,
+          username: currentUsername.value,
+          displayName: currentDisplayName.value
+        })
+      }
+    } else if (connectionState.value === 'away') {
+      // Was only away - just update state (still in room server-side)
+      console.log('[CONNECTION] Returned from away - updating state')
+      updateConnectionState('connected')
+    } else if (connectionState.value === 'warning') {
+      // Was rapid-switching - just log
+      console.log('[CONNECTION] Returned while in warning state')
+    }
+  } else {
+    // Page became hidden - going away
+    console.log('[CONNECTION] Page hidden - going away')
+
+    // Update to away state
+    updateConnectionState('away')
+
+    // Set timeout for 2 minutes to mark as disconnected
+    clearTimeout(awayTimeout.value)
+    awayTimeout.value = setTimeout(() => {
+      console.log('[CONNECTION] Away timeout (2 min) - marking as disconnected')
+      updateConnectionState('disconnected')
+
+      // Set timeout for 5 minutes to fully remove from room
+      disconnectTimeout.value = setTimeout(() => {
+        console.log('[CONNECTION] Disconnect timeout (5 min) - leaving room')
+        if (inRoom.value) {
+          handleLeaveRoom()
+        }
+      }, 5 * 60 * 1000) // 5 minutes
+    }, 2 * 60 * 1000) // 2 minutes
+  }
+}
+
 // Setup socket event listeners - called on mount and after reconnect
 const setupSocketListeners = () => {
   socket.on('connect', () => {
     isConnected.value = true
+    // Update connection state to connected (unless page is hidden)
+    if (isPageVisible.value && connectionState.value !== 'warning') {
+      updateConnectionState('connected')
+    }
     // Request active rooms list once connected
     socket.emit('getActiveRooms')
   })
 
   socket.on('disconnect', () => {
     isConnected.value = false
+    // Hard disconnect - mark as disconnected immediately
+    console.log('[CONNECTION] Socket disconnected (hard disconnect)')
+    updateConnectionState('disconnected')
+
+    // Set timeout for 5 minutes to fully remove from room
+    clearTimeout(disconnectTimeout.value)
+    disconnectTimeout.value = setTimeout(() => {
+      console.log('[CONNECTION] Disconnect timeout (5 min) - leaving room')
+      if (inRoom.value) {
+        handleLeaveRoom()
+      }
+    }, 5 * 60 * 1000) // 5 minutes
   })
 
   socket.on('playerListUpdate', ({ roomCode, players }) => {
@@ -455,6 +636,7 @@ const setupSocketListeners = () => {
 
     // Add to history if not already there
     if (!questionHistory.value.find(q => q.index === questionIndex)) {
+      const isMissedWhileAway = connectionState.value === 'away' || !isPageVisible.value
       questionHistory.value.push({
         index: questionIndex,
         text: question.text,
@@ -463,8 +645,12 @@ const setupSocketListeners = () => {
         correctChoice: isAlreadyRevealed ? question.correctChoice : undefined,
         presented: true,
         revealed: isAlreadyRevealed,
-        isCorrect: false
+        isCorrect: false,
+        missedWhileAway: isMissedWhileAway // Mark if player was away when question presented
       })
+      if (isMissedWhileAway) {
+        console.log(`[CONNECTION] Question ${questionIndex} marked as missed while away`)
+      }
     }
 
     if (isAlreadyRevealed) {
@@ -479,7 +665,7 @@ const setupSocketListeners = () => {
     }
   })
 
-  socket.on('questionRevealed', ({ questionIndex, question, results }) => {
+  socket.on('questionRevealed', ({ questionIndex, question, results, answerDisplayTime }) => {
     answerRevealed.value = true
     currentQuestion.value.correctChoice = question.correctChoice
 
@@ -497,12 +683,13 @@ const setupSocketListeners = () => {
     statusMessage.value = playerGotCorrect.value ? 'You got it right! 🎉' : 'Better luck next time!'
     statusMessageType.value = playerGotCorrect.value ? 'success' : 'error'
 
-    // Auto-reset after timeout
+    // Auto-reset after timeout (from server quiz options, default 30 seconds)
+    const displayTimeout = (answerDisplayTime || 30) * 1000 // Convert seconds to milliseconds
     setTimeout(() => {
       questionDisplaying.value = false
       statusMessage.value = 'Waiting for next question...'
       statusMessageType.value = ''
-    }, 30000)
+    }, displayTimeout)
   })
 
   socket.on('roomClosed', () => {
@@ -584,6 +771,12 @@ onMounted(() => {
   // Set up all socket listeners
   setupSocketListeners()
 
+  // Set up Page Visibility API for connection state management
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  // Initialize page visibility state
+  isPageVisible.value = !document.hidden
+  console.log(`[CONNECTION] Initial page visibility: ${isPageVisible.value}`)
+
   // Fallback: if no response within 3 seconds, load recent rooms anyway
   setTimeout(() => {
     if (activeRoomCodes.value === null) {
@@ -614,6 +807,12 @@ onUnmounted(() => {
   socket.disconnect()
   document.removeEventListener('click', closeMenuIfOutside)
   document.removeEventListener('touchstart', closeMenuIfOutside)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+
+  // Clear all connection timeouts
+  clearTimeout(awayTimeout.value)
+  clearTimeout(disconnectTimeout.value)
+  clearTimeout(warningClearTimeout.value)
 })
 
 // Methods
@@ -716,6 +915,8 @@ const selectAnswer = async (idx) => {
   const historyItem = questionHistory.value.find(q => q.index === currentQuestion.value.index)
   if (historyItem) {
     historyItem.playerChoice = idx
+    // Clear missedWhileAway flag since player actually answered
+    historyItem.missedWhileAway = false
   }
 
   socket.emit('submitAnswer', { roomCode: currentRoomCode.value, choice: idx })
@@ -959,6 +1160,7 @@ const verifyAuthToken = async () => {
 }
 
 const getQuestionStatusClass = (q) => {
+  if (q.missedWhileAway && q.revealed) return 'missed-away'
   if (q.revealed && q.isCorrect) return 'correct'
   if (q.revealed && !q.isCorrect) return 'incorrect'
   if (q.playerChoice !== null) return 'answered'
@@ -966,6 +1168,7 @@ const getQuestionStatusClass = (q) => {
 }
 
 const getQuestionStatusIcon = (q) => {
+  if (q.missedWhileAway && q.revealed) return '⚠'
   if (q.revealed && q.isCorrect) return '✓'
   if (q.revealed && !q.isCorrect) return '✗'
   if (q.playerChoice !== null) return '⏳'
@@ -973,6 +1176,7 @@ const getQuestionStatusIcon = (q) => {
 }
 
 const getQuestionStatusText = (q) => {
+  if (q.missedWhileAway && q.revealed) return 'Missed - Away'
   if (q.revealed && q.isCorrect) return 'Correct'
   if (q.revealed && !q.isCorrect) return 'Incorrect'
   if (q.playerChoice !== null) return 'Waiting for reveal'
@@ -1046,12 +1250,31 @@ const getQuestionStatusText = (q) => {
   transition: color 0.2s;
 }
 
-.nav-connection-status.connected {
-  color: #0f0;
+/* Connection states */
+.nav-connection-status.status-connected,
+.status-connected {
+  color: #0f0; /* Green */
 }
 
-.nav-connection-status.disconnected {
-  color: #f00;
+.nav-connection-status.status-away,
+.status-away {
+  color: #ff8c00; /* Orange */
+}
+
+.nav-connection-status.status-disconnected,
+.status-disconnected {
+  color: #f00; /* Red */
+}
+
+.nav-connection-status.status-warning,
+.status-warning {
+  color: #ffd700; /* Yellow/Gold */
+  animation: pulse-warning 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .hamburger {
@@ -1112,6 +1335,35 @@ const getQuestionStatusText = (q) => {
   gap: 1rem;
   padding: 1rem;
   min-height: 0;
+  position: relative;
+}
+
+/* Missed Questions Banner */
+.missed-questions-banner {
+  position: fixed;
+  top: 80px; /* Below navbar */
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ff8c00 0%, #ff6600 100%);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .question-area {
@@ -1617,6 +1869,12 @@ const getQuestionStatusText = (q) => {
   border-color: rgba(200, 0, 0, 0.3);
 }
 
+.history-item.missed-away {
+  background: rgba(150, 150, 150, 0.1);
+  border-color: rgba(150, 150, 150, 0.3);
+  opacity: 0.7;
+}
+
 .history-item.answered {
   background: rgba(255, 165, 0, 0.1);
   border-color: rgba(255, 165, 0, 0.3);
@@ -1664,6 +1922,10 @@ const getQuestionStatusText = (q) => {
 
 .history-item.incorrect .status-icon {
   color: #f66;
+}
+
+.history-item.missed-away .status-icon {
+  color: #ff8c00;
 }
 
 .history-item.answered .status-icon {

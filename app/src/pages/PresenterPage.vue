@@ -110,8 +110,9 @@
         <div id="playerList" class="live-feed">
           <div v-if="nonSpectatorPlayers.length === 0" class="empty-state"><em>No players yet</em></div>
           <div v-for="player in nonSpectatorPlayers" :key="player.name" class="player-item">
-            <span class="player-status" :class="{ connected: player.connected, disconnected: !player.connected }">●</span>
+            <span class="player-status" :class="getConnectionStateClass(player)">{{ getConnectionSymbol(player) }}</span>
             {{ player.name }}
+            <span v-if="player.connectionState === 'warning'" class="player-warning-icon" title="Rapid switching detected">⚠️</span>
             <span v-if="player.choice !== null" class="player-answered">✓</span>
           </div>
         </div>
@@ -575,6 +576,22 @@ const fetchPresenterProgress = async () => {
 // Helper functions
 const getAccuracy = (player) => {
   return player.answered > 0 ? ((player.correct / player.answered) * 100).toFixed(1) : '-'
+}
+
+const getConnectionStateClass = (player) => {
+  const state = player.connectionState || 'connected'
+  return `status-${state}`
+}
+
+const getConnectionSymbol = (player) => {
+  const state = player.connectionState || 'connected'
+  switch (state) {
+    case 'connected': return '●' // Green
+    case 'away': return '●' // Orange
+    case 'disconnected': return '●' // Red
+    case 'warning': return '⚠' // Yellow warning
+    default: return '○'
+  }
 }
 
 const getRankClass = (idx) => {
@@ -1084,12 +1101,33 @@ onUnmounted(() => {
   font-size: 1.2rem;
 }
 
-.player-status.connected {
-  color: #0f0;
+/* Connection states */
+.player-status.status-connected {
+  color: #0f0; /* Green */
 }
 
-.player-status.disconnected {
-  color: #f00;
+.player-status.status-away {
+  color: #ff8c00; /* Orange */
+}
+
+.player-status.status-disconnected {
+  color: #f00; /* Red */
+}
+
+.player-status.status-warning {
+  color: #ffd700; /* Yellow/Gold */
+  animation: pulse-warning 1.5s ease-in-out infinite;
+}
+
+.player-warning-icon {
+  font-size: 0.9rem;
+  margin-left: 0.25rem;
+  color: #ffd700;
+}
+
+@keyframes pulse-warning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .player-answered {

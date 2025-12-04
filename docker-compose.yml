@@ -18,13 +18,13 @@ services:
     restart: unless-stopped
   app:
     # LOCAL DEVELOPMENT: Uncomment below and comment out 'image' to build from local Dockerfile
-    build:
-      context: ./app
-      dockerfile: Dockerfile
-    image: triviaforge:local
+    # build:
+    #  context: ./app
+    #  dockerfile: Dockerfile
+    # image: triviaforge:local
 
     # PRODUCTION/DOCKER HUB: Uses Docker Hub image (default)
-    # image: emancodetemplar/triviaforge:latest
+    image: emancodetemplar/triviaforge:latest
 
     container_name: triviagame-app
     ports:

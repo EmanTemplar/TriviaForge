@@ -2291,8 +2291,10 @@ io.on('connection', (socket) => {
             userId: row.user_id, // Preserve user_id for reconnection
             choice: null,
             connected: false,
+            connectionState: 'disconnected', // Mark resumed players as disconnected until they rejoin
             answers: {},
-            isResumed: true
+            isResumed: true,
+            isSpectator: false // Will be updated on actual join if they're a spectator
           });
         }
         if (row.presentation_order !== null && row.choice_index !== null) {
@@ -2422,12 +2424,17 @@ io.on('connection', (socket) => {
         [playerUsername]
       );
 
+      const isSpectator = playerUsername === 'Display' || playerDisplayName === 'Spectator Display';
+
       if (userResult.rows.length > 0) {
         // User already exists
         userId = userResult.rows[0].id;
-        const accountType = userResult.rows[0].account_type;
-        const accountTypeLabel = accountType === 'player' ? 'Registered player' : 'Guest user';
-        console.log(`${accountTypeLabel} "${playerUsername}" already exists with ID: ${userId}`);
+        // Only log for non-spectators to reduce noise
+        if (!isSpectator) {
+          const accountType = userResult.rows[0].account_type;
+          const accountTypeLabel = accountType === 'player' ? 'Registered player' : 'Guest user';
+          console.log(`${accountTypeLabel} "${playerUsername}" already exists with ID: ${userId}`);
+        }
       } else {
         // Create new guest user
         const createResult = await pool.query(
@@ -2435,7 +2442,9 @@ io.on('connection', (socket) => {
           [playerUsername, 'guest']
         );
         userId = createResult.rows[0].id;
-        console.log(`Created new guest user "${playerUsername}" with ID: ${userId}`);
+        if (!isSpectator) {
+          console.log(`Created new guest user "${playerUsername}" with ID: ${userId}`);
+        }
       }
     } catch (err) {
       console.error('Error creating/retrieving guest user:', err);
@@ -2471,11 +2480,15 @@ io.on('connection', (socket) => {
         name: playerDisplayName, // Display name (update in case they changed it)
         userId: userId, // Associate with user account
         connected: true,
+        connectionState: 'connected', // 'connected' | 'away' | 'disconnected' | 'warning'
         choice: currentChoice, // Restore choice if they already answered current question
         isSpectator: playerUsername === 'Display' || playerDisplayName === 'Spectator Display' // Flag spectators
       };
       socket.join(roomCode);
-      console.log(`${playerDisplayName} (${playerUsername}) reconnected to room ${roomCode} (${Object.keys(playerData.answers || {}).length} previous answers preserved)`);
+      // Only log reconnections for non-spectators
+      if (!room.players[socket.id].isSpectator) {
+        console.log(`${playerDisplayName} (${playerUsername}) reconnected to room ${roomCode} (${Object.keys(playerData.answers || {}).length} previous answers preserved)`);
+      }
     } else {
       // Check if this is a resumed session with temp player entry
       let existingAnswers = {};
@@ -2484,7 +2497,10 @@ io.on('connection', (socket) => {
         // Player is rejoining a resumed session - keep their old answers
         existingAnswers = room.players[tempPlayerId].answers || {};
         delete room.players[tempPlayerId]; // Remove temp entry
-        console.log(`${playerDisplayName} (${playerUsername}) rejoined resumed session with ${Object.keys(existingAnswers).length} previous answers`);
+        // Only log for non-spectators (use isSpectator variable defined earlier)
+        if (!isSpectator) {
+          console.log(`${playerDisplayName} (${playerUsername}) rejoined resumed session with ${Object.keys(existingAnswers).length} previous answers`);
+        }
       }
 
       // New player joining
@@ -2495,43 +2511,51 @@ io.on('connection', (socket) => {
         userId: userId, // Associate with user account
         choice: null,
         connected: true,
+        connectionState: 'connected', // 'connected' | 'away' | 'disconnected' | 'warning'
         answers: existingAnswers,
         isSpectator: playerUsername === 'Display' || playerDisplayName === 'Spectator Display' // Flag spectators
       };
       socket.join(roomCode);
-      console.log(`${playerDisplayName} (${playerUsername}) joined room ${roomCode}`);
+      // Only log for non-spectators (use isSpectator variable defined earlier)
+      if (!isSpectator) {
+        console.log(`${playerDisplayName} (${playerUsername}) joined room ${roomCode}`);
+      }
     }
 
     io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
     io.emit('activeRoomsUpdate', getActiveRoomsSummary());
 
-    // Send the player's answer history with detailed information
-    const playerAnswers = room.players[socket.id].answers || {};
-    const answerHistory = Object.entries(playerAnswers).map(([questionIndex, choice]) => {
-      const idx = parseInt(questionIndex);
-      const question = room.quizData.questions[idx];
-      const isRevealed = room.revealedQuestions && room.revealedQuestions.includes(idx);
-      const isCorrect = isRevealed ? choice === question.correctChoice : null;
+    // Send the player's answer history with detailed information (skip for spectators)
+    if (!room.players[socket.id].isSpectator) {
+      const playerAnswers = room.players[socket.id].answers || {};
+      const answerHistory = Object.entries(playerAnswers).map(([questionIndex, choice]) => {
+        const idx = parseInt(questionIndex);
+        const question = room.quizData.questions[idx];
+        const isRevealed = room.revealedQuestions && room.revealedQuestions.includes(idx);
+        const isCorrect = isRevealed ? choice === question.correctChoice : null;
 
-      const historyItem = {
-        questionIndex: idx,
-        choice,
-        isRevealed,
-        text: question.text,
-        choices: question.choices
-      };
+        const historyItem = {
+          questionIndex: idx,
+          choice,
+          isRevealed,
+          text: question.text,
+          choices: question.choices
+        };
 
-      // Only include correctChoice and isCorrect for revealed questions
-      if (isRevealed) {
-        historyItem.correctChoice = question.correctChoice;
-        historyItem.isCorrect = isCorrect;
-      }
+        // Only include correctChoice and isCorrect for revealed questions
+        if (isRevealed) {
+          historyItem.correctChoice = question.correctChoice;
+          historyItem.isCorrect = isCorrect;
+        }
 
-      return historyItem;
-    });
+        return historyItem;
+      });
 
-    console.log(`[RESUME DEBUG] Sending answer history to ${playerDisplayName} (${playerUsername}):`, answerHistory);
-    socket.emit('answerHistoryRestored', { answerHistory });
+      console.log(`[RESUME DEBUG] Sending answer history to ${playerDisplayName} (${playerUsername}):`, answerHistory);
+      socket.emit('answerHistoryRestored', { answerHistory });
+    } else {
+      console.log(`[SPECTATOR] Skipping answer history for spectator ${playerDisplayName} (${playerUsername})`);
+    }
 
     // If there's a current question active, send it to the new player
     if (room.currentQuestionIndex !== null) {
@@ -2548,6 +2572,21 @@ io.on('connection', (socket) => {
       socket.emit('questionPresented', { questionIndex: room.currentQuestionIndex, question: questionData });
       console.log(`Sent current question ${room.currentQuestionIndex} to ${playerDisplayName} (${playerUsername}) - Revealed: ${isRevealed}`);
     }
+  });
+
+  // Player connection state change
+  socket.on('playerStateChange', ({ roomCode, username, state }) => {
+    const room = liveRooms[roomCode];
+    if (!room || !room.players[socket.id]) return;
+
+    const player = room.players[socket.id];
+    const oldState = player.connectionState;
+    player.connectionState = state;
+
+    console.log(`[CONNECTION] ${player.name} (${username}) state changed: ${oldState} → ${state}`);
+
+    // Broadcast updated player list to all clients in the room
+    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
   });
 
   // Presenter presents a question

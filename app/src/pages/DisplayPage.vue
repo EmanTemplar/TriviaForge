@@ -41,8 +41,7 @@
         </div>
         <div v-for="player in nonSpectatorPlayers" :key="player.id" class="player-item">
           <span class="player-name">{{ player.name }}</span>
-          <span v-if="player.connected" class="player-status online">●</span>
-          <span v-else class="player-status offline">●</span>
+          <span class="player-status" :class="getConnectionStateClass(player)">{{ getConnectionSymbol(player) }}</span>
         </div>
       </div>
 
@@ -98,6 +97,13 @@ const roomCodeInput = ref('')
 const currentQuestion = ref(null)
 const currentPlayers = ref([])
 
+// Connection state management for spectator display
+const connectionState = ref('connected')
+const isPageVisible = ref(true)
+const awayTimeout = ref(null)
+const disconnectTimeout = ref(null)
+const questionDisplayTimeout = ref(null)
+
 const currentQuestionAnswers = computed(() => {
   if (!currentQuestion.value || !currentQuestion.value.choices) return []
   return currentQuestion.value.choices.map((text, index) => ({
@@ -112,6 +118,23 @@ const connectedPlayers = computed(() => {
 const nonSpectatorPlayers = computed(() => {
   return currentPlayers.value.filter(p => !p.isSpectator)
 })
+
+// Helper functions for connection states
+const getConnectionStateClass = (player) => {
+  const state = player.connectionState || 'connected'
+  return `status-${state}`
+}
+
+const getConnectionSymbol = (player) => {
+  const state = player.connectionState || 'connected'
+  switch (state) {
+    case 'connected': return '●' // Green
+    case 'away': return '●' // Orange
+    case 'disconnected': return '●' // Red
+    case 'warning': return '⚠' // Yellow warning
+    default: return '○'
+  }
+}
 
 // Join room as spectator
 const joinRoom = async () => {
@@ -177,6 +200,14 @@ onMounted(() => {
 
   // Listen for question presentation
   socket.on('questionPresented', ({ questionIndex, question }) => {
+    console.log('[DISPLAY] Question presented:', questionIndex)
+
+    // Clear any existing display timeout from previous question
+    if (questionDisplayTimeout.value) {
+      clearTimeout(questionDisplayTimeout.value)
+      questionDisplayTimeout.value = null
+    }
+
     // Store the current question with its choices
     currentQuestion.value = {
       text: question.text,
@@ -188,7 +219,10 @@ onMounted(() => {
   })
 
   // Listen for answer reveal
-  socket.on('questionRevealed', ({ questionIndex, question }) => {
+  socket.on('questionRevealed', ({ questionIndex, question, answerDisplayTime }) => {
+    console.log('[DISPLAY] Answer revealed for question:', questionIndex)
+    console.log('[DISPLAY] Answer display time from server:', answerDisplayTime)
+
     // Show the correct answer
     if (question.correctChoice !== undefined && currentQuestion.value) {
       currentQuestion.value.correctChoice = question.correctChoice
@@ -197,6 +231,23 @@ onMounted(() => {
         text: currentQuestion.value.choices[question.correctChoice]
       }
     }
+
+    // Clear any existing timeout
+    if (questionDisplayTimeout.value) {
+      clearTimeout(questionDisplayTimeout.value)
+    }
+
+    // Auto-reset after timeout (from server quiz options, default 30 seconds)
+    const displayTimeout = (answerDisplayTime || 30) * 1000 // Convert seconds to milliseconds
+    console.log('[DISPLAY] Setting timeout for', displayTimeout / 1000, 'seconds')
+
+    questionDisplayTimeout.value = setTimeout(() => {
+      console.log('[DISPLAY] Timeout fired - clearing question display')
+      isQuestionDisplaying.value = false
+      revealedAnswer.value = null
+      currentQuestion.value = null
+      questionDisplayTimeout.value = null
+    }, displayTimeout)
   })
 
   // Listen for room closed
@@ -219,6 +270,11 @@ onMounted(() => {
 // Cleanup on unmount
 onUnmounted(() => {
   socket.disconnect()
+
+  // Clear any pending timeouts
+  if (questionDisplayTimeout.value) {
+    clearTimeout(questionDisplayTimeout.value)
+  }
 })
 </script>
 
@@ -422,12 +478,27 @@ onUnmounted(() => {
   margin-left: 0.5rem;
 }
 
-.player-status.online {
-  color: #0f0;
+/* Connection states */
+.player-status.status-connected {
+  color: #0f0; /* Green */
 }
 
-.player-status.offline {
-  color: #aaa;
+.player-status.status-away {
+  color: #ff8c00; /* Orange */
+}
+
+.player-status.status-disconnected {
+  color: #f00; /* Red */
+}
+
+.player-status.status-warning {
+  color: #ffd700; /* Yellow/Gold */
+  animation: pulse-warning 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .status-display {
