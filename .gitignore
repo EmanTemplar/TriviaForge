@@ -42,8 +42,8 @@ desktop.ini
 
 # Development/Internal documentation (for AI agents and internal use only)
 DEV-SUMMARY.md
-VUE-MIGRATION-PLAN.md
-PHASE-1-COMPLETION.md
+PHASE-*.md
+*-PLAN.md
 
 # Vite build output
 app/dist/

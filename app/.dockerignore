@@ -12,3 +12,8 @@ README.md
 *.log
 .vscode/
 .idea/
+
+# Development/Internal documentation
+../DEV-SUMMARY.md
+../PHASE-*.md
+../*-PLAN.md
