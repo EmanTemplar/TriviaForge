@@ -2415,6 +2415,9 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Determine if this is a spectator (needed throughout the function)
+    const isSpectator = playerUsername === 'Display' || playerDisplayName === 'Spectator Display';
+
     // Create or retrieve guest user account (using username)
     let userId = null;
     try {
@@ -2423,8 +2426,6 @@ io.on('connection', (socket) => {
         'SELECT id, account_type FROM users WHERE username = $1',
         [playerUsername]
       );
-
-      const isSpectator = playerUsername === 'Display' || playerDisplayName === 'Spectator Display';
 
       if (userResult.rows.length > 0) {
         // User already exists
