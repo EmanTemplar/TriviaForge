@@ -227,7 +227,7 @@
             <h2>About TriviaForge</h2>
             <div class="version-box">
               <div class="version-label">Version</div>
-              <div class="version-number">2.1.7</div>
+              <div class="version-number">3.0.0</div>
             </div>
           </div>
 
@@ -236,8 +236,10 @@
             <div class="about-card">
               <h3>✨ Key Features</h3>
               <ul>
+                <li>✓ Vue 3 modern interface</li>
                 <li>✓ Real-time quiz presentations</li>
                 <li>✓ Live leaderboards & rankings</li>
+                <li>✓ Player connection monitoring</li>
                 <li>✓ Player authentication & accounts</li>
                 <li>✓ Excel bulk import</li>
                 <li>✓ Session resumption</li>
@@ -300,10 +302,10 @@
               TriviaForge is a modern, real-time trivia game platform designed for educators, event organizers, and trivia enthusiasts. It enables interactive quiz sessions with instant feedback, live leaderboards, and comprehensive player analytics.
             </p>
             <p>
-              With features like session resumption, user authentication, and mobile-optimized interfaces, TriviaForge provides a seamless experience for presenters and players. Whether you're running classroom quizzes, corporate events, or casual game nights, TriviaForge adapts to your needs.
+              With features like session resumption, user authentication, player connection monitoring, and mobile-optimized interfaces, TriviaForge provides a seamless experience for presenters and players. Whether you're running classroom quizzes, corporate events, or casual game nights, TriviaForge adapts to your needs.
             </p>
             <p>
-              Built with modern web technologies including Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity.
+              Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. Version 3.0 features a complete Vue 3 migration for improved reactivity and maintainability.
             </p>
           </div>
 
