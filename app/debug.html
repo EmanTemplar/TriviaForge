@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriviaForge Debug Console</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .subtitle {
+      color: rgba(255,255,255,0.9);
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 1.1rem;
+    }
+
+    .warning-banner {
+      background: #ff6b6b;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: bold;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+      transition: transform 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(0,0,0,0.25);
+    }
+
+    .card h2 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 1.5rem;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+      transition: opacity 0.3s;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button.secondary {
+      background: #48bb78;
+    }
+
+    button.danger {
+      background: #f56565;
+    }
+
+    .output {
+      background: #f7fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 15px;
+      margin-top: 15px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .success {
+      color: #38a169;
+      font-weight: bold;
+    }
+
+    .error {
+      color: #e53e3e;
+      font-weight: bold;
+    }
+
+    .info {
+      color: #3182ce;
+      font-weight: bold;
+    }
+
+    .system-state {
+      grid-column: 1 / -1;
+    }
+
+    .state-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .stat-box {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .room-list {
+      list-style: none;
+      margin-top: 10px;
+    }
+
+    .room-item {
+      background: #edf2f7;
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      border-left: 4px solid #667eea;
+    }
+
+    .room-code {
+      font-weight: bold;
+      color: #667eea;
+      font-size: 1.1rem;
+    }
+
+    .room-detail {
+      font-size: 0.9rem;
+      color: #666;
+      margin-top: 5px;
+    }
+
+    .scenario-btn {
+      margin: 5px 0;
+    }
+
+    code {
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+      margin-left: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🐛 TriviaForge Debug Console</h1>
+    <p class="subtitle">Internal Testing & Development Tool</p>
+
+    <div class="warning-banner">
+      ⚠️ DEBUG MODE ONLY - This interface is only available in development environment
+    </div>
+
+    <!-- System State Overview -->
+    <div class="card system-state">
+      <h2>📊 System State</h2>
+      <button onclick="refreshSystemState()">🔄 Refresh State</button>
+      <div class="state-grid">
+        <div class="stat-box">
+          <div class="stat-value" id="stat-rooms">-</div>
+          <div class="stat-label">Live Rooms</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="stat-players">-</div>
+          <div class="stat-label">Total Players</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="stat-uptime">-</div>
+          <div class="stat-label">Server Uptime</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="stat-memory">-</div>
+          <div class="stat-label">Memory Usage (MB)</div>
+        </div>
+      </div>
+      <div id="rooms-list"></div>
+    </div>
+
+    <div class="grid">
+      <!-- Create Test Room -->
+      <div class="card">
+        <h2>🎮 Create Test Room</h2>
+        <div class="form-group">
+          <label for="quiz-id">Quiz ID (optional)</label>
+          <input type="number" id="quiz-id" placeholder="Leave empty for first quiz">
+        </div>
+        <div class="form-group">
+          <label for="room-code">Room Code (optional)</label>
+          <input type="text" id="room-code" placeholder="Auto-generated if empty" maxlength="8">
+        </div>
+        <button onclick="createTestRoom()">Create Room</button>
+        <div class="output" id="create-room-output"></div>
+      </div>
+
+      <!-- Add Test Player -->
+      <div class="card">
+        <h2>👤 Add Test Player</h2>
+        <div class="form-group">
+          <label for="player-room-code">Room Code</label>
+          <input type="text" id="player-room-code" placeholder="ABCD12" maxlength="8">
+        </div>
+        <div class="form-group">
+          <label for="player-username">Username</label>
+          <input type="text" id="player-username" placeholder="testPlayer1">
+        </div>
+        <div class="form-group">
+          <label for="player-display">Display Name (optional)</label>
+          <input type="text" id="player-display" placeholder="Test Player 1">
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="player-spectator" style="width: auto;">
+            Is Spectator
+          </label>
+        </div>
+        <button onclick="addTestPlayer()">Add Player</button>
+        <div class="output" id="add-player-output"></div>
+      </div>
+
+      <!-- Present Question -->
+      <div class="card">
+        <h2>❓ Present Question</h2>
+        <div class="form-group">
+          <label for="present-room-code">Room Code</label>
+          <input type="text" id="present-room-code" placeholder="ABCD12" maxlength="8">
+        </div>
+        <div class="form-group">
+          <label for="question-index">Question Index (0-based)</label>
+          <input type="number" id="question-index" placeholder="0" min="0">
+        </div>
+        <button onclick="presentQuestion()">Present Question</button>
+        <div class="output" id="present-output"></div>
+      </div>
+
+      <!-- Submit Answer -->
+      <div class="card">
+        <h2>✅ Submit Answer</h2>
+        <div class="form-group">
+          <label for="answer-room-code">Room Code</label>
+          <input type="text" id="answer-room-code" placeholder="ABCD12" maxlength="8">
+        </div>
+        <div class="form-group">
+          <label for="answer-username">Player Username</label>
+          <input type="text" id="answer-username" placeholder="testPlayer1">
+        </div>
+        <div class="form-group">
+          <label for="answer-choice">Choice Index (0-based)</label>
+          <input type="number" id="answer-choice" placeholder="0" min="0">
+        </div>
+        <button onclick="submitAnswer()">Submit Answer</button>
+        <div class="output" id="submit-output"></div>
+      </div>
+
+      <!-- Reveal Answer -->
+      <div class="card">
+        <h2>🔓 Reveal Answer</h2>
+        <div class="form-group">
+          <label for="reveal-room-code">Room Code</label>
+          <input type="text" id="reveal-room-code" placeholder="ABCD12" maxlength="8">
+        </div>
+        <button onclick="revealAnswer()">Reveal Answer</button>
+        <div class="output" id="reveal-output"></div>
+      </div>
+
+      <!-- Room Details -->
+      <div class="card">
+        <h2>🔍 Inspect Room</h2>
+        <div class="form-group">
+          <label for="inspect-room-code">Room Code</label>
+          <input type="text" id="inspect-room-code" placeholder="ABCD12" maxlength="8">
+        </div>
+        <button onclick="inspectRoom()">Inspect Room</button>
+        <div class="output" id="inspect-output"></div>
+      </div>
+
+      <!-- Automated Scenarios -->
+      <div class="card">
+        <h2>🤖 Automated Scenarios</h2>
+        <p style="margin-bottom: 15px; font-size: 0.9rem; color: #666;">
+          Run complete test scenarios automatically
+        </p>
+        <button class="scenario-btn secondary" onclick="runScenario('basic-quiz-flow')">
+          ▶️ Basic Quiz Flow
+        </button>
+        <div class="output" id="scenario-output"></div>
+      </div>
+
+      <!-- Cleanup -->
+      <div class="card">
+        <h2>🧹 Cleanup</h2>
+        <p style="margin-bottom: 15px; font-size: 0.9rem; color: #666;">
+          Remove test data from the system
+        </p>
+        <button class="danger" onclick="cleanup(true, false)">Delete All Rooms</button>
+        <button class="danger" onclick="cleanup(false, true)">Delete Test Users</button>
+        <button class="danger" onclick="cleanup(true, true)">Delete Everything</button>
+        <div class="output" id="cleanup-output"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '/api/debug';
+
+    // Helper function to format output
+    function formatOutput(data, isError = false) {
+      if (typeof data === 'string') {
+        return `<span class="${isError ? 'error' : 'success'}">${data}</span>`;
+      }
+      return `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    }
+
+    // Helper function for API calls
+    async function apiCall(endpoint, method = 'GET', body = null) {
+      try {
+        const options = {
+          method,
+          headers: { 'Content-Type': 'application/json' }
+        };
+        if (body) {
+          options.body = JSON.stringify(body);
+        }
+        const response = await fetch(`${API_BASE}${endpoint}`, options);
+        const data = await response.json();
+        return { ok: response.ok, data };
+      } catch (error) {
+        return { ok: false, data: { error: error.message } };
+      }
+    }
+
+    // System State
+    async function refreshSystemState() {
+      const { ok, data } = await apiCall('/state');
+
+      if (ok) {
+        document.getElementById('stat-rooms').textContent = data.totalRooms;
+        document.getElementById('stat-players').textContent = data.totalPlayers;
+        document.getElementById('stat-uptime').textContent = Math.floor(data.serverUptime) + 's';
+        document.getElementById('stat-memory').textContent =
+          Math.floor(data.memoryUsage.heapUsed / 1024 / 1024);
+
+        // Display rooms
+        const roomsList = document.getElementById('rooms-list');
+        if (data.liveRooms.length === 0) {
+          roomsList.innerHTML = '<p style="margin-top: 15px; color: #999;">No active rooms</p>';
+        } else {
+          roomsList.innerHTML = '<ul class="room-list">' +
+            data.liveRooms.map(room => `
+              <li class="room-item">
+                <div class="room-code">${room.roomCode}</div>
+                <div class="room-detail">Quiz: ${room.quizTitle}</div>
+                <div class="room-detail">Players: ${room.players.length} | Question: ${room.currentQuestionIndex ?? 'None'}</div>
+              </li>
+            `).join('') +
+            '</ul>';
+        }
+      } else {
+        document.getElementById('stat-rooms').textContent = 'Error';
+      }
+    }
+
+    // Create Test Room
+    async function createTestRoom() {
+      const quizId = document.getElementById('quiz-id').value || null;
+      const roomCode = document.getElementById('room-code').value || null;
+      const output = document.getElementById('create-room-output');
+
+      output.innerHTML = '<span class="info">Creating room...</span>';
+
+      const { ok, data } = await apiCall('/create-test-room', 'POST', {
+        quizId: quizId ? parseInt(quizId) : null,
+        roomCode
+      });
+
+      output.innerHTML = formatOutput(data, !ok);
+      if (ok) refreshSystemState();
+    }
+
+    // Add Test Player
+    async function addTestPlayer() {
+      const roomCode = document.getElementById('player-room-code').value;
+      const username = document.getElementById('player-username').value;
+      const displayName = document.getElementById('player-display').value || username;
+      const isSpectator = document.getElementById('player-spectator').checked;
+      const output = document.getElementById('add-player-output');
+
+      if (!roomCode || !username) {
+        output.innerHTML = '<span class="error">Room code and username are required</span>';
+        return;
+      }
+
+      output.innerHTML = '<span class="info">Adding player...</span>';
+
+      const { ok, data } = await apiCall('/add-test-player', 'POST', {
+        roomCode,
+        username,
+        displayName,
+        isSpectator
+      });
+
+      output.innerHTML = formatOutput(data, !ok);
+      if (ok) refreshSystemState();
+    }
+
+    // Present Question
+    async function presentQuestion() {
+      const roomCode = document.getElementById('present-room-code').value;
+      const questionIndex = document.getElementById('question-index').value;
+      const output = document.getElementById('present-output');
+
+      if (!roomCode || questionIndex === '') {
+        output.innerHTML = '<span class="error">Room code and question index are required</span>';
+        return;
+      }
+
+      output.innerHTML = '<span class="info">Presenting question...</span>';
+
+      const { ok, data } = await apiCall('/present-question', 'POST', {
+        roomCode,
+        questionIndex: parseInt(questionIndex)
+      });
+
+      output.innerHTML = formatOutput(data, !ok);
+    }
+
+    // Submit Answer
+    async function submitAnswer() {
+      const roomCode = document.getElementById('answer-room-code').value;
+      const username = document.getElementById('answer-username').value;
+      const choice = document.getElementById('answer-choice').value;
+      const output = document.getElementById('submit-output');
+
+      if (!roomCode || !username || choice === '') {
+        output.innerHTML = '<span class="error">All fields are required</span>';
+        return;
+      }
+
+      output.innerHTML = '<span class="info">Submitting answer...</span>';
+
+      const { ok, data } = await apiCall('/submit-answer', 'POST', {
+        roomCode,
+        username,
+        choice: parseInt(choice)
+      });
+
+      output.innerHTML = formatOutput(data, !ok);
+    }
+
+    // Reveal Answer
+    async function revealAnswer() {
+      const roomCode = document.getElementById('reveal-room-code').value;
+      const output = document.getElementById('reveal-output');
+
+      if (!roomCode) {
+        output.innerHTML = '<span class="error">Room code is required</span>';
+        return;
+      }
+
+      output.innerHTML = '<span class="info">Revealing answer...</span>';
+
+      const { ok, data } = await apiCall('/reveal-answer', 'POST', { roomCode });
+
+      output.innerHTML = formatOutput(data, !ok);
+    }
+
+    // Inspect Room
+    async function inspectRoom() {
+      const roomCode = document.getElementById('inspect-room-code').value;
+      const output = document.getElementById('inspect-output');
+
+      if (!roomCode) {
+        output.innerHTML = '<span class="error">Room code is required</span>';
+        return;
+      }
+
+      output.innerHTML = '<span class="info">Inspecting room...</span>';
+
+      const { ok, data } = await apiCall(`/room/${roomCode}`);
+
+      output.innerHTML = formatOutput(data, !ok);
+    }
+
+    // Run Scenario
+    async function runScenario(scenario) {
+      const output = document.getElementById('scenario-output');
+      output.innerHTML = '<span class="info">Running scenario: ' + scenario + '...</span>';
+
+      const { ok, data } = await apiCall('/run-test-scenario', 'POST', { scenario });
+
+      output.innerHTML = formatOutput(data, !ok);
+      if (ok) refreshSystemState();
+    }
+
+    // Cleanup
+    async function cleanup(deleteRooms, deleteTestUsers) {
+      const output = document.getElementById('cleanup-output');
+
+      if (!confirm('Are you sure you want to delete test data?')) {
+        return;
+      }
+
+      output.innerHTML = '<span class="info">Cleaning up...</span>';
+
+      const { ok, data } = await apiCall('/cleanup', 'POST', {
+        deleteRooms,
+        deleteTestUsers
+      });
+
+      output.innerHTML = formatOutput(data, !ok);
+      if (ok) refreshSystemState();
+    }
+
+    // Auto-refresh system state on load
+    refreshSystemState();
+    setInterval(refreshSystemState, 10000); // Refresh every 10 seconds
+  </script>
+</body>
+</html>
