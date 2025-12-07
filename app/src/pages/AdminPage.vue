@@ -953,7 +953,7 @@ const deleteUser = async (user) => {
   if (!confirmed) return
 
   try {
-    await del(`/api/users/${user.id}`)
+    await delete_(`/api/users/${user.id}`)
     await showAlert(`User "${user.username}" has been deleted successfully.`, 'User Deleted')
     await loadUsers() // Refresh the list
   } catch (err) {
@@ -1045,7 +1045,7 @@ const removeBannedName = async (name) => {
   if (!confirmed) return
 
   try {
-    await del(`/api/banned-names/${name.id}`)
+    await delete_(`/api/banned-names/${name.id}`)
     await showAlert(`Banned pattern "${name.pattern}" has been removed.`, 'Ban Removed')
     await loadBannedNames()
   } catch (err) {
