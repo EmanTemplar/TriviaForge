@@ -1681,6 +1681,124 @@ app.post('/api/users/:userId/reset-password', requireAdmin, async (req, res) => 
   }
 });
 
+// ============================================================================
+// Banned Display Names Management (Admin Only)
+// ============================================================================
+
+// Helper function to check if a display name is banned
+async function isDisplayNameBanned(displayName) {
+  try {
+    const result = await pool.query(
+      'SELECT id, pattern, pattern_type FROM banned_display_names'
+    );
+
+    const lowerDisplayName = displayName.toLowerCase();
+
+    for (const ban of result.rows) {
+      const lowerPattern = ban.pattern.toLowerCase();
+
+      if (ban.pattern_type === 'exact') {
+        // Exact match (case-insensitive)
+        if (lowerDisplayName === lowerPattern) {
+          return { banned: true, reason: `Display name "${displayName}" is not allowed` };
+        }
+      } else if (ban.pattern_type === 'contains') {
+        // Contains match (case-insensitive)
+        if (lowerDisplayName.includes(lowerPattern)) {
+          return { banned: true, reason: `Display name contains banned word "${ban.pattern}"` };
+        }
+      }
+    }
+
+    return { banned: false };
+  } catch (err) {
+    console.error('Error checking banned display names:', err);
+    // On error, allow the name (fail open)
+    return { banned: false };
+  }
+}
+
+// Get all banned display names (admin only)
+app.get('/api/banned-names', requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        bn.id,
+        bn.pattern,
+        bn.pattern_type,
+        bn.created_at,
+        u.username as banned_by
+      FROM banned_display_names bn
+      LEFT JOIN users u ON bn.banned_by = u.id
+      ORDER BY bn.created_at DESC
+    `);
+
+    res.json({ success: true, bannedNames: result.rows });
+  } catch (err) {
+    console.error('Error fetching banned names:', err);
+    res.status(500).json({ error: 'Failed to fetch banned names' });
+  }
+});
+
+// Add a banned display name (admin only)
+app.post('/api/banned-names', requireAdmin, async (req, res) => {
+  try {
+    const { pattern, patternType } = req.body;
+    const adminUserId = req.user.id;
+
+    if (!pattern || !pattern.trim()) {
+      return res.status(400).json({ error: 'Pattern is required' });
+    }
+
+    if (!['exact', 'contains'].includes(patternType)) {
+      return res.status(400).json({ error: 'Pattern type must be "exact" or "contains"' });
+    }
+
+    // Check if pattern already exists
+    const existingCheck = await pool.query(
+      'SELECT id FROM banned_display_names WHERE LOWER(pattern) = LOWER($1) AND pattern_type = $2',
+      [pattern.trim(), patternType]
+    );
+
+    if (existingCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'This pattern is already banned' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO banned_display_names (pattern, pattern_type, banned_by) VALUES ($1, $2, $3) RETURNING *',
+      [pattern.trim(), patternType, adminUserId]
+    );
+
+    console.log(`Display name pattern "${pattern}" (${patternType}) banned by admin ${adminUserId}`);
+    res.json({ success: true, bannedName: result.rows[0] });
+  } catch (err) {
+    console.error('Error adding banned name:', err);
+    res.status(500).json({ error: 'Failed to add banned name' });
+  }
+});
+
+// Remove a banned display name (admin only)
+app.delete('/api/banned-names/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      'DELETE FROM banned_display_names WHERE id = $1 RETURNING pattern',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Banned name not found' });
+    }
+
+    console.log(`Banned display name "${result.rows[0].pattern}" removed by admin`);
+    res.json({ success: true, message: 'Banned name removed' });
+  } catch (err) {
+    console.error('Error removing banned name:', err);
+    res.status(500).json({ error: 'Failed to remove banned name' });
+  }
+});
+
 // Check which rooms from a list are currently active
 app.post('/api/rooms/check-active', async (req, res) => {
   try {
@@ -2443,6 +2561,15 @@ io.on('connection', (socket) => {
 
     // Determine if this is a spectator (needed throughout the function)
     const isSpectator = playerUsername === 'Display' || playerDisplayName === 'Spectator Display';
+
+    // Check if display name is banned (skip for spectators)
+    if (!isSpectator) {
+      const banCheck = await isDisplayNameBanned(playerDisplayName);
+      if (banCheck.banned) {
+        socket.emit('roomError', banCheck.reason);
+        return;
+      }
+    }
 
     // Create or retrieve guest user account (using username)
     let userId = null;
