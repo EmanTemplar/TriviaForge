@@ -618,6 +618,448 @@ jobs:
 
 ---
 
+## High Priority - Player Interaction & Security Management
+
+### 11. Kick Player from Live Session
+**Status:** ⏳ Pending
+**Description:** Allow presenters to temporarily remove (kick) a player from an active game session. This is a one-time action - kicked players can rejoin the same room if they want to.
+
+**Questions to Clarify:**
+1. Should kicked players see a notification explaining they were kicked?
+2. Should kicks be logged/tracked in the session history for presenter reference?
+3. Should there be a confirmation dialog before kicking?
+4. What happens to the kicked player's existing answers - are they preserved or cleared?
+5. Should kicked players be shown in a separate "Kicked Players" section if they rejoin?
+6. Can spectators be kicked, or only active players?
+7. Should there be a cooldown period before a kicked player can rejoin?
+8. Should the presenter see who was kicked and when in the player list?
+
+**Prerequisites Before Implementation:**
+- [ ] Review current player connection/disconnection flow in server.js
+- [ ] Understand Socket.IO room management and forced disconnections
+- [ ] Review how player state is stored in `liveRooms` object
+- [ ] Determine if kicked status needs database persistence or in-memory only
+- [ ] Design UI/UX flow for kick action in PresenterPage.vue
+- [ ] Plan notification system for kicked players in PlayerPage.vue
+
+**Implementation Details:**
+- **Backend Changes:**
+  - Add `POST /api/room/kick-player` endpoint in server.js
+  - Add `kickedPlayers` array to room state in `liveRooms` object
+  - Emit `player-kicked` Socket.IO event to specific player
+  - Update connected players list to show kick status
+  - Preserve player's answer history (don't clear on kick)
+
+- **Frontend Changes (PresenterPage.vue):**
+  - Add "Kick" button next to each player in Connected Players list
+  - Add confirmation modal: "Are you sure you want to kick [username]?"
+  - Show kick status indicator (e.g., "👢 Kicked" badge) if player rejoins
+  - Add filter to show/hide kicked players
+
+- **Frontend Changes (PlayerPage.vue):**
+  - Listen for `player-kicked` event
+  - Show notification: "You have been removed from this session by the presenter. You may rejoin if needed."
+  - Clear current room state and return to room entry screen
+  - Allow immediate rejoin (no cooldown unless specified)
+
+- **Database Considerations:**
+  - Track kicks in `game_participants` table with `kicked_at` timestamp
+  - Add `kick_count` column to track repeat offenders
+  - Log kick events for presenter review
+
+**Security Considerations:**
+- Verify presenter authentication before allowing kick
+- Rate limit kick actions to prevent abuse (max 10 kicks per minute)
+- Validate room ownership before processing kick
+- Prevent kicking the presenter themselves
+
+**Files to Modify:**
+- `app/server.js` - Kick endpoint, Socket.IO event handling
+- `app/src/pages/PresenterPage.vue` - Kick button and confirmation UI
+- `app/src/pages/PlayerPage.vue` - Kicked notification handling
+- `app/src/composables/useSocket.js` - Add player-kicked event listener
+- `app/init/tables.sql` - Add kicked tracking to game_participants
+
+---
+
+### 12. Ban Player Account
+**Status:** ⏳ Pending
+**Description:** Allow admins to permanently ban player accounts from accessing any game sessions. Banned players cannot join any room until unbanned.
+
+**Questions to Clarify:**
+1. Should bans be global (all rooms) or room-specific?
+2. Can presenters ban players, or only admins in the User Management tab?
+3. Should there be ban reasons (required/optional text field)?
+4. Should ban duration be configurable (permanent vs temporary - 1 hour, 1 day, 1 week)?
+5. What message should banned players see when they try to join?
+6. Should there be an appeal/unban workflow?
+7. Should banned players' historical game data be preserved or deleted?
+8. Should IP-based bans be supported in addition to account bans?
+9. Can guest accounts be banned, or only registered players?
+10. Should there be a ban history log showing who banned whom and when?
+
+**Prerequisites Before Implementation:**
+- [ ] Review user authentication system in server.js
+- [ ] Understand difference between guest and registered player accounts
+- [ ] Design ban database schema (bans table)
+- [ ] Plan admin UI for ban management in AdminPage.vue
+- [ ] Determine ban scope (global vs per-presenter)
+- [ ] Define ban levels (account ban vs device ban)
+
+**Implementation Details:**
+- **Database Schema:**
+  - Create `user_bans` table:
+    - `id` (serial, primary key)
+    - `user_id` (foreign key to users.id)
+    - `banned_by` (foreign key to users.id - admin who issued ban)
+    - `ban_reason` (text, required)
+    - `ban_type` (enum: 'permanent', 'temporary')
+    - `banned_at` (timestamptz)
+    - `expires_at` (timestamptz, nullable)
+    - `is_active` (boolean, default true)
+    - `ip_address` (varchar, optional for IP bans)
+
+  - Add `is_banned` boolean to users table for quick lookup
+  - Add index on user_id and is_active for performance
+
+- **Backend Changes:**
+  - Add `POST /api/admin/ban-user` endpoint (admin only)
+  - Add `POST /api/admin/unban-user` endpoint (admin only)
+  - Add `GET /api/admin/banned-users` endpoint to list all bans
+  - Add middleware to check ban status on room join attempts
+  - Block Socket.IO connections from banned users
+  - Add ban check to `/api/room/join` endpoint
+
+- **Frontend Changes (AdminPage.vue):**
+  - Add "Ban User" button in User Management tab
+  - Create ban modal with fields:
+    - Ban reason (required text area)
+    - Ban type (radio: Permanent / Temporary)
+    - Ban duration (dropdown: 1 hour, 1 day, 1 week, 1 month, custom)
+    - IP ban option (checkbox)
+  - Add "Banned Users" section showing active bans
+  - Add "Unban" button with confirmation
+  - Show ban status indicator (🚫) next to banned users
+
+- **Frontend Changes (PlayerPage.vue):**
+  - Show error message on join attempt: "Your account has been banned. Reason: [reason]. Contact admin for appeals."
+  - Prevent Socket.IO connection if banned
+  - Show ban expiration date if temporary ban
+
+**Security Considerations:**
+- Only admins can ban/unban users
+- Rate limit ban actions (prevent ban spam)
+- Log all ban/unban actions for audit trail
+- Prevent admins from banning other admins
+- Validate ban reasons (minimum length, no empty bans)
+
+**Files to Modify:**
+- `app/init/tables.sql` - Create user_bans table
+- `app/server.js` - Ban endpoints, middleware, join validation
+- `app/src/pages/AdminPage.vue` - Ban management UI
+- `app/src/pages/PlayerPage.vue` - Ban error handling
+- `app/src/composables/useApi.js` - Ban API calls
+
+---
+
+### 13. Ban Display Name Only
+**Status:** ⏳ Pending
+**Description:** Allow presenters/admins to ban specific offensive display names without banning the entire account. Players can rejoin with a different display name.
+
+**Questions to Clarify:**
+1. Should display name bans be case-insensitive?
+2. Should partial matches be blocked (e.g., ban "badword" blocks "badword123")?
+3. Should there be a global banned names list or per-room customization?
+4. Who can manage the banned names list - presenters, admins, or both?
+5. Should wildcard patterns be supported (e.g., "*badword*")?
+6. What message should players see when their display name is banned?
+7. Should players be automatically kicked if they change to a banned name mid-session?
+8. Should there be a profanity filter library integration or manual list only?
+9. Can players appeal display name bans?
+10. Should similar spellings be detected (e.g., "b@dword", "bad_word")?
+
+**Prerequisites Before Implementation:**
+- [ ] Research profanity filter libraries (bad-words, profanity-check)
+- [ ] Design banned names database schema
+- [ ] Review display name validation in server.js
+- [ ] Plan admin/presenter UI for managing banned names
+- [ ] Determine scope (global vs room-specific vs presenter-specific)
+- [ ] Define matching algorithm (exact, partial, regex, fuzzy)
+
+**Implementation Details:**
+- **Database Schema:**
+  - Create `banned_display_names` table:
+    - `id` (serial, primary key)
+    - `banned_name` (varchar, unique)
+    - `pattern_type` (enum: 'exact', 'contains', 'regex')
+    - `banned_by` (foreign key to users.id)
+    - `scope` (enum: 'global', 'room_specific')
+    - `room_code` (varchar, nullable for room-specific bans)
+    - `created_at` (timestamptz)
+
+  - Add index on banned_name (lowercase) for fast lookups
+
+- **Backend Changes:**
+  - Add `POST /api/admin/ban-display-name` endpoint
+  - Add `DELETE /api/admin/unban-display-name/:id` endpoint
+  - Add `GET /api/admin/banned-display-names` endpoint
+  - Integrate profanity filter library (optional): `bad-words` npm package
+  - Add display name validation middleware
+  - Check banned names on:
+    - Room join attempts
+    - Display name changes mid-session
+    - Guest account creation
+  - Emit `display-name-rejected` event with reason
+
+- **Frontend Changes (AdminPage.vue):**
+  - Add "Banned Display Names" section in User Management tab
+  - Add form to ban new display names:
+    - Name pattern (text input)
+    - Pattern type (dropdown: Exact match, Contains, Regex)
+    - Scope (dropdown: Global, This room only)
+  - Show list of banned names with unban buttons
+  - Add "Import Common Profanity List" button (pre-populate)
+
+- **Frontend Changes (PresenterPage.vue):**
+  - Add quick ban option next to player names in Connected Players
+  - Show notification when player is auto-kicked for banned name
+
+- **Frontend Changes (PlayerPage.vue):**
+  - Show error on join: "This display name is not allowed. Please choose a different name."
+  - Show error on name change: "Display name rejected. Please choose a different name."
+  - Auto-clear name input and allow retry
+
+**Security Considerations:**
+- Validate regex patterns to prevent ReDoS attacks
+- Rate limit ban name additions (prevent spam)
+- Sanitize input to prevent SQL injection
+- Log all display name bans for audit
+- Prevent banning admin usernames
+
+**Files to Modify:**
+- `app/init/tables.sql` - Create banned_display_names table
+- `app/server.js` - Name validation, ban endpoints
+- `app/src/pages/AdminPage.vue` - Ban name management UI
+- `app/src/pages/PresenterPage.vue` - Quick ban option
+- `app/src/pages/PlayerPage.vue` - Name rejection handling
+- `app/package.json` - Add bad-words library
+
+---
+
+### 14. Enhanced Player Security & Management
+**Status:** ⏳ Pending
+**Description:** Shore up player security controls and management features in the Admin User Management tab with comprehensive oversight and protection mechanisms.
+
+**Questions to Clarify:**
+1. Should there be IP-based rate limiting to prevent spam registrations?
+2. Should suspicious activity be auto-detected (e.g., rapid room joining, answer pattern anomalies)?
+3. Should there be a quarantine/review status for flagged accounts?
+4. What player actions should be logged for audit purposes?
+5. Should admins see last login IP address and device info?
+6. Should there be automatic session termination for suspicious activity?
+7. Should there be export functionality for player activity logs?
+8. Should GDPR data export be supported (player requests their data)?
+9. Should there be account merge functionality for duplicate accounts?
+10. Should two-factor authentication be supported for player accounts?
+
+**Prerequisites Before Implementation:**
+- [ ] Review current authentication system and session management
+- [ ] Audit existing security vulnerabilities in player endpoints
+- [ ] Design security event logging schema
+- [ ] Research rate limiting libraries (express-rate-limit)
+- [ ] Plan IP tracking and geolocation (optional)
+- [ ] Review GDPR compliance requirements
+
+**Implementation Details:**
+- **Database Schema:**
+  - Create `security_events` table:
+    - `id` (serial, primary key)
+    - `user_id` (foreign key to users.id)
+    - `event_type` (varchar: login, join_room, kicked, banned, suspicious_activity)
+    - `ip_address` (varchar)
+    - `user_agent` (text)
+    - `details` (jsonb)
+    - `created_at` (timestamptz)
+
+  - Add to `users` table:
+    - `last_login_ip` (varchar)
+    - `last_login_at` (timestamptz)
+    - `login_count` (integer, default 0)
+    - `is_flagged` (boolean, default false)
+    - `flagged_reason` (text, nullable)
+
+- **Backend Changes:**
+  - Add rate limiting middleware:
+    - Login attempts: 5 per minute per IP
+    - Room joins: 10 per minute per user
+    - Display name changes: 5 per hour per user
+
+  - Add `POST /api/admin/flag-user` endpoint
+  - Add `POST /api/admin/unflag-user` endpoint
+  - Add `GET /api/admin/security-events/:userId` endpoint
+  - Add `GET /api/admin/activity-log` endpoint (paginated)
+  - Add IP tracking on login and room join
+  - Add session hijacking detection (user agent changes)
+  - Log all security-relevant events
+
+- **Frontend Changes (AdminPage.vue):**
+  - Enhanced User Management tab features:
+    - Show last login timestamp and IP address
+    - Show total games played and login count
+    - Show flagged status with reason
+    - Add "View Activity Log" button per user
+    - Add "Flag Account" button with reason input
+    - Add "Export User Data" button (GDPR compliance)
+
+  - Add "Security Events" section:
+    - Recent security events timeline
+    - Filter by event type, user, date range
+    - Export to CSV functionality
+
+  - Add bulk actions:
+    - Select multiple users for batch ban/delete
+    - Bulk password reset
+    - Bulk session termination
+
+- **Security Features:**
+  - Brute force protection on login endpoint
+  - CAPTCHA integration for suspicious activity (optional)
+  - Automatic session termination on password change
+  - Detect and block VPN/proxy connections (optional)
+  - Alert admins of unusual activity patterns
+
+**Files to Modify:**
+- `app/init/tables.sql` - Create security_events table, update users table
+- `app/server.js` - Rate limiting, IP tracking, event logging
+- `app/src/pages/AdminPage.vue` - Enhanced security UI
+- `app/package.json` - Add express-rate-limit, helmet (security headers)
+
+---
+
+### 15. Multi-Admin Support System
+**Status:** ⏳ Pending
+**Description:** Create the ability to add multiple admin accounts for multi-coordinated administration. The global admin (from .env) remains the super admin with full privileges, while created admins have limited elevated permissions.
+
+**Questions to Clarify:**
+1. Should there be different admin permission levels (super admin, admin, moderator)?
+2. What permissions should created admins have vs super admin?
+   - Can they create other admins?
+   - Can they delete users?
+   - Can they ban users?
+   - Can they modify quizzes?
+   - Can they view security logs?
+3. Should there be an admin approval workflow (super admin approves new admins)?
+4. Should admin actions be logged with attribution (who did what)?
+5. Can created admins be demoted back to regular players?
+6. Should there be role-based access control (RBAC) with custom roles?
+7. Should admins have separate login credentials or use player accounts with elevated privileges?
+8. Should there be admin session timeout separate from player sessions?
+9. Should admins see each other in an "Admin Team" list?
+10. Should there be admin activity dashboards showing who's currently managing what?
+
+**Prerequisites Before Implementation:**
+- [ ] Design permission/role system architecture
+- [ ] Review current admin authentication in server.js
+- [ ] Plan database schema for roles and permissions
+- [ ] Design admin creation UI/UX flow
+- [ ] Determine permission inheritance model
+- [ ] Plan audit logging for admin actions
+
+**Implementation Details:**
+- **Database Schema:**
+  - Create `admin_roles` table:
+    - `id` (serial, primary key)
+    - `role_name` (varchar: super_admin, admin, moderator)
+    - `permissions` (jsonb: array of permission strings)
+    - `created_at` (timestamptz)
+
+  - Modify `users` table:
+    - Change `account_type` enum to include 'super_admin', 'admin', 'moderator'
+    - Add `admin_role_id` (foreign key to admin_roles.id, nullable)
+    - Add `promoted_by` (foreign key to users.id, nullable)
+    - Add `promoted_at` (timestamptz, nullable)
+
+  - Create `admin_audit_log` table:
+    - `id` (serial, primary key)
+    - `admin_id` (foreign key to users.id)
+    - `action` (varchar: create_user, delete_user, ban_user, etc.)
+    - `target_user_id` (foreign key to users.id, nullable)
+    - `details` (jsonb)
+    - `created_at` (timestamptz)
+
+- **Permission System Design:**
+  - **Super Admin (from .env):**
+    - All permissions (unrestricted)
+    - Create/demote admins
+    - Delete admin accounts
+    - Access all security logs
+    - Modify global settings
+
+  - **Admin (created accounts):**
+    - Manage quizzes (create, edit, delete)
+    - Ban/unban players (not other admins)
+    - View user management
+    - Reset player passwords
+    - View security events
+    - Kick players from sessions
+
+  - **Moderator (optional):**
+    - Kick/ban players from sessions
+    - Ban display names
+    - View security events (limited)
+    - No quiz management
+    - No permanent bans
+
+- **Backend Changes:**
+  - Add `POST /api/admin/promote-user` endpoint (super admin only)
+  - Add `POST /api/admin/demote-admin` endpoint (super admin only)
+  - Add `GET /api/admin/admin-list` endpoint
+  - Add permission check middleware: `requirePermission(permission)`
+  - Modify existing endpoints to check permissions
+  - Log all admin actions to admin_audit_log
+  - Separate super admin detection (check .env ADMIN_PASSWORD vs database admin)
+
+- **Frontend Changes (AdminPage.vue):**
+  - Add "Admin Management" tab (super admin only):
+    - List all current admins with roles
+    - Show "Promoted by" and "Promoted at" info
+    - Add "Promote User to Admin" button:
+      - Search/select user
+      - Choose role (Admin or Moderator)
+      - Confirm promotion
+    - Add "Demote to Player" button per admin
+
+  - Add "Admin Activity Log" section:
+    - Show recent admin actions with timestamps
+    - Filter by admin, action type, date range
+    - Export to CSV
+
+  - Show current admin's role and permissions in navbar
+  - Disable UI elements based on permissions
+
+- **Frontend Changes (LoginPage.vue):**
+  - Maintain existing super admin login (uses ADMIN_PASSWORD)
+  - Admin accounts login with username/password like players
+  - Redirect based on account type (admin → AdminPage, player → PlayerPage)
+
+**Security Considerations:**
+- Super admin cannot be demoted or deleted
+- Admins cannot promote/demote other admins (only super admin can)
+- Admins cannot ban other admins
+- All admin actions logged with attribution
+- Permission checks on both frontend and backend
+- Rate limit admin creation (prevent abuse)
+
+**Files to Modify:**
+- `app/init/tables.sql` - Create admin_roles, admin_audit_log tables
+- `app/server.js` - Permission middleware, admin endpoints
+- `app/src/pages/AdminPage.vue` - Admin management UI
+- `app/src/pages/LoginPage.vue` - Admin login handling
+- `app/src/stores/auth.js` - Role/permission state management
+- `app/.env.example` - Document admin system
+
+---
+
 ## Notes
 
 - Tasks are prioritized based on user impact and implementation complexity
