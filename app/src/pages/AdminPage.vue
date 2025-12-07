@@ -117,12 +117,33 @@
           </div>
           <div class="questions-list">
             <div v-if="currentQuestions.length === 0" class="empty-state"><em>No questions</em></div>
-            <div v-for="(question, idx) in currentQuestions" :key="idx" class="question-item" :class="{ active: editingQuestionIdx === idx }">
+            <div
+              v-for="(question, idx) in currentQuestions"
+              :key="idx"
+              class="question-item"
+              :class="{
+                active: editingQuestionIdx === idx,
+                dragging: draggedQuestionIdx === idx,
+                'drag-over': dragOverIdx === idx
+              }"
+              draggable="true"
+              @dragstart="handleDragStart(idx)"
+              @dragover="handleDragOver($event, idx)"
+              @dragleave="handleDragLeave"
+              @drop="handleDrop($event, idx)"
+              @dragend="handleDragEnd"
+            >
               <div class="question-content" @click="editQuestion(idx)">
                 <div class="question-text">Q{{ idx + 1 }}</div>
                 <div class="question-preview">{{ question.text }}</div>
               </div>
               <div class="question-actions">
+                <div class="reorder-buttons">
+                  <button @click.stop="moveQuestionToFirst(idx)" class="btn-reorder" :disabled="idx === 0" title="Move to First">⇈</button>
+                  <button @click.stop="moveQuestionUp(idx)" class="btn-reorder" :disabled="idx === 0" title="Move Up">↑</button>
+                  <button @click.stop="moveQuestionDown(idx)" class="btn-reorder" :disabled="idx === currentQuestions.length - 1" title="Move Down">↓</button>
+                  <button @click.stop="moveQuestionToLast(idx)" class="btn-reorder" :disabled="idx === currentQuestions.length - 1" title="Move to Last">⇊</button>
+                </div>
                 <button @click="editQuestion(idx)" class="btn-edit" title="Edit">✏️</button>
                 <button @click="deleteQuestion(idx)" class="btn-delete" title="Delete">🗑️</button>
               </div>
@@ -496,6 +517,8 @@ const correctChoice = ref(0)
 const currentQuestions = ref([])
 const importStatus = ref('')
 const editingQuestionIdx = ref(null)
+const draggedQuestionIdx = ref(null)
+const dragOverIdx = ref(null)
 
 // Sessions
 const completedSessions = ref([])
@@ -770,6 +793,143 @@ const shuffleQuestions = async () => {
   } catch (err) {
     showAlert('Error shuffling questions: ' + err.message, 'Error')
   }
+}
+
+// Question reordering functions
+const moveQuestionUp = async (idx) => {
+  if (idx === 0 || !selectedQuiz.value) return
+  try {
+    const reorderedQuestions = [...currentQuestions.value]
+    // Swap with previous question
+    ;[reorderedQuestions[idx], reorderedQuestions[idx - 1]] = [reorderedQuestions[idx - 1], reorderedQuestions[idx]]
+
+    await put(`/api/quizzes/${selectedQuiz.value.filename}`, {
+      title: quizTitle.value,
+      description: quizDescription.value,
+      questions: reorderedQuestions
+    })
+
+    await loadQuizzes()
+    selectQuiz(selectedQuiz.value)
+  } catch (err) {
+    showAlert('Error reordering question: ' + err.message, 'Error')
+  }
+}
+
+const moveQuestionDown = async (idx) => {
+  if (idx >= currentQuestions.value.length - 1 || !selectedQuiz.value) return
+  try {
+    const reorderedQuestions = [...currentQuestions.value]
+    // Swap with next question
+    ;[reorderedQuestions[idx], reorderedQuestions[idx + 1]] = [reorderedQuestions[idx + 1], reorderedQuestions[idx]]
+
+    await put(`/api/quizzes/${selectedQuiz.value.filename}`, {
+      title: quizTitle.value,
+      description: quizDescription.value,
+      questions: reorderedQuestions
+    })
+
+    await loadQuizzes()
+    selectQuiz(selectedQuiz.value)
+  } catch (err) {
+    showAlert('Error reordering question: ' + err.message, 'Error')
+  }
+}
+
+const moveQuestionToFirst = async (idx) => {
+  if (idx === 0 || !selectedQuiz.value) return
+  try {
+    const reorderedQuestions = [...currentQuestions.value]
+    // Remove question from current position
+    const [movedQuestion] = reorderedQuestions.splice(idx, 1)
+    // Insert at beginning
+    reorderedQuestions.unshift(movedQuestion)
+
+    await put(`/api/quizzes/${selectedQuiz.value.filename}`, {
+      title: quizTitle.value,
+      description: quizDescription.value,
+      questions: reorderedQuestions
+    })
+
+    await loadQuizzes()
+    selectQuiz(selectedQuiz.value)
+  } catch (err) {
+    showAlert('Error reordering question: ' + err.message, 'Error')
+  }
+}
+
+const moveQuestionToLast = async (idx) => {
+  if (idx >= currentQuestions.value.length - 1 || !selectedQuiz.value) return
+  try {
+    const reorderedQuestions = [...currentQuestions.value]
+    // Remove question from current position
+    const [movedQuestion] = reorderedQuestions.splice(idx, 1)
+    // Insert at end
+    reorderedQuestions.push(movedQuestion)
+
+    await put(`/api/quizzes/${selectedQuiz.value.filename}`, {
+      title: quizTitle.value,
+      description: quizDescription.value,
+      questions: reorderedQuestions
+    })
+
+    await loadQuizzes()
+    selectQuiz(selectedQuiz.value)
+  } catch (err) {
+    showAlert('Error reordering question: ' + err.message, 'Error')
+  }
+}
+
+// Drag-and-drop handlers
+const handleDragStart = (idx) => {
+  draggedQuestionIdx.value = idx
+}
+
+const handleDragOver = (event, idx) => {
+  event.preventDefault()
+  dragOverIdx.value = idx
+}
+
+const handleDragLeave = () => {
+  dragOverIdx.value = null
+}
+
+const handleDrop = async (event, dropIdx) => {
+  event.preventDefault()
+  const dragIdx = draggedQuestionIdx.value
+
+  if (dragIdx === null || dragIdx === dropIdx || !selectedQuiz.value) {
+    draggedQuestionIdx.value = null
+    dragOverIdx.value = null
+    return
+  }
+
+  try {
+    const reorderedQuestions = [...currentQuestions.value]
+    // Remove from old position
+    const [movedQuestion] = reorderedQuestions.splice(dragIdx, 1)
+    // Insert at new position
+    reorderedQuestions.splice(dropIdx, 0, movedQuestion)
+
+    await put(`/api/quizzes/${selectedQuiz.value.filename}`, {
+      title: quizTitle.value,
+      description: quizDescription.value,
+      questions: reorderedQuestions
+    })
+
+    await loadQuizzes()
+    selectQuiz(selectedQuiz.value)
+  } catch (err) {
+    showAlert('Error reordering question: ' + err.message, 'Error')
+  } finally {
+    draggedQuestionIdx.value = null
+    dragOverIdx.value = null
+  }
+}
+
+const handleDragEnd = () => {
+  draggedQuestionIdx.value = null
+  dragOverIdx.value = null
 }
 
 const shuffleAllChoices = async () => {
@@ -1749,6 +1909,25 @@ select:focus {
   box-shadow: 0 0 8px rgba(79, 195, 247, 0.3);
 }
 
+.question-item.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.question-item.drag-over {
+  border-color: rgba(255, 193, 7, 0.8);
+  background: rgba(255, 193, 7, 0.1);
+  box-shadow: 0 0 12px rgba(255, 193, 7, 0.4);
+}
+
+.question-item {
+  cursor: grab;
+}
+
+.question-item:active {
+  cursor: grabbing;
+}
+
 .question-content {
   flex: 1;
   cursor: pointer;
@@ -1772,7 +1951,36 @@ select:focus {
 
 .question-actions {
   display: flex;
-  gap: 0.3rem;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.reorder-buttons {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.btn-reorder {
+  background: rgba(79, 195, 247, 0.15);
+  border: 1px solid rgba(79, 195, 247, 0.3);
+  color: #4fc3f7;
+  padding: 0.3rem 0.4rem;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.btn-reorder:hover:not(:disabled) {
+  background: rgba(79, 195, 247, 0.25);
+  border-color: rgba(79, 195, 247, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-reorder:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .btn-edit {
