@@ -2194,6 +2194,7 @@ io.on('connection', (socket) => {
           currentQuestionIndex: null,
           presentedQuestions: [],
           revealedQuestions: [],
+          kickedPlayers: {}, // { username: kickedTimestamp }
           status: 'in_progress',
           createdAt: new Date().toISOString()
         };
@@ -2339,6 +2340,7 @@ io.on('connection', (socket) => {
         currentQuestionIndex: null,
         presentedQuestions,
         revealedQuestions,
+        kickedPlayers: {}, // { username: kickedTimestamp }
         status: 'in_progress',
         createdAt: session.created_at,
         resumedAt: new Date().toISOString(),
@@ -2421,6 +2423,22 @@ io.on('connection', (socket) => {
     if (!playerUsername || !playerDisplayName) {
       socket.emit('roomError', 'Username and display name are required.');
       return;
+    }
+
+    // Check if player was recently kicked (5 second cooldown)
+    if (room.kickedPlayers && room.kickedPlayers[playerUsername]) {
+      const kickedTime = room.kickedPlayers[playerUsername];
+      const cooldownMs = 5000; // 5 seconds
+      const timeElapsed = Date.now() - kickedTime;
+
+      if (timeElapsed < cooldownMs) {
+        const remainingSeconds = Math.ceil((cooldownMs - timeElapsed) / 1000);
+        socket.emit('roomError', `You were removed from this session. Please wait ${remainingSeconds} second(s) before rejoining.`);
+        return;
+      }
+
+      // Cooldown expired, remove from kicked list
+      delete room.kickedPlayers[playerUsername];
     }
 
     // Determine if this is a spectator (needed throughout the function)
@@ -2723,6 +2741,44 @@ io.on('connection', (socket) => {
     io.socketsLeave(roomCode);
     console.log(`Room ${roomCode} closed.`);
     io.emit('activeRoomsUpdate', getActiveRoomsSummary());
+  });
+
+  // Kick player from room
+  socket.on('kickPlayer', ({ roomCode, username }) => {
+    const room = liveRooms[roomCode];
+    if (!room) return;
+
+    // Verify the requester is the presenter
+    if (socket.id !== room.presenterId) {
+      console.log(`Non-presenter ${socket.id} attempted to kick player from room ${roomCode}`);
+      return;
+    }
+
+    // Find the player's socket ID
+    const playerEntry = Object.entries(room.players).find(([_, player]) => player.name === username);
+    if (!playerEntry) {
+      console.log(`Player ${username} not found in room ${roomCode}`);
+      return;
+    }
+
+    const [playerSocketId] = playerEntry;
+
+    // Track kicked player with timestamp
+    room.kickedPlayers[username] = Date.now();
+
+    // Emit kicked event to the specific player
+    io.to(playerSocketId).emit('player-kicked', {
+      roomCode,
+      message: 'You have been removed from this session by the presenter'
+    });
+
+    // Remove player from room
+    delete room.players[playerSocketId];
+
+    // Update player list for everyone
+    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
+
+    console.log(`Player ${username} kicked from room ${roomCode} by presenter`);
   });
 
   // Handle disconnect

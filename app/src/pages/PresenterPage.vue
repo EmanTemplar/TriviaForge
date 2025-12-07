@@ -114,6 +114,7 @@
             {{ player.name }}
             <span v-if="player.connectionState === 'warning'" class="player-warning-icon" title="Rapid switching detected">⚠️</span>
             <span v-if="player.choice !== null" class="player-answered">✓</span>
+            <button class="btn-kick" @click="kickPlayer(player.name)" title="Remove player">✕</button>
           </div>
         </div>
       </section>
@@ -496,6 +497,14 @@ const completeQuiz = async () => {
   const confirmed = await showConfirm('Complete this quiz and save all results? This will mark the session as finished.', 'Complete Quiz')
   if (confirmed) {
     socket.emit('completeQuiz', { roomCode: currentRoomCode.value })
+  }
+}
+
+// Kick player from room
+const kickPlayer = async (playerName) => {
+  const confirmed = await showConfirm(`Remove ${playerName} from the session?`, 'Remove Player')
+  if (confirmed) {
+    socket.emit('kickPlayer', { roomCode: currentRoomCode.value, username: playerName })
   }
 }
 
@@ -1133,6 +1142,23 @@ onUnmounted(() => {
 .player-answered {
   margin-left: auto;
   color: #0f0;
+}
+
+.btn-kick {
+  margin-left: auto;
+  background: rgba(255, 68, 68, 0.1);
+  color: #ff4444;
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  border-radius: 3px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-kick:hover {
+  background: rgba(255, 68, 68, 0.2);
+  border-color: #ff4444;
 }
 
 .empty-state {
