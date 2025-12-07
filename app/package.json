@@ -9,7 +9,11 @@
     "preview": "vite preview",
     "start": "node server.js",
     "server": "node server.js",
-    "lint": "eslint src --ext .vue,.js"
+    "lint": "eslint src --ext .vue,.js",
+    "debug": "node debug-cli.js",
+    "debug:status": "node debug-cli.js status",
+    "debug:health": "node debug-cli.js health",
+    "debug:test": "node debug-cli.js test-flow"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "^5.2.4",
@@ -20,6 +24,7 @@
     "exceljs": "^4.4.0",
     "express": "^4.18.2",
     "multer": "^2.0.2",
+    "node-fetch": "^3.3.0",
     "pg": "^8.11.0",
     "pinia": "^2.1.0",
     "qrcode": "^1.5.1",

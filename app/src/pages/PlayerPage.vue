@@ -697,6 +697,11 @@ const setupSocketListeners = () => {
     handleLeaveRoom()
   })
 
+  socket.on('player-kicked', ({ message }) => {
+    uiStore.addNotification(message, 'warning')
+    handleLeaveRoom()
+  })
+
   socket.on('roomError', (msg) => {
     uiStore.addNotification(msg, 'error')
   })

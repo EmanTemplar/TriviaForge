@@ -80,7 +80,8 @@ export async function initializeDatabase(pool) {
     const sqlFiles = [
       '01-tables.sql',
       '02-migrate_timestamps.sql',
-      '03-update-admin-password.sql'
+      '03-update-admin-password.sql',
+      '04-banned-display-names.sql'
     ];
 
     // Execute each SQL file in order

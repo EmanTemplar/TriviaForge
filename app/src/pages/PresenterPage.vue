@@ -114,6 +114,17 @@
             {{ player.name }}
             <span v-if="player.connectionState === 'warning'" class="player-warning-icon" title="Rapid switching detected">⚠️</span>
             <span v-if="player.choice !== null" class="player-answered">✓</span>
+            <div class="player-menu-container">
+              <button class="btn-player-menu" @click="togglePlayerMenu(player.name)" title="Player actions">⋮</button>
+              <div v-if="playerMenuOpen === player.name" class="player-menu">
+                <button @click="kickPlayer(player.name)" class="menu-item menu-item-kick">
+                  <span class="menu-icon">👢</span> Kick Player
+                </button>
+                <button @click="banDisplayName(player.name)" class="menu-item menu-item-ban">
+                  <span class="menu-icon">🚫</span> Ban Display Name
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -313,6 +324,7 @@ const answerRevealData = ref(null)
 // QR Code
 const qrCodeData = ref(null)
 const qrCodeUrl = ref(null)
+const playerMenuOpen = ref(null) // Track which player's menu is open
 
 // Load quizzes on mount
 const loadQuizzes = async () => {
@@ -496,6 +508,52 @@ const completeQuiz = async () => {
   const confirmed = await showConfirm('Complete this quiz and save all results? This will mark the session as finished.', 'Complete Quiz')
   if (confirmed) {
     socket.emit('completeQuiz', { roomCode: currentRoomCode.value })
+  }
+}
+
+// Kick player from room
+const kickPlayer = async (playerName) => {
+  playerMenuOpen.value = null // Close menu
+  const confirmed = await showConfirm(`Remove ${playerName} from the session?`, 'Remove Player')
+  if (confirmed) {
+    socket.emit('kickPlayer', { roomCode: currentRoomCode.value, username: playerName })
+  }
+}
+
+// Toggle player menu
+const togglePlayerMenu = (playerName) => {
+  if (playerMenuOpen.value === playerName) {
+    playerMenuOpen.value = null
+  } else {
+    playerMenuOpen.value = playerName
+  }
+}
+
+// Ban display name
+const banDisplayName = async (playerName) => {
+  playerMenuOpen.value = null // Close menu
+  const confirmed = await showConfirm(
+    `Ban the display name "${playerName}"?\n\nThis will:\n- Add "${playerName}" to the globally banned names list\n- Kick the player from this session\n- Prevent anyone from using this display name in the future\n\nChoose matching type:\nClick "Confirm" for EXACT match, or "Cancel" to go back.`,
+    'Ban Display Name'
+  )
+
+  if (!confirmed) return
+
+  try {
+    // Add to banned names list
+    await post('/api/banned-names', {
+      pattern: playerName,
+      patternType: 'exact'
+    })
+
+    // Kick the player
+    socket.emit('kickPlayer', { roomCode: currentRoomCode.value, username: playerName })
+
+    await showAlert(`Display name "${playerName}" has been banned globally.`, 'Name Banned')
+  } catch (err) {
+    const message = err.response?.data?.error || 'Failed to ban display name'
+    await showAlert(message, 'Error')
+    console.error('Error banning display name:', err)
   }
 }
 
@@ -1133,6 +1191,79 @@ onUnmounted(() => {
 .player-answered {
   margin-left: auto;
   color: #0f0;
+}
+
+/* Player menu */
+.player-menu-container {
+  margin-left: auto;
+  position: relative;
+}
+
+.btn-player-menu {
+  background: rgba(79, 195, 247, 0.1);
+  color: #4fc3f7;
+  border: 1px solid rgba(79, 195, 247, 0.3);
+  border-radius: 3px;
+  padding: 0.2rem 0.5rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-player-menu:hover {
+  background: rgba(79, 195, 247, 0.2);
+  border-color: #4fc3f7;
+}
+
+.player-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: rgba(30, 30, 30, 0.98);
+  border: 1px solid rgba(79, 195, 247, 0.4);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  min-width: 180px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.menu-item:hover {
+  background: rgba(79, 195, 247, 0.15);
+}
+
+.menu-item-kick {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.menu-item-kick:hover {
+  background: rgba(255, 68, 68, 0.15);
+  color: #ff4444;
+}
+
+.menu-item-ban:hover {
+  background: rgba(255, 152, 0, 0.15);
+  color: #ff9800;
+}
+
+.menu-icon {
+  font-size: 1rem;
 }
 
 .empty-state {

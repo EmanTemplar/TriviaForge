@@ -241,6 +241,39 @@
         </section>
       </div>
 
+      <!-- Banned Display Names Tab -->
+      <div v-if="activeTab === 'banned-names'" class="tab-content banned-names-management">
+        <section>
+          <h2>Banned Display Names</h2>
+          <p class="section-description">Manage globally banned display names to prevent offensive or inappropriate names</p>
+
+          <div class="banned-names-header">
+            <button @click="showAddBannedNameModal" class="btn-primary">+ Add Banned Name</button>
+            <button @click="loadBannedNames" class="btn-refresh">🔄 Refresh</button>
+            <div class="banned-count">{{ bannedNames.length }} banned pattern(s)</div>
+          </div>
+
+          <div class="banned-names-list">
+            <div v-if="bannedNames.length === 0" class="empty-state"><em>No banned display names</em></div>
+            <div v-for="name in bannedNames" :key="name.id" class="banned-name-item">
+              <div class="banned-pattern">
+                <span class="pattern-text">{{ name.pattern }}</span>
+                <span class="pattern-type-badge" :class="'type-' + name.pattern_type">
+                  {{ name.pattern_type === 'exact' ? 'Exact' : 'Contains' }}
+                </span>
+              </div>
+              <div class="banned-meta">
+                <span class="banned-by">Banned by: {{ name.banned_by || 'System' }}</span>
+                <span class="banned-date">{{ formatDate(name.created_at) }}</span>
+              </div>
+              <div class="banned-actions">
+                <button @click="removeBannedName(name)" class="btn-delete" title="Remove Ban">🗑️</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
       <!-- About Tab -->
       <div v-if="activeTab === 'about'" class="tab-content about-management">
         <section class="about-section">
@@ -532,6 +565,7 @@ const optionsSaveMessageType = ref('success')
 
 // Users
 const users = ref([])
+const bannedNames = ref([])
 
 // Computed Properties
 const rankedPlayers = computed(() => {
@@ -554,6 +588,7 @@ const tabs = [
   { id: 'sessions', label: 'Session Management' },
   { id: 'options', label: 'Quiz Options' },
   { id: 'users', label: 'User Management' },
+  { id: 'banned-names', label: 'Banned Names' },
   { id: 'about', label: 'About' }
 ]
 
@@ -566,6 +601,7 @@ const switchTab = (tabId) => {
   if (tabId === 'sessions') loadSessions()
   if (tabId === 'users') loadUsers()
   if (tabId === 'options') loadOptions()
+  if (tabId === 'banned-names') loadBannedNames()
 }
 
 // Quiz functions
@@ -1077,7 +1113,7 @@ const deleteUser = async (user) => {
   if (!confirmed) return
 
   try {
-    await del(`/api/users/${user.id}`)
+    await delete_(`/api/users/${user.id}`)
     await showAlert(`User "${user.username}" has been deleted successfully.`, 'User Deleted')
     await loadUsers() // Refresh the list
   } catch (err) {
@@ -1122,6 +1158,60 @@ const resetUserPassword = async (user) => {
     const message = err.response?.data?.error || 'Failed to reset password'
     await showAlert(message, 'Error')
     console.error('Error resetting password:', err)
+  }
+}
+
+// Banned Names functions
+const loadBannedNames = async () => {
+  try {
+    const response = await get('/api/banned-names')
+    bannedNames.value = response.data.bannedNames || []
+  } catch (err) {
+    console.error('Error loading banned names:', err)
+  }
+}
+
+const showAddBannedNameModal = async () => {
+  const pattern = await showPrompt('Enter the display name pattern to ban:', 'Add Banned Name')
+  if (!pattern || !pattern.trim()) return
+
+  const patternType = await showConfirm(
+    `Ban pattern: "${pattern}"\n\nSelect matching type:\n\n- Exact: Blocks only exact matches (case-insensitive)\n- Contains: Blocks any name containing this pattern\n\nClick "Confirm" for EXACT match, or "Cancel" for CONTAINS match.`,
+    'Select Match Type'
+  )
+
+  const type = patternType ? 'exact' : 'contains'
+
+  try {
+    await post('/api/banned-names', {
+      pattern: pattern.trim(),
+      patternType: type
+    })
+    await showAlert(`Display name pattern "${pattern}" (${type}) has been banned.`, 'Name Banned')
+    await loadBannedNames()
+  } catch (err) {
+    const message = err.response?.data?.error || 'Failed to ban name'
+    await showAlert(message, 'Error')
+    console.error('Error banning name:', err)
+  }
+}
+
+const removeBannedName = async (name) => {
+  const confirmed = await showConfirm(
+    `Remove ban for pattern "${name.pattern}" (${name.pattern_type})?`,
+    'Remove Ban'
+  )
+
+  if (!confirmed) return
+
+  try {
+    await delete_(`/api/banned-names/${name.id}`)
+    await showAlert(`Banned pattern "${name.pattern}" has been removed.`, 'Ban Removed')
+    await loadBannedNames()
+  } catch (err) {
+    const message = err.response?.data?.error || 'Failed to remove ban'
+    await showAlert(message, 'Error')
+    console.error('Error removing ban:', err)
   }
 }
 
@@ -2315,6 +2405,103 @@ select:focus {
 }
 
 .user-actions .btn-delete:hover {
+  background: rgba(244, 67, 54, 0.3);
+  transform: scale(1.1);
+}
+
+/* Banned Names Tab */
+.banned-names-management section {
+  max-width: auto;
+}
+
+.banned-names-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.banned-count {
+  margin-left: auto;
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+.banned-names-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.banned-name-item {
+  padding: 1rem;
+  background: rgba(255, 152, 0, 0.1);
+  border: 1px solid rgba(255, 152, 0, 0.3);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.banned-pattern {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pattern-text {
+  font-weight: 600;
+  color: #fff;
+  font-size: 1.05rem;
+}
+
+.pattern-type-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pattern-type-badge.type-exact {
+  background: rgba(33, 150, 243, 0.2);
+  color: #42a5f5;
+  border: 1px solid rgba(33, 150, 243, 0.4);
+}
+
+.pattern-type-badge.type-contains {
+  background: rgba(156, 39, 176, 0.2);
+  color: #ab47bc;
+  border: 1px solid rgba(156, 39, 176, 0.4);
+}
+
+.banned-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.banned-by,
+.banned-date {
+  font-size: 0.85rem;
+  color: #aaa;
+}
+
+.banned-actions .btn-delete {
+  padding: 0.5rem 0.75rem;
+  background: rgba(244, 67, 54, 0.2);
+  border: 1px solid rgba(244, 67, 54, 0.5);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.banned-actions .btn-delete:hover {
   background: rgba(244, 67, 54, 0.3);
   transform: scale(1.1);
 }

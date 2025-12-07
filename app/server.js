@@ -57,21 +57,27 @@ app.use(express.json());
 // When running in Docker, environment variables are passed via docker-compose.yml
 dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
 
+// --------------------
+// Debug Mode Detection (MUST BE FIRST)
+// --------------------
+const DEBUG_ENABLED = process.env.NODE_ENV === 'development' || process.env.DEBUG_MODE === 'true';
+
+if (DEBUG_ENABLED) {
+  console.log('🐛 Debug mode ENABLED - Debug API endpoints available at /api/debug/*');
+  console.log('🐛 Debug interface available at http://localhost:3000/debug');
+
+  // Serve debug HTML page BEFORE Vue static files
+  app.get('/debug', (_req, res) => {
+    res.sendFile(path.join(process.cwd(), 'debug.html'));
+  });
+} else {
+  console.log('🔒 Debug mode DISABLED - Set NODE_ENV=development to enable debug endpoints');
+}
+
 // Serve Vue 3 Vite dist/ folder (production build)
 // This contains the compiled Vue app, styles, and assets
 const distPath = path.join(process.cwd(), 'dist');
 app.use(express.static(distPath));
-
-// SPA Routing fallback: For any non-API request that doesn't match a static file,
-// serve index.html so Vue Router can handle client-side routing
-app.use((req, res, next) => {
-  // Skip API routes - let them 404 if not found
-  if (req.path.startsWith('/api/')) {
-    return next();
-  }
-  // For all other routes, serve index.html (SPA routing)
-  res.sendFile(path.join(distPath, 'index.html'));
-});
 
 const PORT = process.env.APP_PORT || 3000;
 const QUIZ_FOLDER = path.join(process.cwd(), 'quizzes'); // Legacy folder kept for backward compatibility
@@ -1164,17 +1170,18 @@ app.post('/api/auth/register-player', async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // If already a player or admin, return error
-    if (user.account_type !== 'guest') {
+    // If already a player or admin with a password, return error
+    // Allow if: guest account OR password was reset by admin (password_hash is NULL)
+    if (user.account_type !== 'guest' && user.password_hash !== null) {
       return res.status(400).json({ error: 'This account is already registered' });
     }
 
-    // If guest already has a password, they're trying to register again
+    // If account already has a password, they're trying to register again
     if (user.password_hash) {
       return res.status(400).json({ error: 'This account already has a password' });
     }
 
-    // Upgrade guest account to player account
+    // Set password and ensure account is player type
     const passwordHash = await bcrypt.hash(password, 10);
     await pool.query(
       `UPDATE users
@@ -1238,17 +1245,18 @@ app.post('/api/auth/register-guest', async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // If already a player or admin, return error
-    if (user.account_type !== 'guest') {
+    // If already a player or admin with a password, return error
+    // Allow if: guest account OR password was reset by admin (password_hash is NULL)
+    if (user.account_type !== 'guest' && user.password_hash !== null) {
       return res.status(400).json({ error: 'This account is already registered' });
     }
 
-    // If guest already has a password, they're trying to register again
+    // If account already has a password, they're trying to register again
     if (user.password_hash) {
       return res.status(400).json({ error: 'This account already has a password' });
     }
 
-    // Upgrade guest account to player account
+    // Set password and ensure account is player type
     const passwordHash = await bcrypt.hash(password, 10);
     await pool.query(
       `UPDATE users
@@ -1670,6 +1678,124 @@ app.post('/api/users/:userId/reset-password', requireAdmin, async (req, res) => 
   } catch (err) {
     console.error('Error resetting password:', err);
     res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// ============================================================================
+// Banned Display Names Management (Admin Only)
+// ============================================================================
+
+// Helper function to check if a display name is banned
+async function isDisplayNameBanned(displayName) {
+  try {
+    const result = await pool.query(
+      'SELECT id, pattern, pattern_type FROM banned_display_names'
+    );
+
+    const lowerDisplayName = displayName.toLowerCase();
+
+    for (const ban of result.rows) {
+      const lowerPattern = ban.pattern.toLowerCase();
+
+      if (ban.pattern_type === 'exact') {
+        // Exact match (case-insensitive)
+        if (lowerDisplayName === lowerPattern) {
+          return { banned: true, reason: `Display name "${displayName}" is not allowed` };
+        }
+      } else if (ban.pattern_type === 'contains') {
+        // Contains match (case-insensitive)
+        if (lowerDisplayName.includes(lowerPattern)) {
+          return { banned: true, reason: `Display name contains banned word "${ban.pattern}"` };
+        }
+      }
+    }
+
+    return { banned: false };
+  } catch (err) {
+    console.error('Error checking banned display names:', err);
+    // On error, allow the name (fail open)
+    return { banned: false };
+  }
+}
+
+// Get all banned display names (admin only)
+app.get('/api/banned-names', requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        bn.id,
+        bn.pattern,
+        bn.pattern_type,
+        bn.created_at,
+        u.username as banned_by
+      FROM banned_display_names bn
+      LEFT JOIN users u ON bn.banned_by = u.id
+      ORDER BY bn.created_at DESC
+    `);
+
+    res.json({ success: true, bannedNames: result.rows });
+  } catch (err) {
+    console.error('Error fetching banned names:', err);
+    res.status(500).json({ error: 'Failed to fetch banned names' });
+  }
+});
+
+// Add a banned display name (admin only)
+app.post('/api/banned-names', requireAdmin, async (req, res) => {
+  try {
+    const { pattern, patternType } = req.body;
+    const adminUserId = req.user.id;
+
+    if (!pattern || !pattern.trim()) {
+      return res.status(400).json({ error: 'Pattern is required' });
+    }
+
+    if (!['exact', 'contains'].includes(patternType)) {
+      return res.status(400).json({ error: 'Pattern type must be "exact" or "contains"' });
+    }
+
+    // Check if pattern already exists
+    const existingCheck = await pool.query(
+      'SELECT id FROM banned_display_names WHERE LOWER(pattern) = LOWER($1) AND pattern_type = $2',
+      [pattern.trim(), patternType]
+    );
+
+    if (existingCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'This pattern is already banned' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO banned_display_names (pattern, pattern_type, banned_by) VALUES ($1, $2, $3) RETURNING *',
+      [pattern.trim(), patternType, adminUserId]
+    );
+
+    console.log(`Display name pattern "${pattern}" (${patternType}) banned by admin ${adminUserId}`);
+    res.json({ success: true, bannedName: result.rows[0] });
+  } catch (err) {
+    console.error('Error adding banned name:', err);
+    res.status(500).json({ error: 'Failed to add banned name' });
+  }
+});
+
+// Remove a banned display name (admin only)
+app.delete('/api/banned-names/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      'DELETE FROM banned_display_names WHERE id = $1 RETURNING pattern',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Banned name not found' });
+    }
+
+    console.log(`Banned display name "${result.rows[0].pattern}" removed by admin`);
+    res.json({ success: true, message: 'Banned name removed' });
+  } catch (err) {
+    console.error('Error removing banned name:', err);
+    res.status(500).json({ error: 'Failed to remove banned name' });
   }
 });
 
@@ -2186,6 +2312,7 @@ io.on('connection', (socket) => {
           currentQuestionIndex: null,
           presentedQuestions: [],
           revealedQuestions: [],
+          kickedPlayers: {}, // { username: kickedTimestamp }
           status: 'in_progress',
           createdAt: new Date().toISOString()
         };
@@ -2331,6 +2458,7 @@ io.on('connection', (socket) => {
         currentQuestionIndex: null,
         presentedQuestions,
         revealedQuestions,
+        kickedPlayers: {}, // { username: kickedTimestamp }
         status: 'in_progress',
         createdAt: session.created_at,
         resumedAt: new Date().toISOString(),
@@ -2415,8 +2543,33 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Check if player was recently kicked (5 second cooldown)
+    if (room.kickedPlayers && room.kickedPlayers[playerUsername]) {
+      const kickedTime = room.kickedPlayers[playerUsername];
+      const cooldownMs = 5000; // 5 seconds
+      const timeElapsed = Date.now() - kickedTime;
+
+      if (timeElapsed < cooldownMs) {
+        const remainingSeconds = Math.ceil((cooldownMs - timeElapsed) / 1000);
+        socket.emit('roomError', `You were removed from this session. Please wait ${remainingSeconds} second(s) before rejoining.`);
+        return;
+      }
+
+      // Cooldown expired, remove from kicked list
+      delete room.kickedPlayers[playerUsername];
+    }
+
     // Determine if this is a spectator (needed throughout the function)
     const isSpectator = playerUsername === 'Display' || playerDisplayName === 'Spectator Display';
+
+    // Check if display name is banned (skip for spectators)
+    if (!isSpectator) {
+      const banCheck = await isDisplayNameBanned(playerDisplayName);
+      if (banCheck.banned) {
+        socket.emit('roomError', banCheck.reason);
+        return;
+      }
+    }
 
     // Create or retrieve guest user account (using username)
     let userId = null;
@@ -2552,10 +2705,7 @@ io.on('connection', (socket) => {
         return historyItem;
       });
 
-      console.log(`[RESUME DEBUG] Sending answer history to ${playerDisplayName} (${playerUsername}):`, answerHistory);
       socket.emit('answerHistoryRestored', { answerHistory });
-    } else {
-      console.log(`[SPECTATOR] Skipping answer history for spectator ${playerDisplayName} (${playerUsername})`);
     }
 
     // If there's a current question active, send it to the new player
@@ -2720,10 +2870,46 @@ io.on('connection', (socket) => {
     io.emit('activeRoomsUpdate', getActiveRoomsSummary());
   });
 
+  // Kick player from room
+  socket.on('kickPlayer', ({ roomCode, username }) => {
+    const room = liveRooms[roomCode];
+    if (!room) return;
+
+    // Verify the requester is the presenter
+    if (socket.id !== room.presenterId) {
+      console.log(`Non-presenter ${socket.id} attempted to kick player from room ${roomCode}`);
+      return;
+    }
+
+    // Find the player's socket ID
+    const playerEntry = Object.entries(room.players).find(([_, player]) => player.name === username);
+    if (!playerEntry) {
+      console.log(`Player ${username} not found in room ${roomCode}`);
+      return;
+    }
+
+    const [playerSocketId] = playerEntry;
+
+    // Track kicked player with timestamp
+    room.kickedPlayers[username] = Date.now();
+
+    // Emit kicked event to the specific player
+    io.to(playerSocketId).emit('player-kicked', {
+      roomCode,
+      message: 'You have been removed from this session by the presenter'
+    });
+
+    // Remove player from room
+    delete room.players[playerSocketId];
+
+    // Update player list for everyone
+    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
+
+    console.log(`Player ${username} kicked from room ${roomCode} by presenter`);
+  });
+
   // Handle disconnect
   socket.on('disconnect', (reason) => {
-    console.log(`[DISCONNECT DEBUG] Socket ${socket.id} disconnected. Reason: ${reason}`);
-
     for (const [roomCode, room] of Object.entries(liveRooms)) {
       if (room.players[socket.id]) {
         const playerName = room.players[socket.id].name;
@@ -2734,7 +2920,7 @@ io.on('connection', (socket) => {
         console.log(`${playerName} disconnected from room ${roomCode}`);
       }
       if (room.presenterId === socket.id) {
-        console.log(`[DISCONNECT DEBUG] PRESENTER disconnected from room ${roomCode}. Reason: ${reason}`);
+        console.log(`Presenter disconnected from room ${roomCode}. Reason: ${reason}`);
         // Auto-save before closing if presenter disconnects
         if (sessionHasAnswers(room)) {
           room.status = 'interrupted';
@@ -2766,6 +2952,829 @@ function getActiveRoomsSummary() {
 // --------------------
 // END OF LIVE ROOMS LOGIC
 // --------------------
+
+
+// ==================================================
+// DEBUGGING & TESTING API
+// ==================================================
+// Debug API endpoints (debug mode detection and /debug route at top of file)
+// ==================================================
+
+if (DEBUG_ENABLED) {
+  // --------------------
+  // Debug: Get System State
+  // --------------------
+  app.get('/api/debug/state', (_req, res) => {
+    const state = {
+      liveRooms: Object.entries(liveRooms).map(([code, room]) => ({
+        roomCode: code,
+        quizTitle: room.quizData?.title,
+        quizId: room.quizData?.id,
+        players: Object.values(room.players).map(p => ({
+          username: p.username,
+          displayName: p.name,
+          connected: p.connected,
+          connectionState: p.connectionState,
+          isSpectator: p.isSpectator,
+          answersCount: Object.keys(p.answers || {}).length
+        })),
+        currentQuestionIndex: room.currentQuestionIndex,
+        presentedQuestions: room.presentedQuestions,
+        revealedQuestions: room.revealedQuestions,
+        status: room.status,
+        createdAt: room.createdAt
+      })),
+      totalRooms: Object.keys(liveRooms).length,
+      totalPlayers: Object.values(liveRooms).reduce((sum, room) =>
+        sum + Object.values(room.players).filter(p => !p.isSpectator).length, 0),
+      serverUptime: process.uptime(),
+      memoryUsage: process.memoryUsage()
+    };
+    res.json(state);
+  });
+
+  // --------------------
+  // Debug: Get Specific Room Details
+  // --------------------
+  app.get('/api/debug/room/:roomCode', (req, res) => {
+    const { roomCode } = req.params;
+    const room = liveRooms[roomCode];
+
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    res.json({
+      roomCode,
+      quizData: {
+        id: room.quizData?.id,
+        title: room.quizData?.title,
+        description: room.quizData?.description,
+        totalQuestions: room.quizData?.questions?.length
+      },
+      players: Object.entries(room.players).map(([socketId, player]) => ({
+        socketId,
+        username: player.username,
+        displayName: player.name,
+        userId: player.userId,
+        connected: player.connected,
+        connectionState: player.connectionState,
+        isSpectator: player.isSpectator,
+        currentChoice: player.choice,
+        answers: player.answers
+      })),
+      currentQuestionIndex: room.currentQuestionIndex,
+      presentedQuestions: room.presentedQuestions,
+      revealedQuestions: room.revealedQuestions,
+      status: room.status,
+      createdAt: room.createdAt
+    });
+  });
+
+  // --------------------
+  // Debug: Create Test Room
+  // --------------------
+  app.post('/api/debug/create-test-room', async (req, res) => {
+    try {
+      const { quizId, roomCode } = req.body;
+
+      // Use provided roomCode or generate a random one
+      const finalRoomCode = roomCode || Math.random().toString(36).substring(2, 8).toUpperCase();
+
+      // Check if room already exists
+      if (liveRooms[finalRoomCode]) {
+        return res.status(400).json({ error: 'Room code already exists' });
+      }
+
+      // Get quiz data
+      let quiz;
+      if (quizId) {
+        quiz = await getQuizById(quizId);
+        if (!quiz) {
+          return res.status(404).json({ error: 'Quiz not found' });
+        }
+      } else {
+        // Get first available quiz
+        const quizzes = await listQuizzesFromDB();
+        if (quizzes.length === 0) {
+          return res.status(400).json({ error: 'No quizzes available' });
+        }
+        quiz = await getQuizById(quizzes[0].id);
+      }
+
+      // Create room
+      liveRooms[finalRoomCode] = {
+        quizData: {
+          id: quiz.id,
+          title: quiz.title,
+          description: quiz.description,
+          questions: quiz.questions.map(q => ({
+            text: q.text,
+            choices: q.choices.map(c => c.text),
+            correctChoice: q.choices.findIndex(c => c.isCorrect)
+          })),
+          answerDisplayTimeout: quiz.answerDisplayTimeout || 30
+        },
+        players: {},
+        currentQuestionIndex: null,
+        presentedQuestions: [],
+        revealedQuestions: [],
+        status: 'waiting',
+        createdAt: new Date().toISOString()
+      };
+
+      res.json({
+        success: true,
+        roomCode: finalRoomCode,
+        quizTitle: quiz.title,
+        questionsCount: quiz.questions.length,
+        message: `Test room ${finalRoomCode} created successfully`
+      });
+
+    } catch (error) {
+      console.error('Debug: Error creating test room:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // --------------------
+  // Debug: Add Test Player to Room
+  // --------------------
+  app.post('/api/debug/add-test-player', async (req, res) => {
+    try {
+      const { roomCode, username, displayName, isSpectator } = req.body;
+
+      if (!roomCode || !username) {
+        return res.status(400).json({ error: 'roomCode and username are required' });
+      }
+
+      const room = liveRooms[roomCode];
+      if (!room) {
+        return res.status(404).json({ error: 'Room not found' });
+      }
+
+      const finalDisplayName = displayName || username;
+      const fakeSocketId = `debug_${username}_${Date.now()}`;
+
+      // Create or get user in database
+      let userId = null;
+      try {
+        const userResult = await pool.query(
+          'SELECT id FROM users WHERE username = $1',
+          [username]
+        );
+
+        if (userResult.rows.length > 0) {
+          userId = userResult.rows[0].id;
+        } else {
+          const createResult = await pool.query(
+            'INSERT INTO users (username, account_type, password_hash) VALUES ($1, $2, NULL) RETURNING id',
+            [username, 'guest']
+          );
+          userId = createResult.rows[0].id;
+        }
+      } catch (err) {
+        console.error('Debug: Error creating user:', err);
+      }
+
+      // Add player to room
+      room.players[fakeSocketId] = {
+        id: fakeSocketId,
+        username,
+        name: finalDisplayName,
+        userId,
+        choice: null,
+        connected: true,
+        connectionState: 'connected',
+        answers: {},
+        isSpectator: isSpectator || false
+      };
+
+      res.json({
+        success: true,
+        message: `Test player ${username} added to room ${roomCode}`,
+        socketId: fakeSocketId,
+        playersCount: Object.keys(room.players).length
+      });
+
+    } catch (error) {
+      console.error('Debug: Error adding test player:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // --------------------
+  // Debug: Simulate Answer Submission
+  // --------------------
+  app.post('/api/debug/submit-answer', (req, res) => {
+    try {
+      const { roomCode, username, choice } = req.body;
+
+      if (!roomCode || username === undefined || choice === undefined) {
+        return res.status(400).json({ error: 'roomCode, username, and choice are required' });
+      }
+
+      const room = liveRooms[roomCode];
+      if (!room) {
+        return res.status(404).json({ error: 'Room not found' });
+      }
+
+      // Find player by username
+      const playerEntry = Object.entries(room.players).find(([, p]) => p.username === username);
+      if (!playerEntry) {
+        return res.status(404).json({ error: 'Player not found in room' });
+      }
+
+      const [, player] = playerEntry;
+
+      // Check if question is presented
+      if (room.currentQuestionIndex === null) {
+        return res.status(400).json({ error: 'No question is currently presented' });
+      }
+
+      // Check if already revealed
+      if (room.revealedQuestions?.includes(room.currentQuestionIndex)) {
+        return res.status(400).json({ error: 'Question already revealed' });
+      }
+
+      // Submit answer
+      player.choice = choice;
+      if (!player.answers) {
+        player.answers = {};
+      }
+      player.answers[room.currentQuestionIndex] = choice;
+
+      res.json({
+        success: true,
+        message: `Answer ${choice} submitted for player ${username}`,
+        questionIndex: room.currentQuestionIndex,
+        choice
+      });
+
+    } catch (error) {
+      console.error('Debug: Error submitting answer:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // --------------------
+  // Debug: Present Question
+  // --------------------
+  app.post('/api/debug/present-question', (req, res) => {
+    try {
+      const { roomCode, questionIndex } = req.body;
+
+      if (!roomCode || questionIndex === undefined) {
+        return res.status(400).json({ error: 'roomCode and questionIndex are required' });
+      }
+
+      const room = liveRooms[roomCode];
+      if (!room) {
+        return res.status(404).json({ error: 'Room not found' });
+      }
+
+      if (questionIndex < 0 || questionIndex >= room.quizData.questions.length) {
+        return res.status(400).json({ error: 'Invalid question index' });
+      }
+
+      // Reset player choices
+      Object.values(room.players).forEach(player => {
+        player.choice = null;
+      });
+
+      room.currentQuestionIndex = questionIndex;
+
+      if (!room.presentedQuestions.includes(questionIndex)) {
+        room.presentedQuestions.push(questionIndex);
+      }
+
+      const question = room.quizData.questions[questionIndex];
+
+      res.json({
+        success: true,
+        message: `Question ${questionIndex} presented`,
+        questionIndex,
+        questionText: question.text,
+        choices: question.choices
+      });
+
+    } catch (error) {
+      console.error('Debug: Error presenting question:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // --------------------
+  // Debug: Reveal Answer
+  // --------------------
+  app.post('/api/debug/reveal-answer', (req, res) => {
+    try {
+      const { roomCode } = req.body;
+
+      if (!roomCode) {
+        return res.status(400).json({ error: 'roomCode is required' });
+      }
+
+      const room = liveRooms[roomCode];
+      if (!room) {
+        return res.status(404).json({ error: 'Room not found' });
+      }
+
+      if (room.currentQuestionIndex === null) {
+        return res.status(400).json({ error: 'No question is currently presented' });
+      }
+
+      const questionIndex = room.currentQuestionIndex;
+      const question = room.quizData.questions[questionIndex];
+
+      if (!room.revealedQuestions.includes(questionIndex)) {
+        room.revealedQuestions.push(questionIndex);
+      }
+
+      // Calculate results
+      const results = Object.values(room.players)
+        .filter(p => !p.isSpectator)
+        .map(player => ({
+          username: player.username,
+          displayName: player.name,
+          choice: player.choice,
+          isCorrect: player.choice === question.correctChoice
+        }));
+
+      res.json({
+        success: true,
+        message: `Answer revealed for question ${questionIndex}`,
+        questionIndex,
+        correctChoice: question.correctChoice,
+        results
+      });
+
+    } catch (error) {
+      console.error('Debug: Error revealing answer:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // --------------------
+  // Debug: Clean Up Test Data
+  // --------------------
+  app.post('/api/debug/cleanup', async (req, res) => {
+    try {
+      const { deleteRooms, deleteTestUsers } = req.body;
+      const results = { roomsDeleted: 0, usersDeleted: 0 };
+
+      // Delete all live rooms
+      if (deleteRooms) {
+        results.roomsDeleted = Object.keys(liveRooms).length;
+        Object.keys(liveRooms).forEach(code => delete liveRooms[code]);
+      }
+
+      // Delete test users (those starting with 'test' or 'debug')
+      if (deleteTestUsers) {
+        const deleteResult = await pool.query(
+          "DELETE FROM users WHERE username LIKE 'test%' OR username LIKE 'debug%' RETURNING id"
+        );
+        results.usersDeleted = deleteResult.rowCount;
+      }
+
+      res.json({
+        success: true,
+        message: 'Cleanup completed',
+        ...results
+      });
+
+    } catch (error) {
+      console.error('Debug: Error during cleanup:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // --------------------
+  // Debug: Run Automated Test Scenario
+  // --------------------
+  app.post('/api/debug/run-test-scenario', async (req, res) => {
+    try {
+      const { scenario } = req.body;
+      const results = { steps: [], success: true };
+
+      if (scenario === 'basic-quiz-flow') {
+        // Scenario: Create room, add players, present question, submit answers, reveal
+
+        // Step 1: Create test room
+        const quizzes = await listQuizzesFromDB();
+        if (quizzes.length === 0) {
+          return res.status(400).json({ error: 'No quizzes available for testing' });
+        }
+
+        const quiz = await getQuizById(quizzes[0].id);
+        const roomCode = 'TEST' + Math.random().toString(36).substring(2, 6).toUpperCase();
+
+        liveRooms[roomCode] = {
+          quizData: {
+            id: quiz.id,
+            title: quiz.title,
+            description: quiz.description,
+            questions: quiz.questions.map(q => ({
+              text: q.text,
+              choices: q.choices.map(c => c.text),
+              correctChoice: q.choices.findIndex(c => c.isCorrect)
+            })),
+            answerDisplayTimeout: quiz.answerDisplayTimeout || 30
+          },
+          players: {},
+          currentQuestionIndex: null,
+          presentedQuestions: [],
+          revealedQuestions: [],
+          status: 'waiting',
+          createdAt: new Date().toISOString()
+        };
+        results.steps.push({ step: 'create-room', roomCode, success: true });
+
+        // Step 2: Add test players
+        const testPlayers = ['testPlayer1', 'testPlayer2', 'testPlayer3'];
+        for (const username of testPlayers) {
+          const fakeSocketId = `debug_${username}_${Date.now()}`;
+          liveRooms[roomCode].players[fakeSocketId] = {
+            id: fakeSocketId,
+            username,
+            name: username,
+            userId: null,
+            choice: null,
+            connected: true,
+            connectionState: 'connected',
+            answers: {},
+            isSpectator: false
+          };
+        }
+        results.steps.push({ step: 'add-players', count: testPlayers.length, success: true });
+
+        // Step 3: Present first question
+        liveRooms[roomCode].currentQuestionIndex = 0;
+        liveRooms[roomCode].presentedQuestions.push(0);
+        results.steps.push({ step: 'present-question', questionIndex: 0, success: true });
+
+        // Step 4: Submit random answers
+        const question = liveRooms[roomCode].quizData.questions[0];
+        Object.values(liveRooms[roomCode].players).forEach(player => {
+          const randomChoice = Math.floor(Math.random() * question.choices.length);
+          player.choice = randomChoice;
+          player.answers[0] = randomChoice;
+        });
+        results.steps.push({ step: 'submit-answers', count: testPlayers.length, success: true });
+
+        // Step 5: Reveal answer
+        liveRooms[roomCode].revealedQuestions.push(0);
+        const correctAnswers = Object.values(liveRooms[roomCode].players).filter(
+          p => p.choice === question.correctChoice
+        ).length;
+        results.steps.push({
+          step: 'reveal-answer',
+          correctAnswers,
+          totalPlayers: testPlayers.length,
+          success: true
+        });
+
+        results.roomCode = roomCode;
+        results.message = 'Basic quiz flow test completed successfully';
+
+      } else {
+        return res.status(400).json({ error: 'Unknown scenario' });
+      }
+
+      res.json(results);
+
+    } catch (error) {
+      console.error('Debug: Error running test scenario:', error);
+      res.status(500).json({ error: error.message, success: false });
+    }
+  });
+
+  // --------------------
+  // Debug: User Management - List All Users
+  // --------------------
+  app.get('/api/debug/users', async (_req, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT
+          id,
+          username,
+          account_type,
+          password_hash IS NOT NULL as has_password,
+          created_at,
+          updated_at
+        FROM users
+        ORDER BY created_at DESC
+      `);
+
+      res.json({
+        success: true,
+        users: result.rows,
+        totalUsers: result.rows.length
+      });
+    } catch (error) {
+      console.error('Debug: Error listing users:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // --------------------
+  // Debug: User Management - Get User Details
+  // --------------------
+  app.get('/api/debug/user/:username', async (req, res) => {
+    try {
+      const { username } = req.params;
+
+      const userResult = await pool.query(`
+        SELECT
+          id,
+          username,
+          account_type,
+          password_hash,
+          password_hash IS NOT NULL as has_password,
+          LENGTH(password_hash) as password_hash_length,
+          created_at,
+          updated_at
+        FROM users
+        WHERE username = $1
+      `, [username]);
+
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const user = userResult.rows[0];
+
+      // Get user sessions
+      const sessionsResult = await pool.query(`
+        SELECT token, expires_at, created_at
+        FROM user_sessions
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+      `, [user.id]);
+
+      res.json({
+        success: true,
+        user: {
+          ...user,
+          password_hash: user.password_hash ? '[REDACTED - Length: ' + user.password_hash_length + ']' : null
+        },
+        sessions: sessionsResult.rows
+      });
+    } catch (error) {
+      console.error('Debug: Error getting user details:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // --------------------
+  // Debug: User Management - Reset Password
+  // --------------------
+  app.post('/api/debug/reset-password', async (req, res) => {
+    try {
+      const { username, newPassword } = req.body;
+
+      if (!username) {
+        return res.status(400).json({ error: 'username is required' });
+      }
+
+      // Get user
+      const userResult = await pool.query(
+        'SELECT id, username, account_type FROM users WHERE username = $1',
+        [username]
+      );
+
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const user = userResult.rows[0];
+
+      if (newPassword) {
+        // Set new password
+        const bcrypt = await import('bcrypt');
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+
+        await pool.query(
+          'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+          [passwordHash, user.id]
+        );
+
+        // Invalidate all sessions
+        await pool.query('DELETE FROM user_sessions WHERE user_id = $1', [user.id]);
+
+        res.json({
+          success: true,
+          message: `Password set for user ${username}`,
+          sessionsInvalidated: true
+        });
+      } else {
+        // Clear password (set to NULL)
+        await pool.query(
+          'UPDATE users SET password_hash = NULL, updated_at = NOW() WHERE id = $1',
+          [user.id]
+        );
+
+        // Invalidate all sessions
+        await pool.query('DELETE FROM user_sessions WHERE user_id = $1', [user.id]);
+
+        res.json({
+          success: true,
+          message: `Password cleared for user ${username} (requires password reset on next login)`,
+          sessionsInvalidated: true
+        });
+      }
+    } catch (error) {
+      console.error('Debug: Error resetting password:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // --------------------
+  // Debug: User Management - Create Test User
+  // --------------------
+  app.post('/api/debug/create-user', async (req, res) => {
+    try {
+      const { username, password, accountType } = req.body;
+
+      if (!username) {
+        return res.status(400).json({ error: 'username is required' });
+      }
+
+      // Check if user exists
+      const existingUser = await pool.query(
+        'SELECT id FROM users WHERE username = $1',
+        [username]
+      );
+
+      if (existingUser.rows.length > 0) {
+        return res.status(400).json({ error: 'User already exists' });
+      }
+
+      let passwordHash = null;
+      if (password) {
+        const bcrypt = await import('bcrypt');
+        passwordHash = await bcrypt.hash(password, 10);
+      }
+
+      const result = await pool.query(
+        'INSERT INTO users (username, account_type, password_hash) VALUES ($1, $2, $3) RETURNING id, username, account_type',
+        [username, accountType || 'guest', passwordHash]
+      );
+
+      res.json({
+        success: true,
+        message: `User ${username} created`,
+        user: result.rows[0]
+      });
+    } catch (error) {
+      console.error('Debug: Error creating user:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // --------------------
+  // Debug: User Management - Delete User
+  // --------------------
+  app.delete('/api/debug/user/:username', async (req, res) => {
+    try {
+      const { username } = req.params;
+
+      // Don't allow deleting admin
+      if (username === 'admin') {
+        return res.status(403).json({ error: 'Cannot delete admin user' });
+      }
+
+      const result = await pool.query(
+        'DELETE FROM users WHERE username = $1 RETURNING id, username',
+        [username]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      res.json({
+        success: true,
+        message: `User ${username} deleted`,
+        user: result.rows[0]
+      });
+    } catch (error) {
+      console.error('Debug: Error deleting user:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // --------------------
+  // Debug: User Management - Check Password Reset Flow
+  // --------------------
+  app.post('/api/debug/test-password-reset', async (req, res) => {
+    try {
+      const { username } = req.body;
+
+      if (!username) {
+        return res.status(400).json({ error: 'username is required' });
+      }
+
+      // Get user
+      const userResult = await pool.query(
+        'SELECT id, username, account_type, password_hash FROM users WHERE username = $1',
+        [username]
+      );
+
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const user = userResult.rows[0];
+      const tests = [];
+
+      // Test 1: Check current password state
+      tests.push({
+        test: 'Password Hash State',
+        passed: true,
+        result: user.password_hash ? `Has password (length: ${user.password_hash.length})` : 'No password (NULL)'
+      });
+
+      // Test 2: Try to clear password
+      await pool.query(
+        'UPDATE users SET password_hash = NULL WHERE id = $1',
+        [user.id]
+      );
+      tests.push({
+        test: 'Clear Password',
+        passed: true,
+        result: 'Password set to NULL'
+      });
+
+      // Test 3: Verify password is NULL
+      const verifyResult = await pool.query(
+        'SELECT password_hash FROM users WHERE id = $1',
+        [user.id]
+      );
+      tests.push({
+        test: 'Verify Password Cleared',
+        passed: verifyResult.rows[0].password_hash === null,
+        result: verifyResult.rows[0].password_hash === null ? 'Password is NULL' : 'ERROR: Password not NULL!'
+      });
+
+      // Test 4: Invalidate sessions
+      const deleteResult = await pool.query(
+        'DELETE FROM user_sessions WHERE user_id = $1 RETURNING token',
+        [user.id]
+      );
+      tests.push({
+        test: 'Invalidate Sessions',
+        passed: true,
+        result: `${deleteResult.rowCount} sessions deleted`
+      });
+
+      // Test 5: Set a new password
+      const bcrypt = await import('bcrypt');
+      const testPassword = 'test123';
+      const newHash = await bcrypt.hash(testPassword, 10);
+      await pool.query(
+        'UPDATE users SET password_hash = $1 WHERE id = $2',
+        [newHash, user.id]
+      );
+      tests.push({
+        test: 'Set New Password',
+        passed: true,
+        result: 'New password hash created'
+      });
+
+      // Test 6: Verify new password works
+      const finalResult = await pool.query(
+        'SELECT password_hash FROM users WHERE id = $1',
+        [user.id]
+      );
+      const passwordMatches = await bcrypt.compare(testPassword, finalResult.rows[0].password_hash);
+      tests.push({
+        test: 'Verify New Password',
+        passed: passwordMatches,
+        result: passwordMatches ? 'Password verification successful' : 'ERROR: Password verification failed!'
+      });
+
+      const allPassed = tests.every(t => t.passed);
+
+      res.json({
+        success: allPassed,
+        message: allPassed ? 'All password reset tests passed' : 'Some tests failed',
+        tests,
+        user: {
+          id: user.id,
+          username: user.username,
+          accountType: user.account_type
+        }
+      });
+    } catch (error) {
+      console.error('Debug: Error testing password reset:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+} else {
+  console.log('🔒 Debug mode DISABLED - Set NODE_ENV=development to enable debug endpoints');
+}
 
 
 // --------------------
@@ -2818,6 +3827,24 @@ async function initializeAdminPassword() {
     }
   }
 }
+
+// --------------------
+// SPA Routing Fallback (MUST BE LAST!)
+// --------------------
+// For any non-API, non-debug request that doesn't match a static file,
+// serve index.html so Vue Router can handle client-side routing
+app.use((req, res, next) => {
+  // Skip API routes - let them 404 if not found
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  // Skip debug route if debug mode is enabled (already handled above)
+  if (req.path === '/debug' && (process.env.NODE_ENV === 'development' || process.env.DEBUG_MODE === 'true')) {
+    return next();
+  }
+  // For all other routes, serve index.html (SPA routing)
+  res.sendFile(path.join(distPath, 'index.html'));
+});
 
 // --------------------
 // Start Server
