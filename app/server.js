@@ -2804,11 +2804,13 @@ io.on('connection', (socket) => {
       room.revealedQuestions.push(room.currentQuestionIndex);
     }
 
-    const results = Object.values(room.players).map(p => ({
-      name: p.name,
-      choice: p.choice,
-      is_correct: p.choice === question.correctChoice
-    }));
+    const results = Object.values(room.players)
+      .filter(p => !p.isSpectator)
+      .map(p => ({
+        name: p.name,
+        choice: p.choice,
+        is_correct: p.choice === question.correctChoice
+      }));
 
     io.to(roomCode).emit('questionRevealed', {
       questionIndex: room.currentQuestionIndex,
