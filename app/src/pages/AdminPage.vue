@@ -85,8 +85,27 @@
           </div>
 
           <div class="choices-container">
-            <div v-for="(choice, idx) in choices" :key="idx" class="choice-input-wrapper">
-              <span class="choice-label">{{ String.fromCharCode(65 + idx) }}</span>
+            <div
+              v-for="(choice, idx) in choices"
+              :key="idx"
+              class="choice-input-wrapper"
+              :class="{
+                'dragging': draggedChoiceIdx === idx,
+                'drag-over': dragOverChoiceIdx === idx
+              }"
+              @dragover="handleChoiceDragOver($event, idx)"
+              @dragleave="handleChoiceDragLeave"
+              @drop="handleChoiceDrop($event, idx)"
+              @dragend="handleChoiceDragEnd"
+            >
+              <span
+                class="choice-label draggable"
+                draggable="true"
+                @dragstart="handleChoiceDragStart(idx)"
+                :title="`Drag to reorder choice ${String.fromCharCode(65 + idx)}`"
+              >
+                {{ String.fromCharCode(65 + idx) }}
+              </span>
               <input v-model="choices[idx]" type="text" :placeholder="`Choice ${idx + 1}`" />
             </div>
           </div>
@@ -144,8 +163,7 @@
                   <button @click.stop="moveQuestionDown(idx)" class="btn-reorder" :disabled="idx === currentQuestions.length - 1" title="Move Down">↓</button>
                   <button @click.stop="moveQuestionToLast(idx)" class="btn-reorder" :disabled="idx === currentQuestions.length - 1" title="Move to Last">⇊</button>
                 </div>
-                <button @click="editQuestion(idx)" class="btn-edit" title="Edit">✏️</button>
-                <button @click="deleteQuestion(idx)" class="btn-delete" title="Delete">🗑️</button>
+                <button @click.stop="deleteQuestion(idx)" class="btn-delete" title="Delete">🗑️</button>
               </div>
             </div>
           </div>
@@ -552,6 +570,8 @@ const importStatus = ref('')
 const editingQuestionIdx = ref(null)
 const draggedQuestionIdx = ref(null)
 const dragOverIdx = ref(null)
+const draggedChoiceIdx = ref(null)
+const dragOverChoiceIdx = ref(null)
 
 // Sessions
 const completedSessions = ref([])
@@ -966,6 +986,58 @@ const handleDrop = async (event, dropIdx) => {
 const handleDragEnd = () => {
   draggedQuestionIdx.value = null
   dragOverIdx.value = null
+}
+
+// Choice drag-and-drop handlers
+const handleChoiceDragStart = (idx) => {
+  draggedChoiceIdx.value = idx
+}
+
+const handleChoiceDragOver = (event, idx) => {
+  event.preventDefault()
+  dragOverChoiceIdx.value = idx
+}
+
+const handleChoiceDragLeave = () => {
+  dragOverChoiceIdx.value = null
+}
+
+const handleChoiceDrop = (event, dropIdx) => {
+  event.preventDefault()
+  const dragIdx = draggedChoiceIdx.value
+
+  if (dragIdx === null || dragIdx === dropIdx) {
+    draggedChoiceIdx.value = null
+    dragOverChoiceIdx.value = null
+    return
+  }
+
+  const newChoices = [...choices.value]
+  // Remove from old position
+  const [movedChoice] = newChoices.splice(dragIdx, 1)
+  // Insert at new position
+  newChoices.splice(dropIdx, 0, movedChoice)
+  choices.value = newChoices
+
+  // Adjust correct choice index
+  if (correctChoice.value === dragIdx) {
+    // The correct choice was moved
+    correctChoice.value = dropIdx
+  } else if (dragIdx < correctChoice.value && dropIdx >= correctChoice.value) {
+    // Choice was moved from before to after correct choice
+    correctChoice.value = correctChoice.value - 1
+  } else if (dragIdx > correctChoice.value && dropIdx <= correctChoice.value) {
+    // Choice was moved from after to before correct choice
+    correctChoice.value = correctChoice.value + 1
+  }
+
+  draggedChoiceIdx.value = null
+  dragOverChoiceIdx.value = null
+}
+
+const handleChoiceDragEnd = () => {
+  draggedChoiceIdx.value = null
+  dragOverChoiceIdx.value = null
 }
 
 const shuffleAllChoices = async () => {
@@ -1564,8 +1636,7 @@ onUnmounted(() => {
 .btn-remove,
 .btn-quick,
 .btn-refresh,
-.btn-shuffle,
-.btn-edit {
+.btn-shuffle {
   padding: 0.6rem 1rem;
   border-radius: 8px;
   cursor: pointer;
@@ -1838,6 +1909,31 @@ select:focus {
   flex: 1;
 }
 
+.choice-input-wrapper.dragging {
+  opacity: 0.4;
+}
+
+.choice-input-wrapper.drag-over {
+  border: 2px dashed rgba(255, 193, 7, 0.8);
+  background: rgba(255, 193, 7, 0.1);
+  border-radius: 4px;
+}
+
+.choice-label.draggable {
+  cursor: grab;
+  transition: all 0.2s;
+}
+
+.choice-label.draggable:hover {
+  background: rgba(79, 195, 247, 0.25);
+  border-color: rgba(79, 195, 247, 0.5);
+  transform: scale(1.05);
+}
+
+.choice-label.draggable:active {
+  cursor: grabbing;
+}
+
 .correct-choice-wrapper {
   margin-top: 1rem;
   margin-bottom: 1rem;
@@ -2041,13 +2137,14 @@ select:focus {
 
 .question-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 1rem;
   align-items: center;
 }
 
 .reorder-buttons {
   display: flex;
   gap: 0.2rem;
+  margin-right: 0.5rem;
 }
 
 .btn-reorder {
@@ -2071,19 +2168,6 @@ select:focus {
 .btn-reorder:disabled {
   opacity: 0.3;
   cursor: not-allowed;
-}
-
-.btn-edit {
-  background: rgba(79, 195, 247, 0.2);
-  border-color: rgba(79, 195, 247, 0.5);
-  color: #4fc3f7;
-  padding: 0.4rem 0.5rem !important;
-  font-size: 0.85rem;
-  min-width: 0;
-}
-
-.btn-edit:hover {
-  background: rgba(79, 195, 247, 0.3);
 }
 
 .question-item .btn-delete {
