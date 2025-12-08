@@ -299,7 +299,7 @@
             <h2>About TriviaForge</h2>
             <div class="version-box">
               <div class="version-label">Version</div>
-              <div class="version-number">3.0.0</div>
+              <div class="version-number">3.1.0</div>
             </div>
           </div>
 
@@ -377,7 +377,7 @@
               With features like session resumption, user authentication, player connection monitoring, and mobile-optimized interfaces, TriviaForge provides a seamless experience for presenters and players. Whether you're running classroom quizzes, corporate events, or casual game nights, TriviaForge adapts to your needs.
             </p>
             <p>
-              Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. Version 3.0 features a complete Vue 3 migration for improved reactivity and maintainability.
+              Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. Version 3.1 enhances the quiz editor with drag-and-drop reordering and adds comprehensive player management tools including kick player and ban display name features.
             </p>
           </div>
 

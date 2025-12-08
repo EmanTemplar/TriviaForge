@@ -2,7 +2,107 @@
 
 This document tracks planned features, improvements, and tasks for future development.
 
-## Post-Vue 3 Migration Bug Fixes (Completed)
+## Recent Completed Features (v3.1.0)
+
+### 1. Quiz Editor Drag-and-Drop Reordering
+**Status:** ✅ Completed (2025-12-08)
+**Description:** Complete quiz editor reordering system with drag-and-drop support for both questions and answer choices.
+
+**Features Implemented:**
+1. **Question Reordering:**
+   - Four-arrow navigation (⇈↑↓⇊) for precise positioning
+   - Drag-and-drop support with visual feedback
+   - Arrows move questions up/down or to first/last position
+   - Visual states: dragging opacity, drag-over highlighting, hover effects
+
+2. **Choice Reordering:**
+   - Drag letter indicators (A/B/C/D) to reorder choices
+   - Smart correct answer index tracking during reordering
+   - Clean UI with hover states and grab cursors
+
+3. **UI Improvements:**
+   - Removed redundant edit button (click anywhere on question to edit)
+   - Increased spacing between reorder arrows and delete button (1rem gap)
+   - Full visual feedback for all drag operations
+
+**Files Modified:**
+- `app/src/pages/AdminPage.vue` - Reordering functions and drag-and-drop handlers
+
+---
+
+### 2. Player Management: Kick Player
+**Status:** ✅ Completed (2025-12-08)
+**Description:** Allow presenters to remove disruptive players from active game sessions with confirmation dialog.
+
+**Features Implemented:**
+- Player action menu (⋮) next to each connected player in PresenterPage
+- "Kick Player" option with confirmation modal
+- Socket.IO event `kickPlayer` forcibly disconnects player
+- Kicked player receives notification and returns to room entry screen
+- Player can rejoin immediately if desired (no cooldown)
+
+**Files Modified:**
+- `app/src/pages/PresenterPage.vue` - Player menu and kick UI
+- `app/server.js` - Socket.IO kick player event handler
+
+---
+
+### 3. Player Management: Ban Display Name
+**Status:** ✅ Completed (2025-12-08)
+**Description:** Allow presenters/admins to ban offensive display names globally, preventing anyone from using them in the future.
+
+**Features Implemented:**
+- "Ban Display Name" option in player action menu
+- Adds display name to global banned names list in database
+- Database table: `banned_display_names` with pattern matching support
+- HTTP endpoints: `POST /api/banned-names`, `GET /api/banned-names`
+- Banned player is automatically kicked from session
+- Name validation prevents rejoining with banned name
+
+**Database Changes:**
+- Created `app/init/04-banned-display-names.sql` migration
+- Schema includes: id, pattern, pattern_type (exact/contains), banned_by, created_at
+- Indexed on pattern for fast lookups
+
+**Files Created:**
+- `app/init/04-banned-display-names.sql` - Database schema
+
+**Files Modified:**
+- `app/src/pages/PresenterPage.vue` - Ban display name UI
+- `app/server.js` - Ban endpoints and validation
+- `app/db-init.js` - Added migration to initialization list
+
+---
+
+### 4. Complete Spectator Filtering
+**Status:** ✅ Completed (2025-12-08)
+**Description:** Fixed all instances where spectators (Display user) appeared in presenter views, ensuring complete invisibility.
+
+**Bugs Fixed:**
+1. **Spectators in Connected Players (New Sessions):**
+   - Added `.filter(p => !p.isSpectator)` to all `playerListUpdate` socket emissions
+   - Affected 7 locations in server.js
+
+2. **Spectators in Connected Players (Resumed Sessions):**
+   - Proper spectator detection when loading from database
+   - Detection logic: `isSpectator = row.username === 'Display' || row.display_name === 'Spectator Display'`
+   - Applied at session restoration time (lines 2415-2426)
+
+3. **Spectators in Live Standings Modal:**
+   - Filtered spectators from progress API endpoint responses
+   - Frontend filtering in PresenterPage standings computation
+
+4. **Spectators in Revealed Answer Modal:**
+   - Server-side filtering in `questionRevealed` event
+   - Results array filters spectators before emission (line 2808)
+
+**Files Modified:**
+- `app/server.js` - Spectator filtering in multiple socket events and database loading
+- `app/src/pages/PresenterPage.vue` - Spectator filtering in modals
+
+---
+
+## Post-Vue 3 Migration Bug Fixes (Previously Completed)
 
 ### X. Spectator Filtering, Late Joiner Security, QR Code Restoration
 **Status:** ✅ Completed (2025-12-03)

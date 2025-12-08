@@ -2411,6 +2411,8 @@ io.on('connection', (socket) => {
       for (const row of participantsResult.rows) {
         if (!playersMap.has(row.username)) {
           const playerId = `temp_${row.username}`;
+          // Detect spectators by username or display name
+          const isSpectator = row.username === 'Display' || row.display_name === 'Spectator Display';
           playersMap.set(row.username, {
             id: playerId,
             username: row.username, // Account username
@@ -2421,7 +2423,7 @@ io.on('connection', (socket) => {
             connectionState: 'disconnected', // Mark resumed players as disconnected until they rejoin
             answers: {},
             isResumed: true,
-            isSpectator: false // Will be updated on actual join if they're a spectator
+            isSpectator // Mark spectators properly when loading from database
           });
         }
         if (row.presentation_order !== null && row.choice_index !== null) {
@@ -2479,10 +2481,10 @@ io.on('connection', (socket) => {
         originalRoomCode: session.original_room_code
       });
 
-      // Send the player list to the presenter (shows disconnected players from previous session)
+      // Send the player list to the presenter (shows disconnected players from previous session, excluding spectators)
       io.to(roomCode).emit('playerListUpdate', {
         roomCode,
-        players: Object.values(liveRooms[roomCode].players)
+        players: Object.values(liveRooms[roomCode].players).filter(p => !p.isSpectator)
       });
 
       io.emit('activeRoomsUpdate', getActiveRoomsSummary());
@@ -2505,7 +2507,7 @@ io.on('connection', (socket) => {
       roomCode,
       quizTitle: room.quizData.title,
       questions: room.quizData.questions,
-      players: Object.values(room.players),
+      players: Object.values(room.players).filter(p => !p.isSpectator), // Filter out spectators
       presentedQuestions: room.presentedQuestions || [],
       revealedQuestions: room.revealedQuestions || []
     });
@@ -2676,7 +2678,7 @@ io.on('connection', (socket) => {
       }
     }
 
-    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
+    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
     io.emit('activeRoomsUpdate', getActiveRoomsSummary());
 
     // Send the player's answer history with detailed information (skip for spectators)
@@ -2737,7 +2739,7 @@ io.on('connection', (socket) => {
     console.log(`[CONNECTION] ${player.name} (${username}) state changed: ${oldState} → ${state}`);
 
     // Broadcast updated player list to all clients in the room
-    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
+    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
   });
 
   // Presenter presents a question
@@ -2759,7 +2761,7 @@ io.on('connection', (socket) => {
     io.to(roomCode).emit('questionPresented', { questionIndex, question, presentedQuestions: room.presentedQuestions });
 
     // Update player list to show reset choices
-    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
+    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
   });
 
   // Player submits answer
@@ -2786,7 +2788,7 @@ io.on('connection', (socket) => {
       if (!player.answers) player.answers = {};
       player.answers[room.currentQuestionIndex] = choice;
 
-      io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
+      io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
 
       console.log(`${player.name} answered question ${room.currentQuestionIndex} with choice ${choice}`);
     }
@@ -2804,11 +2806,13 @@ io.on('connection', (socket) => {
       room.revealedQuestions.push(room.currentQuestionIndex);
     }
 
-    const results = Object.values(room.players).map(p => ({
-      name: p.name,
-      choice: p.choice,
-      is_correct: p.choice === question.correctChoice
-    }));
+    const results = Object.values(room.players)
+      .filter(p => !p.isSpectator)
+      .map(p => ({
+        name: p.name,
+        choice: p.choice,
+        is_correct: p.choice === question.correctChoice
+      }));
 
     io.to(roomCode).emit('questionRevealed', {
       questionIndex: room.currentQuestionIndex,
@@ -2903,7 +2907,7 @@ io.on('connection', (socket) => {
     delete room.players[playerSocketId];
 
     // Update player list for everyone
-    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
+    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
 
     console.log(`Player ${username} kicked from room ${roomCode} by presenter`);
   });
@@ -2915,7 +2919,7 @@ io.on('connection', (socket) => {
         const playerName = room.players[socket.id].name;
         // Mark as disconnected instead of deleting
         room.players[socket.id].connected = false;
-        io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players) });
+        io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
         io.emit('activeRoomsUpdate', getActiveRoomsSummary());
         console.log(`${playerName} disconnected from room ${roomCode}`);
       }

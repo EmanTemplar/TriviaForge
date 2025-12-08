@@ -12,6 +12,8 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 
 ### For Administrators
 - **Quiz Management**: Create, edit, and delete custom quizzes with an intuitive interface
+- **Drag-and-Drop Reordering**: Reorganize questions and answer choices with visual drag-and-drop or arrow buttons
+- **Smart Answer Tracking**: Correct answer automatically updates when reordering choices
 - **Excel Import**: Bulk import quizzes from professionally formatted Excel templates (supports 2-10 answer choices)
 - **Session Management**: Resume interrupted sessions with full state preservation
 - **Real-time Monitoring**: Track active rooms and player participation live
@@ -24,6 +26,8 @@ A real-time, interactive trivia game platform built with Socket.IO, designed for
 ### For Presenters
 - **Live Quiz Control**: Present questions, reveal answers, and navigate through quizzes in real-time
 - **Player Management**: See connected players with live status indicators
+- **Kick Player**: Remove disruptive players from sessions with confirmation dialog
+- **Ban Display Names**: Block offensive display names globally to prevent rejoining
 - **Live Standings Dashboard**: Real-time leaderboard showing all players' scores, accuracy, and rankings with medal recognition for top performers
 - **QR Code Generation**: Quick player join via scannable QR codes
 - **Session Resume**: Continue interrupted quizzes exactly where you left off
