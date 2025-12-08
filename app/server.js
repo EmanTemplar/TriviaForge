@@ -2411,6 +2411,8 @@ io.on('connection', (socket) => {
       for (const row of participantsResult.rows) {
         if (!playersMap.has(row.username)) {
           const playerId = `temp_${row.username}`;
+          // Detect spectators by username or display name
+          const isSpectator = row.username === 'Display' || row.display_name === 'Spectator Display';
           playersMap.set(row.username, {
             id: playerId,
             username: row.username, // Account username
@@ -2421,7 +2423,7 @@ io.on('connection', (socket) => {
             connectionState: 'disconnected', // Mark resumed players as disconnected until they rejoin
             answers: {},
             isResumed: true,
-            isSpectator: false // Will be updated on actual join if they're a spectator
+            isSpectator // Mark spectators properly when loading from database
           });
         }
         if (row.presentation_order !== null && row.choice_index !== null) {
