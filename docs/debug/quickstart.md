@@ -105,9 +105,9 @@ npm run debug:health
 
 ## Learn More
 
-- **CLI Tool:** See [DEBUG-CLI.md](DEBUG-CLI.md) for all CLI commands
-- **Web Interface:** See [DEBUG.md](DEBUG.md) for API reference
-- **Development:** See [DEV-SUMMARY.md](DEV-SUMMARY.md) for project overview
+- **CLI Tool:** See [cli-tools.md](cli-tools.md) for all CLI commands
+- **Web Interface:** See [api-reference.md](api-reference.md) for API reference
+- **Development:** See [DEV-SUMMARY.md](../../DEV-SUMMARY.md) for project overview
 
 ## Remember
 

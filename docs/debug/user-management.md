@@ -411,6 +411,6 @@ npm run debug delete-user testUser1
 
 ## 📚 Related Documentation
 
-- [DEBUG-CLI.md](DEBUG-CLI.md) - Full CLI reference
-- [DEBUG.md](DEBUG.md) - Complete API documentation
-- [DEBUGGING-QUICKSTART.md](DEBUGGING-QUICKSTART.md) - Quick start guide
+- [cli-tools.md](cli-tools.md) - Full CLI reference
+- [api-reference.md](api-reference.md) - Complete API documentation
+- [quickstart.md](quickstart.md) - Quick start guide

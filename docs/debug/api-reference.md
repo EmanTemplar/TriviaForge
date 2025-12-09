@@ -619,10 +619,10 @@ Add a spectator with username "Display" or display name "Spectator Display".
 
 ## 📚 Related Documentation
 
-- [README.md](README.md) - User-facing documentation
-- [TODO.md](TODO.md) - Feature roadmap
-- [DEV-SUMMARY.md](DEV-SUMMARY.md) - Developer onboarding (internal)
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
+- [README.md](../../README.md) - User-facing documentation
+- [TODO.md](../../TODO.md) - Feature roadmap
+- [DEV-SUMMARY.md](../../DEV-SUMMARY.md) - Developer onboarding (internal)
+- [CONTRIBUTING.md](../../CONTRIBUTING.md) - Contribution guidelines
 
 ---
 
