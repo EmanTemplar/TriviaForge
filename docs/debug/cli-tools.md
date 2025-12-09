@@ -234,6 +234,6 @@ exit $HEALTH
 
 ## See Also
 
-- [DEBUG.md](DEBUG.md) - Full API documentation
-- [DEBUGGING-QUICKSTART.md](DEBUGGING-QUICKSTART.md) - Web interface guide
-- [DEV-SUMMARY.md](DEV-SUMMARY.md) - Development overview
+- [api-reference.md](api-reference.md) - Full API documentation
+- [quickstart.md](quickstart.md) - Quick start guide
+- [DEV-SUMMARY.md](../../DEV-SUMMARY.md) - Development overview
