@@ -100,7 +100,8 @@ const pool = new Pool({
 
 // Event handlers for connection pool
 pool.on('connect', () => {
-  console.log('✅ PostgreSQL client connected to pool');
+  // Verbose logging - only enable for debugging connection pool issues
+  // console.log('✅ PostgreSQL client connected to pool');
 });
 
 pool.on('error', (err) => {
@@ -2736,7 +2737,12 @@ io.on('connection', (socket) => {
     const oldState = player.connectionState;
     player.connectionState = state;
 
-    console.log(`[CONNECTION] ${player.name} (${username}) state changed: ${oldState} → ${state}`);
+    // Only log significant state changes (not every away/connected toggle)
+    // Log when: transitioning to/from disconnected, or when disconnecting
+    const isSignificantChange = state === 'disconnected' || oldState === 'disconnected';
+    if (isSignificantChange) {
+      console.log(`[CONNECTION] ${player.name} (${username}) state changed: ${oldState} → ${state}`);
+    }
 
     // Broadcast updated player list to all clients in the room
     io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });

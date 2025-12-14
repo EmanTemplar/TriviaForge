@@ -13,7 +13,11 @@
     "debug": "node debug-cli.js",
     "debug:status": "node debug-cli.js status",
     "debug:health": "node debug-cli.js health",
-    "debug:test": "node debug-cli.js test-flow"
+    "debug:test": "node debug-cli.js test-flow",
+    "test:session": "node testing/test-runner.js",
+    "test:stress": "TEST_PLAYERS=20 TEST_VERBOSE=false node testing/test-runner.js",
+    "test:verbose": "TEST_VERBOSE=true node testing/test-runner.js",
+    "test:quick": "TEST_PLAYERS=3 TEST_QUESTION_DELAY=1000 TEST_ANSWER_DELAY=500 node testing/test-runner.js"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "^5.2.4",

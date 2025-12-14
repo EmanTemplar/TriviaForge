@@ -19,9 +19,12 @@ export function useSocket() {
         token: authStore.token
       },
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5
+      reconnectionDelay: 1000,           // Start with 1 second delay
+      reconnectionDelayMax: 10000,       // Max 10 seconds between attempts (increased from 5s)
+      reconnectionAttempts: Infinity,    // Never give up reconnecting (was 5)
+      timeout: 20000,                    // 20 second connection timeout
+      transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
+      upgrade: true                      // Allow upgrading from polling to websocket
     })
 
     socket.on('connect', () => {

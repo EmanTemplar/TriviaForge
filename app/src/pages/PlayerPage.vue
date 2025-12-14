@@ -14,6 +14,7 @@
       <div v-if="inRoom" class="nav-room-info" :class="{ active: inRoom }">
         <span class="nav-room-code">{{ currentRoomCode || '----' }}</span>
         <span class="nav-connection-status" :class="connectionStateClass">{{ connectionStateSymbol }}</span>
+        <span v-if="wakeLock.isActive.value" class="wake-lock-indicator" title="Screen will stay on">🔆</span>
       </div>
 
       <div class="hamburger" @click="toggleMenu">&#9776;</div>
@@ -344,6 +345,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSocket } from '@/composables/useSocket.js'
+import { useWakeLock } from '@/composables/useWakeLock.js'
 import { useApi } from '@/composables/useApi.js'
 import { useUIStore } from '@/stores/ui.js'
 import Modal from '@/components/common/Modal.vue'
@@ -352,6 +354,7 @@ import FormInput from '@/components/common/FormInput.vue'
 const router = useRouter()
 const route = useRoute()
 const socket = useSocket()
+const wakeLock = useWakeLock()
 const { post } = useApi()
 const uiStore = useUIStore()
 
@@ -557,26 +560,37 @@ const handleVisibilityChange = () => {
       console.log('[CONNECTION] Returned while in warning state')
     }
   } else {
-    // Page became hidden - going away
-    console.log('[CONNECTION] Page hidden - going away')
+    // Page became hidden - wait 30 seconds before marking as "away"
+    // This prevents brief tab switches from triggering state changes
+    console.log('[CONNECTION] Page hidden - starting away timer (30s debounce)')
 
-    // Update to away state
-    updateConnectionState('away')
-
-    // Set timeout for 2 minutes to mark as disconnected
+    // Clear any existing timeout
     clearTimeout(awayTimeout.value)
-    awayTimeout.value = setTimeout(() => {
-      console.log('[CONNECTION] Away timeout (2 min) - marking as disconnected')
-      updateConnectionState('disconnected')
 
-      // Set timeout for 5 minutes to fully remove from room
-      disconnectTimeout.value = setTimeout(() => {
-        console.log('[CONNECTION] Disconnect timeout (5 min) - leaving room')
-        if (inRoom.value) {
-          handleLeaveRoom()
-        }
-      }, 5 * 60 * 1000) // 5 minutes
-    }, 2 * 60 * 1000) // 2 minutes
+    // Wait 30 seconds before marking as away
+    awayTimeout.value = setTimeout(() => {
+      // Only mark as away if page is still hidden
+      if (!isPageVisible.value) {
+        console.log('[CONNECTION] Page still hidden after 30s - marking as away')
+        updateConnectionState('away')
+
+        // Set timeout for 2 minutes to mark as disconnected
+        disconnectTimeout.value = setTimeout(() => {
+          console.log('[CONNECTION] Away timeout (2 min) - marking as disconnected')
+          updateConnectionState('disconnected')
+
+          // Set timeout for 5 minutes to fully remove from room
+          setTimeout(() => {
+            console.log('[CONNECTION] Disconnect timeout (5 min) - leaving room')
+            if (inRoom.value) {
+              handleLeaveRoom()
+            }
+          }, 5 * 60 * 1000) // 5 minutes after disconnected state
+        }, 2 * 60 * 1000) // 2 minutes after away state
+      } else {
+        console.log('[CONNECTION] Page became visible again - canceling away state')
+      }
+    }, 30 * 1000) // 30 second debounce before marking as away
   }
 }
 
@@ -618,6 +632,11 @@ const setupSocketListeners = () => {
     statusMessage.value = `${nonSpectatorCount} player(s) in room`
     // Save room to recent rooms only on successful join
     saveRecentRoom(roomCode)
+
+    // Request wake lock to keep screen on during game
+    if (wakeLock.isSupported.value && !wakeLock.isActive.value) {
+      wakeLock.requestWakeLock()
+    }
   })
 
   socket.on('questionPresented', ({ questionIndex, question }) => {
@@ -1093,6 +1112,11 @@ const handleLeaveRoom = () => {
   statusMessageType.value = ''
   menuOpen.value = false
 
+  // Release wake lock when leaving room
+  if (wakeLock.isActive.value) {
+    wakeLock.releaseWakeLock()
+  }
+
   // Disconnect and reconnect to clear room state on server
   socket.disconnect()
 
@@ -1280,6 +1304,14 @@ const getQuestionStatusText = (q) => {
 @keyframes pulse-warning {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+/* Wake Lock Indicator */
+.wake-lock-indicator {
+  font-size: 1rem;
+  margin-left: 0.5rem;
+  cursor: help;
+  opacity: 0.9;
 }
 
 .hamburger {
