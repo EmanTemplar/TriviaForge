@@ -405,6 +405,7 @@ const awayTimeout = ref(null)
 const disconnectTimeout = ref(null)
 const warningClearTimeout = ref(null)
 const missedQuestionsBanner = ref(false)
+const lastJoinRoomAttempt = ref(0) // Track last joinRoom call to prevent duplicates
 
 // Login form
 const loginUsername = ref('')
@@ -542,7 +543,15 @@ const handleVisibilityChange = () => {
     // Handle return from away/disconnected state
     if (connectionState.value === 'disconnected') {
       // Was truly disconnected - need to rejoin room
-      if (currentRoomCode.value && currentUsername.value && currentDisplayName.value) {
+      if (currentRoomCode.value && currentUsername.value && currentDisplayName.value && socket.isConnected.value) {
+        // Prevent duplicate joinRoom calls within 2 seconds
+        const now = Date.now()
+        if (now - lastJoinRoomAttempt.value < 2000) {
+          console.log('[CONNECTION] Skipping duplicate joinRoom attempt (debounced)')
+          return
+        }
+        lastJoinRoomAttempt.value = now
+
         console.log('[CONNECTION] Reconnecting after disconnect - rejoining room')
         updateConnectionState('connected')
         socket.emit('joinRoom', {
@@ -550,6 +559,7 @@ const handleVisibilityChange = () => {
           username: currentUsername.value,
           displayName: currentDisplayName.value
         })
+        socket.setRoomContext(currentRoomCode.value, currentUsername.value)
       }
     } else if (connectionState.value === 'away') {
       // Was only away - just update state (still in room server-side)
@@ -596,6 +606,18 @@ const handleVisibilityChange = () => {
 
 // Setup socket event listeners - called on mount and after reconnect
 const setupSocketListeners = () => {
+  // Remove any existing listeners to prevent duplicates
+  socket.off('connect')
+  socket.off('disconnect')
+  socket.off('activeRoomsUpdate')
+  socket.off('roomError')
+  socket.off('roomCreated')
+  socket.off('playerListUpdate')
+  socket.off('questionPresented')
+  socket.off('questionRevealed')
+  socket.off('roomClosed')
+  socket.off('quizCompleted')
+
   socket.on('connect', () => {
     isConnected.value = true
     // Update connection state to connected (unless page is hidden)
@@ -914,6 +936,7 @@ const quickJoinRoom = async (roomCode) => {
   currentDisplayName.value = displayName
   currentRoomCode.value = roomCode
   socket.emit('joinRoom', { roomCode, username: savedUsername.value, displayName })
+  socket.setRoomContext(roomCode, savedUsername.value)
 }
 
 const handleChangeUsername = async () => {
@@ -991,6 +1014,7 @@ const handleJoinRoom = async () => {
     currentRoomCode.value = roomCode
     // Don't save room yet - wait for playerListUpdate confirmation
     socket.emit('joinRoom', { roomCode, username, displayName })
+    socket.setRoomContext(roomCode, username)
   } catch (err) {
     uiStore.addNotification('Failed to join room. Please try again.', 'error')
   }
@@ -1019,7 +1043,21 @@ const handleLoginSubmit = async () => {
     localStorage.setItem('playerDisplayName', displayName)
     saveRecentRoom(roomCode)
     socket.emit('joinRoom', { roomCode, username: loginUsername.value, displayName })
+    socket.setRoomContext(roomCode, loginUsername.value)
   } catch (err) {
+    // Check if password reset is required (status 428)
+    if (err.response?.status === 428 || err.response?.data?.requiresPasswordReset) {
+      console.log('[AUTH] Password reset required for user:', loginUsername.value)
+      // Close login modal and open set password modal
+      showLoginModal.value = false
+      setPasswordUsername.value = loginUsername.value
+      setPasswordError.value = ''
+      setPasswordNew.value = ''
+      setPasswordConfirm.value = ''
+      showSetPasswordModal.value = true
+      return
+    }
+
     loginError.value = err.response?.data?.error || 'Invalid password'
   }
 }
@@ -1061,6 +1099,7 @@ const handleSetPasswordSubmit = async () => {
     localStorage.setItem('playerDisplayName', displayName)
     saveRecentRoom(roomCode)
     socket.emit('joinRoom', { roomCode, username: setPasswordUsername.value, displayName })
+    socket.setRoomContext(roomCode, setPasswordUsername.value)
   } catch (err) {
     setPasswordError.value = err.response?.data?.error || 'Failed to set password'
   }
@@ -1116,6 +1155,9 @@ const handleLeaveRoom = () => {
   if (wakeLock.isActive.value) {
     wakeLock.releaseWakeLock()
   }
+
+  // Clear heartbeat and room context
+  socket.clearRoomContext()
 
   // Disconnect and reconnect to clear room state on server
   socket.disconnect()
@@ -1520,7 +1562,7 @@ const getQuestionStatusText = (q) => {
   font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.3s;
-  disabled: false;
+  fill-rule: false;
 }
 
 .choice-btn:hover:not(:disabled) {

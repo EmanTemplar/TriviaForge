@@ -3,11 +3,38 @@ import { io } from 'socket.io-client'
 import { useAuthStore } from '@/stores/auth.js'
 
 let socket = null
+let heartbeatInterval = null
 
 export function useSocket() {
   const isConnected = ref(false)
   const connectionError = ref(null)
   const authStore = useAuthStore()
+  const currentRoomCode = ref(null)
+  const currentUsername = ref(null)
+
+  const startHeartbeat = () => {
+    // Clear any existing heartbeat interval
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval)
+    }
+
+    // Send heartbeat every 15 seconds
+    heartbeatInterval = setInterval(() => {
+      if (socket?.connected && currentRoomCode.value) {
+        socket.emit('heartbeat', {
+          roomCode: currentRoomCode.value,
+          username: currentUsername.value
+        })
+      }
+    }, 15000) // 15 seconds
+  }
+
+  const stopHeartbeat = () => {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval)
+      heartbeatInterval = null
+    }
+  }
 
   const connect = () => {
     if (socket?.connected) {
@@ -31,10 +58,16 @@ export function useSocket() {
       isConnected.value = true
       connectionError.value = null
       console.log('Socket.IO connected')
+
+      // Restart heartbeat if we were in a room
+      if (currentRoomCode.value) {
+        startHeartbeat()
+      }
     })
 
     socket.on('disconnect', () => {
       isConnected.value = false
+      stopHeartbeat()
       console.log('Socket.IO disconnected')
     })
 
@@ -43,10 +76,32 @@ export function useSocket() {
       console.error('Socket.IO connection error:', error)
     })
 
+    // Listen for heartbeat acknowledgment (optional - for debugging)
+    socket.on('heartbeat-ack', () => {
+      // Heartbeat successful - connection is healthy
+    })
+
     return socket
   }
 
+  const setRoomContext = (roomCode, username) => {
+    currentRoomCode.value = roomCode
+    currentUsername.value = username
+
+    // Start heartbeat when joining a room
+    if (roomCode && username && socket?.connected) {
+      startHeartbeat()
+    }
+  }
+
+  const clearRoomContext = () => {
+    stopHeartbeat()
+    currentRoomCode.value = null
+    currentUsername.value = null
+  }
+
   const disconnect = () => {
+    stopHeartbeat()
     if (socket?.connected) {
       socket.disconnect()
       socket = null
@@ -98,6 +153,8 @@ export function useSocket() {
     emit,
     on,
     off,
-    once
+    once,
+    setRoomContext,
+    clearRoomContext
   }
 }

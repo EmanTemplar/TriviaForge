@@ -1,8 +1,17 @@
 # TriviaForge Debug System Documentation
 
-**Version:** 1.0.0
-**Last Updated:** December 8, 2025
+**Version:** 1.0.1
+**Last Updated:** December 14, 2025
 **Status:** Development Tool Only
+
+---
+
+## 📰 Recent Updates
+
+### v1.0.1 (2025-12-14)
+- **Enhanced Test Cleanup:** Automated test suite now automatically deletes rooms, sessions, and test users
+- **Detailed Statistics:** Cleanup operations display counts for rooms, sessions, and users deleted
+- **No Manual Cleanup:** Tests clean up completely - no admin intervention needed
 
 ---
 

@@ -1352,6 +1352,8 @@ app.post('/api/auth/player-login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
+    console.log(`[PLAYER LOGIN] Attempting login for user: ${username}`);
+
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password required' });
     }
@@ -1366,18 +1368,23 @@ app.post('/api/auth/player-login', async (req, res) => {
     );
 
     if (userResult.rows.length === 0) {
+      console.log(`[PLAYER LOGIN] User not found: ${username}`);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const user = userResult.rows[0];
 
+    console.log(`[PLAYER LOGIN] User found - ID: ${user.id}, Account Type: ${user.account_type}, Password Hash Null: ${user.password_hash === null}`);
+
     // Only allow registered players to login
     if (user.account_type !== 'player') {
+      console.log(`[PLAYER LOGIN] Account type not allowed: ${user.account_type}`);
       return res.status(403).json({ error: 'This account cannot login with a password' });
     }
 
     // Check if password needs to be reset (password_hash is NULL)
     if (user.password_hash === null) {
+      console.log(`[PLAYER LOGIN] Password reset required for user: ${username}`);
       return res.status(428).json({
         error: 'Password reset required',
         requiresPasswordReset: true,
@@ -1387,7 +1394,10 @@ app.post('/api/auth/player-login', async (req, res) => {
 
     // Verify password
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    console.log(`[PLAYER LOGIN] Password match result: ${passwordMatch}`);
+
     if (!passwordMatch) {
+      console.log(`[PLAYER LOGIN] Invalid password for user: ${username}`);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -1407,7 +1417,7 @@ app.post('/api/auth/player-login', async (req, res) => {
       [user.id]
     );
 
-    console.log(`Player ${username} logged in successfully`);
+    console.log(`[PLAYER LOGIN] ✅ Player ${username} logged in successfully`);
 
     res.json({
       success: true,
@@ -1429,6 +1439,8 @@ app.post('/api/auth/set-new-password', async (req, res) => {
   try {
     const { username, password } = req.body;
 
+    console.log(`[PASSWORD SET] Attempting to set password for user: ${username}`);
+
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password required' });
     }
@@ -1447,18 +1459,23 @@ app.post('/api/auth/set-new-password', async (req, res) => {
     );
 
     if (userResult.rows.length === 0) {
+      console.log(`[PASSWORD SET] User not found: ${username}`);
       return res.status(404).json({ error: 'User not found' });
     }
 
     const user = userResult.rows[0];
 
+    console.log(`[PASSWORD SET] User found - ID: ${user.id}, Account Type: ${user.account_type}, Password Hash Null: ${user.password_hash === null}`);
+
     // Only allow registered players
     if (user.account_type !== 'player') {
+      console.log(`[PASSWORD SET] Account type not allowed: ${user.account_type}`);
       return res.status(403).json({ error: 'This account cannot set a password' });
     }
 
     // Check if password is in reset state (NULL)
     if (user.password_hash !== null) {
+      console.log(`[PASSWORD SET] Password not in reset state for user: ${username}`);
       return res.status(400).json({ error: 'Password is not in reset state. Use the login form instead.' });
     }
 
@@ -1466,11 +1483,23 @@ app.post('/api/auth/set-new-password', async (req, res) => {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
+    console.log(`[PASSWORD SET] Password hashed successfully for user: ${username}`);
+
     // Update password in database
     await pool.query(
       'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
       [passwordHash, user.id]
     );
+
+    console.log(`[PASSWORD SET] Database updated for user: ${username}`);
+
+    // Verify the update worked
+    const verifyResult = await pool.query(
+      'SELECT password_hash FROM users WHERE id = $1',
+      [user.id]
+    );
+
+    console.log(`[PASSWORD SET] Verification - Password hash now null: ${verifyResult.rows[0].password_hash === null}`);
 
     // Create session token
     const sessionResult = await pool.query(
@@ -1482,7 +1511,7 @@ app.post('/api/auth/set-new-password', async (req, res) => {
 
     const token = sessionResult.rows[0].token;
 
-    console.log(`Player ${username} set new password after reset`);
+    console.log(`[PASSWORD SET] ✅ Player ${username} set new password after reset successfully`);
 
     res.json({
       success: true,
@@ -1494,7 +1523,7 @@ app.post('/api/auth/set-new-password', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('Set new password error:', err);
+    console.error('[PASSWORD SET] ❌ Set new password error:', err);
     res.status(500).json({ error: 'Failed to set new password' });
   }
 });
@@ -2242,6 +2271,49 @@ const io = new Server(server, {
 const liveRooms = {}; // { roomCode: { quizFilename, quizId, quizData (from DB), players: {}, presenterId, currentQuestionIndex, presentedQuestions: [], status, createdAt } }
 let quizOptions = { answerDisplayTime: 30 }; // Default options
 
+// Periodic Auto-Save Configuration
+const AUTO_SAVE_INTERVAL = 60000; // 60 seconds
+const autoSaveIntervals = new Map(); // Track auto-save interval IDs per room
+
+// Start periodic auto-save for a room
+function startAutoSave(roomCode) {
+  // Don't start if already running
+  if (autoSaveIntervals.has(roomCode)) {
+    return;
+  }
+
+  const intervalId = setInterval(async () => {
+    const room = liveRooms[roomCode];
+    if (!room) {
+      stopAutoSave(roomCode);
+      return;
+    }
+
+    // Only auto-save if there are answers to save
+    if (sessionHasAnswers(room)) {
+      try {
+        await saveSession(roomCode, room);
+        console.log(`💾 [AUTO-SAVE] Room ${roomCode} saved to database`);
+      } catch (err) {
+        console.error(`❌ [AUTO-SAVE] Failed to save room ${roomCode}:`, err);
+      }
+    }
+  }, AUTO_SAVE_INTERVAL);
+
+  autoSaveIntervals.set(roomCode, intervalId);
+  console.log(`⏰ [AUTO-SAVE] Started for room ${roomCode} (every ${AUTO_SAVE_INTERVAL / 1000}s)`);
+}
+
+// Stop periodic auto-save for a room
+function stopAutoSave(roomCode) {
+  const intervalId = autoSaveIntervals.get(roomCode);
+  if (intervalId) {
+    clearInterval(intervalId);
+    autoSaveIntervals.delete(roomCode);
+    console.log(`⏹️ [AUTO-SAVE] Stopped for room ${roomCode}`);
+  }
+}
+
 // Quiz options will be loaded after database initialization
 async function loadQuizOptions() {
   try {
@@ -2303,7 +2375,13 @@ io.on('connection', (socket) => {
         }))
       };
 
-      if (!liveRooms[roomCode]) {
+      // Check if room already exists (presenter reconnecting)
+      if (liveRooms[roomCode]) {
+        // Presenter is reconnecting - update presenter socket ID
+        console.log(`✅ [PRESENTER] Reconnected to room ${roomCode}`);
+        liveRooms[roomCode].presenterId = socket.id;
+      } else {
+        // Create new room
         liveRooms[roomCode] = {
           quizFilename,
           quizId,
@@ -2321,12 +2399,30 @@ io.on('connection', (socket) => {
       }
 
       socket.join(roomCode);
-      socket.emit('roomCreated', {
-        roomCode,
-        quizTitle: quizData.title,
-        questions: quizData.questions,
+
+      // Log room state being sent to presenter
+      const roomState = {
+        currentQuestionIndex: liveRooms[roomCode].currentQuestionIndex,
         presentedQuestions: liveRooms[roomCode].presentedQuestions,
         revealedQuestions: liveRooms[roomCode].revealedQuestions
+      };
+      console.log(`[PRESENTER] Sending room state to presenter for room ${roomCode}:`, roomState);
+
+      socket.emit('roomCreated', {
+        roomCode,
+        quizFilename: liveRooms[roomCode].quizFilename,
+        quizTitle: quizData.title,
+        questions: quizData.questions,
+        currentQuestionIndex: liveRooms[roomCode].currentQuestionIndex,
+        presentedQuestions: liveRooms[roomCode].presentedQuestions,
+        revealedQuestions: liveRooms[roomCode].revealedQuestions,
+        isResumed: !!liveRooms[roomCode].players && Object.keys(liveRooms[roomCode].players).length > 0
+      });
+
+      // Send current player list to presenter (especially important on reconnection)
+      io.to(roomCode).emit('playerListUpdate', {
+        roomCode,
+        players: Object.values(liveRooms[roomCode].players).filter(p => !p.isSpectator)
       });
 
       io.emit('activeRoomsUpdate', getActiveRoomsSummary());
@@ -2452,13 +2548,22 @@ io.on('connection', (socket) => {
         if (row.is_revealed) revealedQuestions.push(row.presentation_order);
       }
 
+      // Determine current question index when resuming
+      // If there's a question that's been presented but not revealed, that's the current question
+      let currentQuestionIndex = null;
+      const liveQuestion = presentedQuestions.find(qIndex => !revealedQuestions.includes(qIndex));
+      if (liveQuestion !== undefined) {
+        currentQuestionIndex = liveQuestion;
+        console.log(`[RESUME] Found live question ${liveQuestion} (presented but not revealed)`);
+      }
+
       liveRooms[roomCode] = {
         quizFilename: `quiz_${session.quiz_id}.json`,
         quizId: session.quiz_id,
         quizData,
         players,
         presenterId: socket.id,
-        currentQuestionIndex: null,
+        currentQuestionIndex,
         presentedQuestions,
         revealedQuestions,
         kickedPlayers: {}, // { username: kickedTimestamp }
@@ -2474,8 +2579,10 @@ io.on('connection', (socket) => {
       socket.join(roomCode);
       socket.emit('roomCreated', {
         roomCode,
+        quizFilename: liveRooms[roomCode].quizFilename,
         quizTitle: quizData.title,
         questions: quizData.questions,
+        currentQuestionIndex: liveRooms[roomCode].currentQuestionIndex,
         presentedQuestions: liveRooms[roomCode].presentedQuestions,
         revealedQuestions: liveRooms[roomCode].revealedQuestions,
         isResumed: true,
@@ -2487,6 +2594,11 @@ io.on('connection', (socket) => {
         roomCode,
         players: Object.values(liveRooms[roomCode].players).filter(p => !p.isSpectator)
       });
+
+      // Start auto-save if session has already been in progress
+      if (presentedQuestions.length > 0) {
+        startAutoSave(roomCode);
+      }
 
       io.emit('activeRoomsUpdate', getActiveRoomsSummary());
     } catch (err) {
@@ -2508,6 +2620,7 @@ io.on('connection', (socket) => {
       roomCode,
       quizTitle: room.quizData.title,
       questions: room.quizData.questions,
+      currentQuestionIndex: room.currentQuestionIndex,
       players: Object.values(room.players).filter(p => !p.isSpectator), // Filter out spectators
       presentedQuestions: room.presentedQuestions || [],
       revealedQuestions: room.revealedQuestions || []
@@ -2609,20 +2722,53 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Check if a player with this username already exists in the room (reconnection scenario)
-    const existingPlayer = Object.entries(room.players).find(([, player]) => player.username === playerUsername);
+    // Find ALL existing entries for this username (not just the first one)
+    // This fixes the zombie connection bug where multiple disconnected entries accumulate
+    const existingPlayers = Object.entries(room.players).filter(([, player]) => player.username === playerUsername);
 
-    if (existingPlayer) {
-      const [oldSocketId, playerData] = existingPlayer;
+    if (existingPlayers.length > 0) {
+      // Check if ANY entry is still actively connected
+      const activeConnection = existingPlayers.find(([, player]) =>
+        player.connected && player.connectionState === 'connected'
+      );
 
-      // If player is still connected, reject duplicate username
-      if (playerData.connected) {
-        socket.emit('roomError', `Username "${playerUsername}" is already connected in this room.`);
-        return;
+      if (activeConnection) {
+        const [activeSocketId] = activeConnection;
+
+        // Verify the active socket is actually still connected
+        const activeSocket = io.sockets.sockets.get(activeSocketId);
+
+        if (activeSocket && activeSocket.connected) {
+          // Truly active connection exists - reject this as duplicate
+          console.warn(`[DUPLICATE BLOCKED] ${playerUsername} attempted to join but is already connected via socket ${activeSocketId}`);
+          socket.emit('roomError', `Username "${playerUsername}" is already connected in this room. Please close other tabs/browsers.`);
+
+          // Clean up the rejected socket
+          socket.leave(roomCode);
+          return;
+        } else {
+          // Socket marked as connected but isn't actually - it's a zombie, clean it up
+          console.log(`[ZOMBIE CLEANUP] ${playerUsername} socket ${activeSocketId} marked connected but not found - cleaning up`);
+          delete room.players[activeSocketId];
+        }
       }
 
-      // Player is reconnecting - update their socket.id and mark as connected
-      delete room.players[oldSocketId]; // Remove old socket.id entry
+      // Clean up ALL old disconnected entries (zombie connections) BEFORE adding new one
+      let zombiesRemoved = 0;
+      for (const [oldSocketId] of existingPlayers) {
+        // Skip if we just checked this one above and it's the current socket
+        if (oldSocketId === socket.id) continue;
+
+        delete room.players[oldSocketId];
+        zombiesRemoved++;
+      }
+
+      if (zombiesRemoved > 0 && !isSpectator) {
+        console.log(`[ZOMBIE CLEANUP] Removed ${zombiesRemoved} stale connection(s) for ${playerUsername}`);
+      }
+
+      // Get the most recent player data (last entry has the most complete state)
+      const [, playerData] = existingPlayers[existingPlayers.length - 1];
 
       // Determine if they already answered the current question
       let currentChoice = null;
@@ -2630,21 +2776,25 @@ io.on('connection', (socket) => {
         currentChoice = playerData.answers[room.currentQuestionIndex];
       }
 
+      // Create fresh player entry with preserved answers
       room.players[socket.id] = {
         ...playerData,
         id: socket.id,
-        username: playerUsername, // Account username
-        name: playerDisplayName, // Display name (update in case they changed it)
-        userId: userId, // Associate with user account
+        username: playerUsername,
+        name: playerDisplayName,
+        userId: userId,
         connected: true,
-        connectionState: 'connected', // 'connected' | 'away' | 'disconnected' | 'warning'
-        choice: currentChoice, // Restore choice if they already answered current question
-        isSpectator: playerUsername === 'Display' || playerDisplayName === 'Spectator Display' // Flag spectators
+        connectionState: 'connected',
+        choice: currentChoice,
+        isSpectator: playerUsername === 'Display' || playerDisplayName === 'Spectator Display',
+        lastHeartbeat: Date.now() // Track connection health
       };
+
       socket.join(roomCode);
-      // Only log reconnections for non-spectators
-      if (!room.players[socket.id].isSpectator) {
-        console.log(`${playerDisplayName} (${playerUsername}) reconnected to room ${roomCode} (${Object.keys(playerData.answers || {}).length} previous answers preserved)`);
+
+      if (!isSpectator) {
+        const answersCount = Object.keys(playerData.answers || {}).length;
+        console.log(`${playerDisplayName} (${playerUsername}) reconnected to room ${roomCode} (${answersCount} previous answers preserved)`);
       }
     } else {
       // Check if this is a resumed session with temp player entry
@@ -2670,7 +2820,8 @@ io.on('connection', (socket) => {
         connected: true,
         connectionState: 'connected', // 'connected' | 'away' | 'disconnected' | 'warning'
         answers: existingAnswers,
-        isSpectator: playerUsername === 'Display' || playerDisplayName === 'Spectator Display' // Flag spectators
+        isSpectator: playerUsername === 'Display' || playerDisplayName === 'Spectator Display', // Flag spectators
+        lastHeartbeat: Date.now() // Track connection health
       };
       socket.join(roomCode);
       // Only log for non-spectators (use isSpectator variable defined earlier)
@@ -2760,8 +2911,22 @@ io.on('connection', (socket) => {
       room.presentedQuestions.push(questionIndex);
     }
 
-    // Reset current choice (but preserve answers history)
-    Object.values(room.players).forEach(p => p.choice = null);
+    // Start auto-save when first question is presented
+    if (questionIndex === 0) {
+      startAutoSave(roomCode);
+    }
+
+    // Reset current choice for players who haven't answered this question yet
+    // If player already answered this question, restore their choice from history
+    Object.values(room.players).forEach(p => {
+      if (p.answers && p.answers[questionIndex] !== undefined) {
+        // Player already answered this question - restore their choice
+        p.choice = p.answers[questionIndex];
+      } else {
+        // Player hasn't answered yet - reset choice
+        p.choice = null;
+      }
+    });
 
     const question = room.quizData.questions[questionIndex];
     io.to(roomCode).emit('questionPresented', { questionIndex, question, presentedQuestions: room.presentedQuestions });
@@ -2837,6 +3002,9 @@ io.on('connection', (socket) => {
     room.status = 'completed';
     room.completedAt = new Date().toISOString();
 
+    // Stop periodic auto-save (quiz is done)
+    stopAutoSave(roomCode);
+
     // Save session if there are answers
     if (sessionHasAnswers(room)) {
       try {
@@ -2858,6 +3026,9 @@ io.on('connection', (socket) => {
   socket.on('closeRoom', async ({ roomCode }) => {
     const room = liveRooms[roomCode];
     if (!room) return;
+
+    // Stop periodic auto-save
+    stopAutoSave(roomCode);
 
     // Auto-save if there are answers
     if (sessionHasAnswers(room)) {
@@ -2918,9 +3089,22 @@ io.on('connection', (socket) => {
     console.log(`Player ${username} kicked from room ${roomCode} by presenter`);
   });
 
+  // Heartbeat mechanism to track connection health
+  socket.on('heartbeat', ({ roomCode }) => {
+    const room = liveRooms[roomCode];
+    if (!room || !room.players[socket.id]) return;
+
+    // Update last heartbeat timestamp
+    room.players[socket.id].lastHeartbeat = Date.now();
+
+    // Respond with ack to complete round-trip
+    socket.emit('heartbeat-ack');
+  });
+
   // Handle disconnect
   socket.on('disconnect', (reason) => {
     for (const [roomCode, room] of Object.entries(liveRooms)) {
+      // Handle player disconnection
       if (room.players[socket.id]) {
         const playerName = room.players[socket.id].name;
         // Mark as disconnected instead of deleting
@@ -2929,19 +3113,11 @@ io.on('connection', (socket) => {
         io.emit('activeRoomsUpdate', getActiveRoomsSummary());
         console.log(`${playerName} disconnected from room ${roomCode}`);
       }
+
+      // Handle presenter disconnection - just log it, don't close the room
       if (room.presenterId === socket.id) {
-        console.log(`Presenter disconnected from room ${roomCode}. Reason: ${reason}`);
-        // Auto-save before closing if presenter disconnects
-        if (sessionHasAnswers(room)) {
-          room.status = 'interrupted';
-          room.completedAt = new Date().toISOString();
-          saveSession(roomCode, room).catch(err =>
-            console.error('Error auto-saving session on presenter disconnect:', err)
-          );
-        }
-        io.to(roomCode).emit('roomClosed', { roomCode });
-        delete liveRooms[roomCode];
-        io.emit('activeRoomsUpdate', getActiveRoomsSummary());
+        console.log(`Presenter disconnected from room ${roomCode}. Reason: ${reason} (room continues)`);
+        // Room persists independently - presenter can reconnect anytime
       }
     }
   });
@@ -2959,6 +3135,81 @@ function getActiveRoomsSummary() {
     status: room.status
   }));
 }
+
+// --------------------
+// Periodic Zombie Connection Cleanup
+// --------------------
+// Clean up stale connections that failed to properly disconnect
+// Runs every 30 seconds to detect and remove zombie connections
+const ZOMBIE_CLEANUP_INTERVAL = 30000; // 30 seconds
+const ZOMBIE_TIMEOUT = 60000; // 60 seconds without heartbeat = zombie
+
+setInterval(() => {
+  const now = Date.now();
+  let totalZombiesRemoved = 0;
+
+  for (const [roomCode, room] of Object.entries(liveRooms)) {
+    const zombieSockets = [];
+
+    for (const [socketId, player] of Object.entries(room.players)) {
+      // Skip spectators from zombie cleanup
+      if (player.isSpectator) continue;
+
+      // Check if player has a lastHeartbeat (older entries may not)
+      if (!player.lastHeartbeat) {
+        // No heartbeat tracking yet - give them benefit of the doubt for one cleanup cycle
+        player.lastHeartbeat = now;
+        continue;
+      }
+
+      // Check if connection is truly dead (no heartbeat in 60 seconds AND marked as disconnected)
+      const timeSinceHeartbeat = now - player.lastHeartbeat;
+      const isZombie = timeSinceHeartbeat > ZOMBIE_TIMEOUT && !player.connected;
+
+      // Also check if socket actually exists in Socket.IO
+      const socket = io.sockets.sockets.get(socketId);
+      const socketDead = !socket || !socket.connected;
+
+      if (isZombie || (socketDead && !player.connected)) {
+        zombieSockets.push({ socketId, username: player.username, name: player.name, reason: isZombie ? 'timeout' : 'socket-dead' });
+      }
+    }
+
+    // Process zombie connections for this room
+    // IMPORTANT: Don't delete players who have answered questions - preserve their game data
+    for (const zombie of zombieSockets) {
+      const player = room.players[zombie.socketId];
+
+      // Check if player has any answers
+      const hasAnswers = player.answers && Object.keys(player.answers).length > 0;
+
+      if (hasAnswers) {
+        // Player has game data - keep entry but mark as disconnected
+        player.connected = false;
+        player.connectionState = 'disconnected';
+        console.log(`[ZOMBIE CLEANUP] Marked ${zombie.name} (${zombie.username}) as disconnected (preserving ${Object.keys(player.answers).length} answers)`);
+      } else {
+        // No game data - safe to remove completely
+        delete room.players[zombie.socketId];
+        totalZombiesRemoved++;
+        console.log(`[ZOMBIE CLEANUP] Removed stale ${zombie.reason} connection: ${zombie.name} (${zombie.username}) from room ${roomCode} (no answers)`);
+      }
+    }
+
+    // Notify room if any zombies were removed
+    if (zombieSockets.length > 0) {
+      io.to(roomCode).emit('playerListUpdate', {
+        roomCode,
+        players: Object.values(room.players).filter(p => !p.isSpectator)
+      });
+    }
+  }
+
+  if (totalZombiesRemoved > 0) {
+    console.log(`[ZOMBIE CLEANUP] Total zombies removed across all rooms: ${totalZombiesRemoved}`);
+  }
+}, ZOMBIE_CLEANUP_INTERVAL);
+
 // --------------------
 // END OF LIVE ROOMS LOGIC
 // --------------------
@@ -3330,22 +3581,70 @@ if (DEBUG_ENABLED) {
   // --------------------
   app.post('/api/debug/cleanup', async (req, res) => {
     try {
-      const { deleteRooms, deleteTestUsers } = req.body;
-      const results = { roomsDeleted: 0, usersDeleted: 0 };
+      const { roomCode, deleteRooms, deleteTestUsers } = req.body;
+      const results = {
+        roomsDeleted: 0,
+        sessionsDeleted: 0,
+        usersDeleted: 0
+      };
 
-      // Delete all live rooms
-      if (deleteRooms) {
-        results.roomsDeleted = Object.keys(liveRooms).length;
-        Object.keys(liveRooms).forEach(code => delete liveRooms[code]);
+      // Delete specific room if roomCode provided
+      if (roomCode && liveRooms[roomCode]) {
+        // Stop auto-save if running
+        if (autoSaveIntervals.has(roomCode)) {
+          clearInterval(autoSaveIntervals.get(roomCode));
+          autoSaveIntervals.delete(roomCode);
+        }
+
+        // Delete from memory
+        delete liveRooms[roomCode];
+        results.roomsDeleted = 1;
+
+        // Delete completed session from database
+        try {
+          const deleteSession = await pool.query(
+            'DELETE FROM completed_sessions WHERE room_code = $1 RETURNING id',
+            [roomCode]
+          );
+          results.sessionsDeleted = deleteSession.rowCount;
+        } catch (dbErr) {
+          console.error('Debug: Error deleting session from database:', dbErr);
+        }
       }
 
-      // Delete test users (those starting with 'test' or 'debug')
+      // Delete all live rooms (if explicitly requested)
+      if (deleteRooms) {
+        const roomCount = Object.keys(liveRooms).length;
+
+        // Clear all auto-save intervals
+        autoSaveIntervals.forEach((interval) => {
+          clearInterval(interval);
+        });
+        autoSaveIntervals.clear();
+
+        // Clear all rooms
+        Object.keys(liveRooms).forEach(code => {
+          delete liveRooms[code];
+        });
+
+        results.roomsDeleted = roomCount;
+      }
+
+      // Delete test users (all automated test user prefixes)
       if (deleteTestUsers) {
         const deleteResult = await pool.query(
-          "DELETE FROM users WHERE username LIKE 'test%' OR username LIKE 'debug%' RETURNING id"
+          `DELETE FROM users
+           WHERE username LIKE 'test%'
+              OR username LIKE 'debug%'
+              OR username LIKE 'player%'
+              OR username LIKE 'user%'
+              OR username LIKE 'demo%'
+           RETURNING id`
         );
         results.usersDeleted = deleteResult.rowCount;
       }
+
+      console.log(`[DEBUG CLEANUP] Deleted ${results.roomsDeleted} room(s), ${results.sessionsDeleted} session(s), ${results.usersDeleted} user(s)`);
 
       res.json({
         success: true,

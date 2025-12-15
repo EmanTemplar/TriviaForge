@@ -296,6 +296,7 @@ let dialogResolve = null
 const selectedQuizFilename = ref('')
 const quizzes = ref([])
 const currentRoomCode = ref(null)
+const currentQuizFilename = ref(null) // Track quiz filename for reconnection
 const currentQuizTitle = ref('')
 const currentQuestions = ref([])
 const currentQuestionIndex = ref(-1)
@@ -394,6 +395,7 @@ const makeRoomLive = async () => {
     return
   }
   const roomCode = Math.floor(1000 + Math.random() * 9000).toString()
+  currentQuizFilename.value = selectedQuizFilename.value // Store for reconnection
   socket.emit('createRoom', { roomCode, quizFilename: selectedQuizFilename.value })
 }
 
@@ -694,6 +696,7 @@ const closeMenuIfOutside = (e) => {
 // Reset room state
 const resetRoom = () => {
   currentRoomCode.value = null
+  currentQuizFilename.value = null
   currentQuestions.value = []
   currentQuestionIndex.value = -1
   presentedQuestionIndex.value = null
@@ -717,29 +720,104 @@ const logout = async (e) => {
 const setupSocketListeners = () => {
   const socketInstance = socket.connect()
 
-  socketInstance.on('roomCreated', ({ roomCode, quizTitle, questions, presentedQuestions: serverPresentedQuestions, revealedQuestions: serverRevealedQuestions, isResumed, originalRoomCode }) => {
+  // Handle socket connection
+  socketInstance.on('connect', () => {
+    console.log('[PRESENTER] Socket connected')
+    // Presenter manages multiple rooms from a list - they'll click to view the room they want
+  })
+
+  socketInstance.on('roomCreated', ({ roomCode, quizFilename, quizTitle, questions, currentQuestionIndex: serverCurrentQuestionIndex, presentedQuestions: serverPresentedQuestions, revealedQuestions: serverRevealedQuestions, isResumed, originalRoomCode }) => {
     currentRoomCode.value = roomCode
+    currentQuizFilename.value = quizFilename // Store for reconnection
     currentQuestions.value = questions || []
-    currentQuestionIndex.value = 0
-    presentedQuestionIndex.value = null
     presentedQuestions.value = serverPresentedQuestions || []
     revealedQuestions.value = serverRevealedQuestions || []
     currentQuizTitle.value = quizTitle
+
+    // Restore current question state from server
+    console.log('[PRESENTER] Reconnection state:', {
+      serverCurrentQuestionIndex,
+      presentedQuestions: serverPresentedQuestions,
+      revealedQuestions: serverRevealedQuestions
+    })
+
+    if (serverCurrentQuestionIndex !== null && serverCurrentQuestionIndex !== undefined) {
+      currentQuestionIndex.value = serverCurrentQuestionIndex
+
+      // Check if this question is presented but not yet revealed
+      const isPresented = presentedQuestions.value.includes(serverCurrentQuestionIndex)
+      const isRevealed = revealedQuestions.value.includes(serverCurrentQuestionIndex)
+
+      console.log('[PRESENTER] Question status check:', {
+        questionIndex: serverCurrentQuestionIndex,
+        isPresented,
+        isRevealed,
+        willRestore: isPresented && !isRevealed
+      })
+
+      if (isPresented && !isRevealed) {
+        // Question is live - enable "Reveal Answer" button
+        presentedQuestionIndex.value = serverCurrentQuestionIndex
+        console.log(`[PRESENTER] ✅ Restored live question ${serverCurrentQuestionIndex} (presented but not revealed)`)
+      } else {
+        presentedQuestionIndex.value = null
+        console.log(`[PRESENTER] ❌ Question ${serverCurrentQuestionIndex} not live (presented: ${isPresented}, revealed: ${isRevealed})`)
+      }
+    } else {
+      // No active question - start at beginning
+      currentQuestionIndex.value = 0
+      presentedQuestionIndex.value = null
+      console.log('[PRESENTER] No active question - starting fresh')
+    }
 
     if (isResumed) {
       showAlert(`Session resumed!\n\nNew room code: ${roomCode}\nOriginal room: ${originalRoomCode}\n\nPlayers should rejoin with their original names.`, 'Session Resumed')
     }
   })
 
-  socketInstance.on('roomRestored', ({ roomCode, quizTitle, questions, players, presentedQuestions: serverPresentedQuestions, revealedQuestions: serverRevealedQuestions }) => {
+  socketInstance.on('roomRestored', ({ roomCode, quizTitle, questions, currentQuestionIndex: serverCurrentQuestionIndex, players, presentedQuestions: serverPresentedQuestions, revealedQuestions: serverRevealedQuestions }) => {
     if (roomCode !== currentRoomCode.value) return
     currentQuestions.value = questions || []
-    currentQuestionIndex.value = 0
-    presentedQuestionIndex.value = null
     presentedQuestions.value = serverPresentedQuestions || []
     revealedQuestions.value = serverRevealedQuestions || []
     currentQuizTitle.value = quizTitle
     connectedPlayers.value = players || []
+
+    // Restore current question state from server
+    console.log('[PRESENTER] Room restored state:', {
+      serverCurrentQuestionIndex,
+      presentedQuestions: serverPresentedQuestions,
+      revealedQuestions: serverRevealedQuestions
+    })
+
+    if (serverCurrentQuestionIndex !== null && serverCurrentQuestionIndex !== undefined) {
+      currentQuestionIndex.value = serverCurrentQuestionIndex
+
+      // Check if this question is presented but not yet revealed
+      const isPresented = presentedQuestions.value.includes(serverCurrentQuestionIndex)
+      const isRevealed = revealedQuestions.value.includes(serverCurrentQuestionIndex)
+
+      console.log('[PRESENTER] Question status check:', {
+        questionIndex: serverCurrentQuestionIndex,
+        isPresented,
+        isRevealed,
+        willRestore: isPresented && !isRevealed
+      })
+
+      if (isPresented && !isRevealed) {
+        // Question is live - enable "Reveal Answer" button
+        presentedQuestionIndex.value = serverCurrentQuestionIndex
+        console.log(`[PRESENTER] ✅ Restored live question ${serverCurrentQuestionIndex} (presented but not revealed)`)
+      } else {
+        presentedQuestionIndex.value = null
+        console.log(`[PRESENTER] ❌ Question ${serverCurrentQuestionIndex} not live (presented: ${isPresented}, revealed: ${isRevealed})`)
+      }
+    } else {
+      // No active question - start at beginning
+      currentQuestionIndex.value = 0
+      presentedQuestionIndex.value = null
+      console.log('[PRESENTER] No active question in restored room')
+    }
   })
 
   socketInstance.on('playerListUpdate', ({ roomCode, players }) => {

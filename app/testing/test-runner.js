@@ -295,11 +295,21 @@ async function testCleanup(roomCode) {
   section('Cleanup');
 
   try {
-    await apiRequest('POST', '/api/debug/cleanup', {
+    const result = await apiRequest('POST', '/api/debug/cleanup', {
       roomCode,
       deleteTestUsers: true,
     });
+
+    if (config.verbose) {
+      console.log('[DEBUG] Cleanup result:', JSON.stringify(result, null, 2));
+    }
+
     success('Cleaned up test data');
+
+    // Always display cleanup stats
+    info(`Deleted ${result.roomsDeleted || 0} room(s)`);
+    info(`Deleted ${result.sessionsDeleted || 0} database session(s)`);
+    info(`Deleted ${result.usersDeleted || 0} test user(s)`);
   } catch (err) {
     warn('Cleanup failed - you may need to manually clean test data');
     if (config.verbose) {

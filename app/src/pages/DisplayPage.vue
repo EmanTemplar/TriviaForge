@@ -160,6 +160,7 @@ const joinRoom = async () => {
 
   // Join the socket.io room to receive presenter events
   socket.emit('joinRoom', { roomCode: code, username: 'Display', displayName: 'Spectator Display' })
+  socket.setRoomContext(code, 'Display')
 }
 
 // Initialize Socket.IO connection

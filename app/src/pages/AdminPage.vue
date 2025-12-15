@@ -229,30 +229,80 @@
       <div v-if="activeTab === 'users'" class="tab-content users-management">
         <section>
           <h2>User Management</h2>
-          <p class="section-description">View and manage all user accounts (guests and registered players)</p>
+          <p class="section-description">View and manage all user accounts</p>
 
           <div class="users-header">
             <button @click="loadUsers" class="btn-refresh">🔄 Refresh Users</button>
-            <div class="user-count">{{ users.length }} user(s)</div>
+            <div class="user-count">{{ users.length }} total user(s)</div>
           </div>
 
-          <div class="users-list">
-            <div v-if="users.length === 0" class="empty-state"><em>No users</em></div>
-            <div v-for="user in users" :key="user.id" class="user-item">
-              <div class="user-info">
-                <div class="user-name">{{ user.username }}</div>
-                <div class="user-type" :class="{ 'type-admin': user.accountType === 'admin', 'type-player': user.accountType === 'player', 'type-guest': user.accountType === 'guest' }">
-                  {{ user.accountType === 'admin' ? 'Admin' : user.accountType === 'player' ? 'Player' : 'Guest' }}
+          <!-- Admins Section -->
+          <div class="user-category">
+            <div class="category-header admin-header">
+              <h3>🔐 Administrators</h3>
+              <span class="category-count">{{ adminUsers.length }}</span>
+            </div>
+            <div class="users-list-scrollable">
+              <div v-if="adminUsers.length === 0" class="empty-state"><em>No administrators</em></div>
+              <div v-for="user in adminUsers" :key="user.id" class="user-item admin-item">
+                <div class="user-info">
+                  <div class="user-name">{{ user.username }}</div>
+                  <div class="user-type type-admin">Admin</div>
+                </div>
+                <div class="user-stats">
+                  <div v-if="user.lastSeen" class="user-last-login">Last seen: {{ formatDate(user.lastSeen) }}</div>
+                  <div v-else class="user-last-login">Never logged in</div>
                 </div>
               </div>
-              <div class="user-stats">
-                <div v-if="user.lastSeen" class="user-last-login">Last seen: {{ formatDate(user.lastSeen) }}</div>
-                <div v-else class="user-last-login">Never played</div>
+            </div>
+          </div>
+
+          <!-- Registered Players Section -->
+          <div class="user-category">
+            <div class="category-header player-header">
+              <h3>👤 Registered Players</h3>
+              <span class="category-count">{{ playerUsers.length }}</span>
+            </div>
+            <div class="users-list-scrollable">
+              <div v-if="playerUsers.length === 0" class="empty-state"><em>No registered players</em></div>
+              <div v-for="user in playerUsers" :key="user.id" class="user-item player-item">
+                <div class="user-info">
+                  <div class="user-name">{{ user.username }}</div>
+                  <div class="user-type type-player">Player</div>
+                </div>
+                <div class="user-stats">
+                  <div v-if="user.lastSeen" class="user-last-login">Last seen: {{ formatDate(user.lastSeen) }}</div>
+                  <div v-else class="user-last-login">Never played</div>
+                </div>
+                <div class="user-actions">
+                  <button @click="resetUserPassword(user)" class="btn-reset" title="Reset Password">🔑</button>
+                  <button @click="downgradeUser(user)" class="btn-downgrade" title="Downgrade to Guest">⬇️</button>
+                  <button @click="deleteUser(user)" class="btn-delete" title="Delete User">🗑️</button>
+                </div>
               </div>
-              <div v-if="user.accountType !== 'admin'" class="user-actions">
-                <button v-if="user.accountType === 'player'" @click="resetUserPassword(user)" class="btn-reset" title="Reset Password">🔑</button>
-                <button v-if="user.accountType === 'player'" @click="downgradeUser(user)" class="btn-downgrade" title="Downgrade to Guest">⬇️</button>
-                <button @click="deleteUser(user)" class="btn-delete" title="Delete User">🗑️</button>
+            </div>
+          </div>
+
+          <!-- Guests Section -->
+          <div class="user-category">
+            <div class="category-header guest-header">
+              <h3>👥 Guest Users</h3>
+              <span class="category-count">{{ guestUsers.length }}</span>
+            </div>
+            <div class="users-list-scrollable">
+              <div v-if="guestUsers.length === 0" class="empty-state"><em>No guest users</em></div>
+              <div v-for="user in guestUsers" :key="user.id" class="user-item guest-item">
+                <div class="user-info">
+                  <div class="user-name">{{ user.username }}</div>
+                  <div class="user-type type-guest">Guest</div>
+                </div>
+                <div class="user-stats">
+                  <div v-if="user.lastSeen" class="user-last-login">Last seen: {{ formatDate(user.lastSeen) }}</div>
+                  <div v-else class="user-last-login">Never played</div>
+                </div>
+                <div class="user-actions">
+                  <button @click="deleteUser(user)" class="btn-delete" title="Delete User">🗑️</button>
+                </div>
               </div>
             </div>
           </div>
@@ -299,7 +349,7 @@
             <h2>About TriviaForge</h2>
             <div class="version-box">
               <div class="version-label">Version</div>
-              <div class="version-number">3.1.0</div>
+              <div class="version-number">3.2.1</div>
             </div>
           </div>
 
@@ -311,6 +361,7 @@
                 <li>✓ Vue 3 modern interface</li>
                 <li>✓ Real-time quiz presentations</li>
                 <li>✓ Live leaderboards & rankings</li>
+                <li>✓ Independent room architecture</li>
                 <li>✓ Player connection monitoring</li>
                 <li>✓ Player authentication & accounts</li>
                 <li>✓ Excel bulk import</li>
@@ -377,7 +428,7 @@
               With features like session resumption, user authentication, player connection monitoring, and mobile-optimized interfaces, TriviaForge provides a seamless experience for presenters and players. Whether you're running classroom quizzes, corporate events, or casual game nights, TriviaForge adapts to your needs.
             </p>
             <p>
-              Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. Version 3.1 enhances the quiz editor with drag-and-drop reordering and adds comprehensive player management tools including kick player and ban display name features.
+              Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. Version 3.2.1 introduces independent room architecture for improved reliability, enhanced presenter state restoration, organized user management with color-coded sections, and automated test cleanup for streamlined development workflows.
             </p>
           </div>
 
@@ -601,6 +652,11 @@ const rankedPlayers = computed(() => {
     return accB - accA
   })
 })
+
+// Group users by account type
+const adminUsers = computed(() => users.value.filter(user => user.accountType === 'admin'))
+const playerUsers = computed(() => users.value.filter(user => user.accountType === 'player'))
+const guestUsers = computed(() => users.value.filter(user => user.accountType === 'guest'))
 
 // Tabs
 const tabs = [
@@ -2386,10 +2442,84 @@ select:focus {
   font-size: 0.9rem;
 }
 
-.users-list {
+/* User Categories */
+.user-category {
+  margin-bottom: 2rem;
+}
+
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 8px 8px 0 0;
+  margin-bottom: 0.5rem;
+  border: 1px solid;
+}
+
+.category-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.category-count {
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.admin-header {
+  background: rgba(255, 0, 0, 0.15);
+  border-color: rgba(255, 0, 0, 0.4);
+  color: #ff6666;
+}
+
+.player-header {
+  background: rgba(79, 195, 247, 0.15);
+  border-color: rgba(79, 195, 247, 0.4);
+  color: #4fc3f7;
+}
+
+.guest-header {
+  background: rgba(170, 170, 170, 0.15);
+  border-color: rgba(170, 170, 170, 0.4);
+  color: #aaa;
+}
+
+/* Scrollable user lists */
+.users-list-scrollable {
+  max-height: 400px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 0 0 8px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: none;
+}
+
+/* Custom scrollbar for user lists */
+.users-list-scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.users-list-scrollable::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.users-list-scrollable::-webkit-scrollbar-thumb {
+  background: rgba(79, 195, 247, 0.5);
+  border-radius: 4px;
+}
+
+.users-list-scrollable::-webkit-scrollbar-thumb:hover {
+  background: rgba(79, 195, 247, 0.7);
 }
 
 .user-item {
@@ -2400,6 +2530,40 @@ select:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: all 0.2s;
+}
+
+.user-item:hover {
+  background: rgba(79, 195, 247, 0.15);
+  transform: translateX(4px);
+}
+
+/* User item variations */
+.admin-item {
+  background: rgba(255, 0, 0, 0.1);
+  border-color: rgba(255, 0, 0, 0.3);
+}
+
+.admin-item:hover {
+  background: rgba(255, 0, 0, 0.15);
+}
+
+.player-item {
+  background: rgba(79, 195, 247, 0.1);
+  border-color: rgba(79, 195, 247, 0.3);
+}
+
+.player-item:hover {
+  background: rgba(79, 195, 247, 0.15);
+}
+
+.guest-item {
+  background: rgba(170, 170, 170, 0.1);
+  border-color: rgba(170, 170, 170, 0.3);
+}
+
+.guest-item:hover {
+  background: rgba(170, 170, 170, 0.15);
 }
 
 .user-info {

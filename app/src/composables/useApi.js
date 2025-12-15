@@ -22,10 +22,22 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
-      const authStore = useAuthStore()
-      authStore.logout()
-      window.location.href = '/'
+      // Only redirect for admin/presenter auth failures, not player login failures
+      // Player login errors should be handled by the component's try-catch
+      const isPlayerLoginRequest = error.config?.url?.includes('/api/auth/player-login')
+      const isPlayerPasswordReset = error.config?.url?.includes('/api/auth/set-new-password')
+
+      if (!isPlayerLoginRequest && !isPlayerPasswordReset) {
+        // Admin/Presenter token expired or invalid
+        const authStore = useAuthStore()
+        authStore.logout()
+        window.location.href = '/'
+      }
+    }
+
+    // Allow password reset errors (status 428) to propagate to components
+    if (error.response?.status === 428) {
+      return Promise.reject(error)
     }
     return Promise.reject(error)
   }

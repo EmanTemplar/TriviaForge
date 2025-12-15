@@ -2,6 +2,66 @@
 
 This document tracks planned features, improvements, and tasks for future development.
 
+## Recent Completed Features (v3.2.1)
+
+### 1. Password Reset Flow Fix
+**Status:** ✅ Completed (2025-12-14)
+**Description:** Fixed registered player password reset workflow to properly detect admin-initiated password resets and prompt users to set new passwords.
+
+**Features Implemented:**
+- HTTP status 428 detection in PlayerPage login handler
+- Automatic modal transition from login to set-password
+- Fixed endpoint reference in useApi.js (`/api/auth/set-new-password`)
+- Comprehensive server-side logging for authentication debugging
+- End-to-end password reset flow verification
+
+**Files Modified:**
+- `app/src/pages/PlayerPage.vue` - Added 428 status detection
+- `app/src/composables/useApi.js` - Fixed endpoint reference
+- `app/server.js` - Added detailed logging
+
+---
+
+### 2. User Management Page Reorganization
+**Status:** ✅ Completed (2025-12-14)
+**Description:** Reorganized User Management page with separate sections for each user type, scrollable containers, and improved visual organization.
+
+**Features Implemented:**
+- Three distinct user sections:
+  - 🔐 Administrators (red theme) - read-only display
+  - 👤 Registered Players (blue theme) - full management actions
+  - 👥 Guest Users (gray theme) - delete only
+- Scrollable containers (400px max-height) with custom styled scrollbars
+- Category headers with count badges
+- Color-coded sections for better visual distinction
+- Computed properties for automatic user filtering
+- Hover effects and smooth transitions
+
+**Files Modified:**
+- `app/src/pages/AdminPage.vue` - Complete UI restructure
+
+---
+
+### 3. Automated Test Cleanup
+**Status:** ✅ Completed (2025-12-14)
+**Description:** Enhanced test suite to automatically clean up all test data (rooms, sessions, users) after test completion, eliminating manual cleanup needs.
+
+**Features Implemented:**
+- Enhanced `/api/debug/cleanup` endpoint with roomCode parameter
+- Deletes specific rooms, completed sessions, and test users
+- Expanded user pattern matching (test%, debug%, player%, user%, demo%)
+- Clears auto-save intervals before room deletion
+- Detailed cleanup statistics display:
+  - Rooms deleted count
+  - Database sessions deleted count
+  - Test users deleted count
+
+**Files Modified:**
+- `app/server.js` - Enhanced cleanup endpoint (lines 3582-3659)
+- `app/testing/test-runner.js` - Display cleanup statistics
+
+---
+
 ## Recent Completed Features (v3.1.0)
 
 ### 1. Quiz Editor Drag-and-Drop Reordering
