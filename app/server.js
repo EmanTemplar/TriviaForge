@@ -156,7 +156,8 @@ const csrfProtection = doubleCsrf({
   },
   size: 64,
   ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
-  getTokenFromRequest: (req) => req.headers['x-csrf-token']
+  getTokenFromRequest: (req) => req.headers['x-csrf-token'],
+  getSessionIdentifier: (req) => req.session?.id || req.ip // Use session ID or IP as identifier
 });
 
 const generateCsrfToken = csrfProtection.generateCsrfToken;
