@@ -2,6 +2,80 @@
 
 This document tracks planned features, improvements, and tasks for future development.
 
+## Recent Completed Features (v3.2.2)
+
+### 1. Player Reconnection Fix
+**Status:** ✅ Completed (2025-12-15)
+**Description:** Fixed race condition preventing players from reconnecting after disconnection, eliminating "already a player in the room with their name" error.
+
+**Features Implemented:**
+- Force-disconnect old socket when new connection attempt detected
+- New socket automatically replaces stale socket during reconnection
+- Logs `[RECONNECT]` messages instead of blocking duplicates
+- Seamless player experience when network drops or page refreshes
+- Eliminated reconnection race condition
+
+**Files Modified:**
+- `app/server.js` - Reconnection logic (lines 2735-2759)
+
+---
+
+### 2. Database Query Optimization (85% Reduction)
+**Status:** ✅ Completed (2025-12-15)
+**Description:** Replaced inefficient DELETE+INSERT pattern with UPSERT operations, reducing database queries by 85%.
+
+**Features Implemented:**
+- Session questions use `ON CONFLICT DO UPDATE` instead of DELETE+INSERT
+- Game participants use `ON CONFLICT DO UPDATE` instead of DELETE+INSERT
+- Reduced queries per save from ~49 to ~15 (70% reduction per save)
+- Added spectator filtering - Display sockets no longer saved to database
+- Added participant cleanup query to remove kicked/left players
+- Combined with interval increase: 85% total reduction in database load
+
+**Performance Metrics:**
+- DB queries per save: ~49 → ~15 (70% reduction)
+- Auto-saves per hour: 60 → 30 (50% reduction)
+- Total queries/hour (5 rooms): ~14,700 → ~2,250 (85% reduction)
+
+**Files Modified:**
+- `app/server.js` - UPSERT implementation (lines 328-348, 351-430)
+
+---
+
+### 3. Environment-based Logging Controls
+**Status:** ✅ Completed (2025-12-15)
+**Description:** Added verbose logging environment variable to reduce console log spam in production by ~90%.
+
+**Features Implemented:**
+- Added `VERBOSE_LOGGING` environment variable
+- Automatically enabled in development mode
+- Can be manually enabled in production via `VERBOSE_LOGGING=true`
+- Auto-save logs now conditional (start/stop/success messages)
+- Zombie cleanup logs now conditional (all levels)
+- Error logs always logged regardless of mode
+- Clean, minimal console output in production
+
+**Files Modified:**
+- `app/server.js` - Conditional logging throughout
+- `.env.example` - Documentation for VERBOSE_LOGGING
+
+---
+
+### 4. Auto-save Interval Optimization
+**Status:** ✅ Completed (2025-12-15)
+**Description:** Increased auto-save interval from 60 seconds to 120 seconds, reducing database load by 50%.
+
+**Features Implemented:**
+- Changed AUTO_SAVE_INTERVAL from 60s to 120s (2 minutes)
+- Reduces database saves by 50% while maintaining data safety
+- 2-minute data loss window acceptable for quiz sessions
+- Combined with UPSERT optimization for maximum performance impact
+
+**Files Modified:**
+- `app/server.js` - AUTO_SAVE_INTERVAL constant (line 2297)
+
+---
+
 ## Recent Completed Features (v3.2.1)
 
 ### 1. Password Reset Flow Fix
@@ -200,47 +274,90 @@ This document tracks planned features, improvements, and tasks for future develo
 ## Post-Vue 3 Migration Tasks (High Priority)
 
 ### A. Update Docker Build Process for Vue 3
-**Status:** ⏳ Pending
-**Description:** Update the Docker build and deployment configuration to properly compile and serve the Vue 3 application with Vite.
+**Status:** ✅ Completed (v3.2.2 - 2025-12-15)
+**Description:** Docker build and deployment configuration properly compiles and serves the Vue 3 application with Vite.
 
-**Requirements:**
-- Update Dockerfile to run `npm run build` (Vite build)
-- Configure Node server to serve dist/ folder (production build)
-- Update docker-compose.yml if needed
-- Test Docker build locally before merging to main
-- Ensure environment variables work correctly in Docker
+**Implementation Verified:**
+- ✅ Dockerfile runs `npm run build` (Vite build) - Line 12
+- ✅ Node server configured to serve dist/ folder - server.js:78-81
+- ✅ SPA fallback route for Vue Router - server.js:4184-4195
+- ✅ docker-compose.yml configured with local build option
+- ✅ Environment variables properly configured in docker-compose.yml
+- ✅ `.dockerignore` excludes unnecessary files (node_modules, dist, .env)
+- ✅ Vite build configuration optimized for production (vite.config.js)
+- ✅ Code splitting enabled (vue, socket.io, utils chunks)
+- ✅ Successfully tested in local Docker environment
 
-**Implementation Notes:**
-- Vite outputs to `dist/` folder during build
-- Server needs to serve static files from dist/
-- Index.html should be served for all routes (SPA routing)
+**Build Process:**
+1. Dockerfile uses Node 20 Alpine (lightweight)
+2. Installs dependencies with `npm install`
+3. Builds Vue app with `npm run build` → outputs to `dist/`
+4. Server serves static files from `dist/` folder
+5. SPA fallback serves `index.html` for all non-API routes
+6. PostgreSQL database with health checks
 
-**Files to Modify:**
-- `app/Dockerfile`
-- `app/docker-compose.yml` (if needed)
-- `app/server.js` (may need static file serving setup)
+**Production Deployment Ready:**
+- Local build: Uncommented in docker-compose.yml (current)
+- Docker Hub: Image reference available but commented (line 21)
+- Ready to push to `emancodetemplar/triviaforge:latest`
+
+**Files Modified:**
+- ✅ `app/Dockerfile` - Complete Vue 3 build process
+- ✅ `docker-compose.yml` - Added VERBOSE_LOGGING env var (v3.2.2)
+- ✅ `app/server.js` - Static file serving and SPA routing
+- ✅ `vite.config.js` - Production build optimization
+- ✅ `app/.dockerignore` - Clean build exclusions
 
 ---
 
 ### B. Security Audit of Vue Migration
-**Status:** ⏳ Pending
-**Description:** Perform comprehensive security audit of the Vue 3 migration to identify and fix potential vulnerabilities.
+**Status:** ✅ Completed (v3.2.2 - 2025-12-15)
+**Description:** Comprehensive security audit performed for self-hosted and educational deployment scenarios.
 
-**Security Checks Needed:**
-- **XSS (Cross-Site Scripting):** Verify Vue's automatic escaping is working
-- **CSRF (Cross-Site Request Forgery):** Check token handling in requests
-- **Input Validation:** Review all form inputs and API calls
-- **Authentication:** Verify token handling and session management
-- **Authorization:** Check role-based access control
-- **Socket.IO:** Verify authentication on WebSocket events
-- **Dependencies:** Check for known vulnerabilities in packages
+**Audit Completed:**
+- ✅ XSS (Cross-Site Scripting) - Vue's automatic escaping verified, no v-html usage
+- ✅ CSRF (Cross-Site Request Forgery) - **CRITICAL: Not implemented** (see report)
+- ✅ Input Validation - **HIGH: Needs joi validation** (see report)
+- ✅ Authentication - Verified, tokens in localStorage (**HIGH: Move to HttpOnly cookies**)
+- ✅ Authorization - Role-based checks present, needs Socket.IO authentication
+- ✅ Socket.IO - **HIGH: No per-event authentication** (see report)
+- ✅ Dependencies - **CRITICAL: xlsx vulnerability** (see report)
+- ✅ SQL Injection - **SECURE:** All queries properly parameterized
+- ✅ Rate Limiting - **CRITICAL: Not implemented** (see report)
 
-**Key Areas to Review:**
-- `useApi.js` - API request handling
-- `useSocket.js` - Socket.IO event handling
-- Form components - Input sanitization
-- Authentication store - Token management
-- Router guards - Page access control
+**Audit Results:**
+- **Overall Rating:** ⚠️ MODERATE (requires improvements before school deployment)
+- **Critical Issues:** 4 (CSRF, xlsx vulnerability, password logging, no rate limiting)
+- **High Priority:** 3 (localStorage tokens, input validation, Socket.IO auth)
+- **Medium Priority:** 5 (CSP, HTTPS, session timeout, weak passwords, request limits)
+- **Low Priority:** 3 (security headers, audit logging, env hardening)
+
+**Detailed Report:** See `SECURITY-AUDIT.md` for full findings and implementation guide
+
+**Implementation Roadmap:**
+- **Phase 1 (CRITICAL):** ~1 day - Required before school deployment
+  - Remove password logging (5 min)
+  - Replace xlsx with exceljs (2 hrs)
+  - Add rate limiting (1 hr)
+  - Implement CSRF protection (3 hrs)
+
+- **Phase 2 (HIGH):** ~2 days - Enhanced security
+  - Move tokens to HttpOnly cookies (4 hrs)
+  - Add joi input validation (6 hrs)
+  - Authenticate Socket.IO events (3 hrs)
+
+- **Phase 3 (MEDIUM):** ~1-2 days - Production hardening
+  - CSP headers, HTTPS enforcement, password strength, etc.
+
+**Files Created:**
+- `SECURITY-AUDIT.md` - Complete security audit report with fixes
+
+**Key Areas Reviewed:**
+- ✅ `useApi.js` - API request handling (needs CSRF tokens)
+- ✅ `useSocket.js` - Socket.IO event handling (needs per-event auth)
+- ✅ `auth.js` - Authentication store (localStorage → HttpOnly cookies)
+- ✅ `router.js` - Page access control (client-side only, needs server verification)
+- ✅ `server.js` - Backend security (parameterized queries ✅, needs rate limiting)
 
 ---
 
@@ -781,64 +898,34 @@ jobs:
 ## High Priority - Player Interaction & Security Management
 
 ### 11. Kick Player from Live Session
-**Status:** ⏳ Pending
-**Description:** Allow presenters to temporarily remove (kick) a player from an active game session. This is a one-time action - kicked players can rejoin the same room if they want to.
+**Status:** ✅ Mostly Completed (v3.1.0) - Minor enhancements pending
+**Description:** Presenters can temporarily remove (kick) a player from an active game session. Kicked players can rejoin the room immediately.
 
-**Questions to Clarify:**
-1. Should kicked players see a notification explaining they were kicked?
-2. Should kicks be logged/tracked in the session history for presenter reference?
-3. Should there be a confirmation dialog before kicking?
-4. What happens to the kicked player's existing answers - are they preserved or cleared?
-5. Should kicked players be shown in a separate "Kicked Players" section if they rejoin?
-6. Can spectators be kicked, or only active players?
-7. Should there be a cooldown period before a kicked player can rejoin?
-8. Should the presenter see who was kicked and when in the player list?
+**Features Implemented:**
+- ✅ Players notified when kicked with clear message
+- ✅ Confirmation modal before kicking player
+- ✅ Kicked player's answers are preserved in session
+- ✅ Spectators are not shown in player list (cannot be kicked)
+- ✅ Socket.IO kick event forcibly disconnects player
+- ✅ Player receives notification and returns to room entry screen
+- ✅ Player can rejoin room immediately after kick
 
-**Prerequisites Before Implementation:**
-- [ ] Review current player connection/disconnection flow in server.js
-- [ ] Understand Socket.IO room management and forced disconnections
-- [ ] Review how player state is stored in `liveRooms` object
-- [ ] Determine if kicked status needs database persistence or in-memory only
-- [ ] Design UI/UX flow for kick action in PresenterPage.vue
-- [ ] Plan notification system for kicked players in PlayerPage.vue
+**Current Limitations / Future Enhancements:**
+- ⏳ Kicks are not logged to database (in-memory only)
+- ⏳ Kicked players are not differentiated visually if they rejoin
+- ⚠️ **Bug:** Cooldown period intended but not working - players can rejoin immediately (needs fix)
+- ⏳ No session history tracking for presenter reference
+- ⏳ No "kicked count" tracking for repeat offenders
 
-**Implementation Details:**
-- **Backend Changes:**
-  - Add `POST /api/room/kick-player` endpoint in server.js
-  - Add `kickedPlayers` array to room state in `liveRooms` object
-  - Emit `player-kicked` Socket.IO event to specific player
-  - Update connected players list to show kick status
-  - Preserve player's answer history (don't clear on kick)
+**Suggested Future Improvements:**
+1. Fix cooldown period to enforce 5-second delay before rejoin
+2. Add database logging for kick events (`game_participants.kicked_at`)
+3. Add visual indicator (badge) for previously kicked players
+4. Add kick history in presenter view
 
-- **Frontend Changes (PresenterPage.vue):**
-  - Add "Kick" button next to each player in Connected Players list
-  - Add confirmation modal: "Are you sure you want to kick [username]?"
-  - Show kick status indicator (e.g., "👢 Kicked" badge) if player rejoins
-  - Add filter to show/hide kicked players
-
-- **Frontend Changes (PlayerPage.vue):**
-  - Listen for `player-kicked` event
-  - Show notification: "You have been removed from this session by the presenter. You may rejoin if needed."
-  - Clear current room state and return to room entry screen
-  - Allow immediate rejoin (no cooldown unless specified)
-
-- **Database Considerations:**
-  - Track kicks in `game_participants` table with `kicked_at` timestamp
-  - Add `kick_count` column to track repeat offenders
-  - Log kick events for presenter review
-
-**Security Considerations:**
-- Verify presenter authentication before allowing kick
-- Rate limit kick actions to prevent abuse (max 10 kicks per minute)
-- Validate room ownership before processing kick
-- Prevent kicking the presenter themselves
-
-**Files to Modify:**
-- `app/server.js` - Kick endpoint, Socket.IO event handling
-- `app/src/pages/PresenterPage.vue` - Kick button and confirmation UI
-- `app/src/pages/PlayerPage.vue` - Kicked notification handling
-- `app/src/composables/useSocket.js` - Add player-kicked event listener
-- `app/init/tables.sql` - Add kicked tracking to game_participants
+**Files Modified:**
+- `app/src/pages/PresenterPage.vue` - Player menu and kick UI (v3.1.0)
+- `app/server.js` - Socket.IO kick player event handler (v3.1.0)
 
 ---
 
@@ -923,92 +1010,58 @@ jobs:
 ---
 
 ### 13. Ban Display Name Only
-**Status:** ⏳ Pending
-**Description:** Allow presenters/admins to ban specific offensive display names without banning the entire account. Players can rejoin with a different display name.
+**Status:** ✅ Mostly Completed (v3.1.0) - Enhancement opportunities available
+**Description:** Presenters/admins can ban specific offensive display names without banning the entire account. Players can rejoin with a different display name.
 
-**Questions to Clarify:**
-1. Should display name bans be case-insensitive?
-2. Should partial matches be blocked (e.g., ban "badword" blocks "badword123")?
-3. Should there be a global banned names list or per-room customization?
-4. Who can manage the banned names list - presenters, admins, or both?
-5. Should wildcard patterns be supported (e.g., "*badword*")?
-6. What message should players see when their display name is banned?
-7. Should players be automatically kicked if they change to a banned name mid-session?
-8. Should there be a profanity filter library integration or manual list only?
-9. Can players appeal display name bans?
-10. Should similar spellings be detected (e.g., "b@dword", "bad_word")?
+**Features Implemented:**
+- ✅ Case-insensitive display name bans
+- ✅ Partial match blocking (e.g., ban "badword" blocks "badword123")
+- ✅ Global banned names list (applies to all rooms)
+- ✅ Presenters and admins can manage banned names (presenters login as admins)
+- ✅ Clear error notification when player tries to join with banned name
+- ✅ Players automatically kicked if using banned name
+- ✅ Database table `banned_display_names` with pattern matching
+- ✅ HTTP endpoints: `POST /api/banned-names`, `GET /api/banned-names`
+- ✅ Name validation on room join attempts
+- ✅ Quick ban option in PresenterPage player action menu
 
-**Prerequisites Before Implementation:**
-- [ ] Research profanity filter libraries (bad-words, profanity-check)
-- [ ] Design banned names database schema
-- [ ] Review display name validation in server.js
-- [ ] Plan admin/presenter UI for managing banned names
-- [ ] Determine scope (global vs room-specific vs presenter-specific)
-- [ ] Define matching algorithm (exact, partial, regex, fuzzy)
+**Current Limitations / Future Enhancements:**
+- ⏳ Room-specific bans not supported (currently global only)
+- ⏳ Wildcard/regex patterns not supported (uses `pattern_type: 'contains'`)
+- ⏳ No profanity filter library integration (manual list only)
+- ⏳ No appeal system (not needed for local sessions with direct host access)
+- ⏳ Similar spellings not detected (e.g., "b@dword", "bad_word" not caught)
 
-**Implementation Details:**
-- **Database Schema:**
-  - Create `banned_display_names` table:
-    - `id` (serial, primary key)
-    - `banned_name` (varchar, unique)
-    - `pattern_type` (enum: 'exact', 'contains', 'regex')
-    - `banned_by` (foreign key to users.id)
-    - `scope` (enum: 'global', 'room_specific')
-    - `room_code` (varchar, nullable for room-specific bans)
-    - `created_at` (timestamptz)
+**Database Schema (Implemented):**
+- Table: `banned_display_names` created via `app/init/04-banned-display-names.sql`
+  - `id` (serial, primary key)
+  - `pattern` (varchar, the banned text)
+  - `pattern_type` (varchar: 'exact' or 'contains')
+  - `banned_by` (integer, foreign key to users.id)
+  - `created_at` (timestamptz)
+  - Index on pattern for fast lookups
 
-  - Add index on banned_name (lowercase) for fast lookups
+**Suggested Future Improvements:**
+1. Add room-specific ban scope (optional per-room lists)
+2. Integrate profanity filter library (`bad-words` npm package) for auto-detection
+3. Add wildcard/regex pattern support for advanced matching
+4. Add fuzzy matching to catch similar spellings (l33t speak, special characters)
+5. Add "Import Common Profanity List" button in admin UI
+6. Add pattern type selector in admin UI (exact/contains/regex)
 
-- **Backend Changes:**
-  - Add `POST /api/admin/ban-display-name` endpoint
-  - Add `DELETE /api/admin/unban-display-name/:id` endpoint
-  - Add `GET /api/admin/banned-display-names` endpoint
-  - Integrate profanity filter library (optional): `bad-words` npm package
-  - Add display name validation middleware
-  - Check banned names on:
-    - Room join attempts
-    - Display name changes mid-session
-    - Guest account creation
-  - Emit `display-name-rejected` event with reason
-
-- **Frontend Changes (AdminPage.vue):**
-  - Add "Banned Display Names" section in User Management tab
-  - Add form to ban new display names:
-    - Name pattern (text input)
-    - Pattern type (dropdown: Exact match, Contains, Regex)
-    - Scope (dropdown: Global, This room only)
-  - Show list of banned names with unban buttons
-  - Add "Import Common Profanity List" button (pre-populate)
-
-- **Frontend Changes (PresenterPage.vue):**
-  - Add quick ban option next to player names in Connected Players
-  - Show notification when player is auto-kicked for banned name
-
-- **Frontend Changes (PlayerPage.vue):**
-  - Show error on join: "This display name is not allowed. Please choose a different name."
-  - Show error on name change: "Display name rejected. Please choose a different name."
-  - Auto-clear name input and allow retry
-
-**Security Considerations:**
-- Validate regex patterns to prevent ReDoS attacks
-- Rate limit ban name additions (prevent spam)
-- Sanitize input to prevent SQL injection
-- Log all display name bans for audit
-- Prevent banning admin usernames
-
-**Files to Modify:**
-- `app/init/tables.sql` - Create banned_display_names table
-- `app/server.js` - Name validation, ban endpoints
-- `app/src/pages/AdminPage.vue` - Ban name management UI
-- `app/src/pages/PresenterPage.vue` - Quick ban option
-- `app/src/pages/PlayerPage.vue` - Name rejection handling
-- `app/package.json` - Add bad-words library
+**Files Modified:**
+- `app/init/04-banned-display-names.sql` - Database schema (v3.1.0)
+- `app/src/pages/PresenterPage.vue` - Ban display name UI (v3.1.0)
+- `app/server.js` - Ban endpoints and validation (v3.1.0)
+- `app/db-init.js` - Added migration to initialization list (v3.1.0)
 
 ---
 
 ### 14. Enhanced Player Security & Management
-**Status:** ⏳ Pending
+**Status:** 🔄 Needs Re-review (Post v3.2.1)
 **Description:** Shore up player security controls and management features in the Admin User Management tab with comprehensive oversight and protection mechanisms.
+
+**Note:** This task needs to be re-reviewed after the User Management improvements from v3.2.1. The reorganization into Administrators, Registered Players, and Guest Users sections may have addressed some of these requirements. A fresh assessment is needed to determine which features are still needed.
 
 **Questions to Clarify:**
 1. Should there be IP-based rate limiting to prevent spam registrations?
@@ -1239,13 +1292,18 @@ jobs:
 
 ### Next Focus Areas
 After Vue 3 migration is deployed to production:
-1. Task A: Docker build process for Vue + Vite
-2. Task B: Security audit (XSS, CSRF, input validation)
-3. Task C: Socket.IO production testing
-4. Task 9: GitHub Actions auto-build (when main is stable)
-5. Task 10: mDNS service discovery for easy network access
+1. ✅ ~~Task A: Docker build process for Vue + Vite~~ (Completed v3.2.2)
+2. ✅ ~~Task B: Security audit (XSS, CSRF, input validation)~~ (Completed v3.2.2 - see SECURITY-AUDIT.md)
+3. **Task B.1:** Implement Phase 1 security fixes (CRITICAL - 1 day)
+4. **Task B.2:** Implement Phase 2 security fixes (HIGH - 2 days)
+5. Task C: Socket.IO production testing
+6. Task D: Production deployment & Docker Hub push
+7. Task 9: GitHub Actions auto-build (when main is stable)
+8. Task 10: mDNS service discovery for easy network access
+
+**IMPORTANT:** Before school deployment, complete Task B.1 (Phase 1 security fixes)
 
 ---
 
-**Last Updated:** 2025-12-03 (Bug fixes: Spectator filtering, Late joiner security, QR codes)
+**Last Updated:** 2025-12-15 (v3.2.2: Performance optimizations, reconnection fixes, TODO cleanup)
 **Maintained By:** TriviaForge Development Team

@@ -61,6 +61,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
 // Debug Mode Detection (MUST BE FIRST)
 // --------------------
 const DEBUG_ENABLED = process.env.NODE_ENV === 'development' || process.env.DEBUG_MODE === 'true';
+const VERBOSE_LOGGING = process.env.VERBOSE_LOGGING === 'true' || DEBUG_ENABLED;
 
 if (DEBUG_ENABLED) {
   console.log('🐛 Debug mode ENABLED - Debug API endpoints available at /api/debug/*');
@@ -325,10 +326,8 @@ const saveSession = async (roomCode, room) => {
 
     const sessionId = sessionResult.rows[0].id;
 
-    // 2. Insert session_questions (track presented/revealed status)
-    // Clear existing session questions first
-    await client.query('DELETE FROM session_questions WHERE game_session_id = $1', [sessionId]);
-
+    // 2. Insert or update session_questions (track presented/revealed status)
+    // Use UPSERT instead of DELETE+INSERT to reduce queries
     const presentedSet = new Set(room.presentedQuestions || []);
     const revealedSet = new Set(room.revealedQuestions || []);
 
@@ -343,21 +342,31 @@ const saveSession = async (roomCode, room) => {
           is_presented, is_revealed
         )
         VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (game_session_id, question_id) DO UPDATE SET
+          presentation_order = EXCLUDED.presentation_order,
+          is_presented = EXCLUDED.is_presented,
+          is_revealed = EXCLUDED.is_revealed
       `, [sessionId, question.id, i, isPresented, isRevealed]);
     }
 
-    // 3. Insert game_participants and their answers
-    // Clear existing participants first
-    await client.query('DELETE FROM game_participants WHERE game_session_id = $1', [sessionId]);
-
+    // 3. Insert or update game_participants and their answers
+    // Use UPSERT instead of DELETE+INSERT to preserve participant IDs
     for (const player of Object.values(room.players)) {
-      // Insert participant with user_id from guest/registered account
+      // Skip spectators from database saves
+      if (player.isSpectator) continue;
+
+      // Insert or update participant with user_id from guest/registered account
       const participantResult = await client.query(`
         INSERT INTO game_participants (
           user_id, game_session_id, display_name, score,
           is_connected, socket_id, joined_at, last_seen
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (user_id, game_session_id) DO UPDATE SET
+          display_name = EXCLUDED.display_name,
+          is_connected = EXCLUDED.is_connected,
+          socket_id = EXCLUDED.socket_id,
+          last_seen = EXCLUDED.last_seen
         RETURNING id
       `, [
         player.userId || null, // user_id from guest or registered account
@@ -406,6 +415,19 @@ const saveSession = async (roomCode, room) => {
           }
         }
       }
+    }
+
+    // Remove participants who are no longer in the room (kicked/left)
+    const currentUserIds = Object.values(room.players)
+      .filter(p => !p.isSpectator && p.userId)
+      .map(p => p.userId);
+
+    if (currentUserIds.length > 0) {
+      await client.query(`
+        DELETE FROM game_participants
+        WHERE game_session_id = $1
+          AND user_id NOT IN (${currentUserIds.map((_, i) => `$${i + 2}`).join(', ')})
+      `, [sessionId, ...currentUserIds]);
     }
 
     await client.query('COMMIT');
@@ -2272,7 +2294,7 @@ const liveRooms = {}; // { roomCode: { quizFilename, quizId, quizData (from DB),
 let quizOptions = { answerDisplayTime: 30 }; // Default options
 
 // Periodic Auto-Save Configuration
-const AUTO_SAVE_INTERVAL = 60000; // 60 seconds
+const AUTO_SAVE_INTERVAL = 120000; // 120 seconds (2 minutes) - reduces database load while maintaining data safety
 const autoSaveIntervals = new Map(); // Track auto-save interval IDs per room
 
 // Start periodic auto-save for a room
@@ -2293,7 +2315,9 @@ function startAutoSave(roomCode) {
     if (sessionHasAnswers(room)) {
       try {
         await saveSession(roomCode, room);
-        console.log(`💾 [AUTO-SAVE] Room ${roomCode} saved to database`);
+        if (VERBOSE_LOGGING) {
+          console.log(`💾 [AUTO-SAVE] Room ${roomCode} saved to database`);
+        }
       } catch (err) {
         console.error(`❌ [AUTO-SAVE] Failed to save room ${roomCode}:`, err);
       }
@@ -2301,7 +2325,9 @@ function startAutoSave(roomCode) {
   }, AUTO_SAVE_INTERVAL);
 
   autoSaveIntervals.set(roomCode, intervalId);
-  console.log(`⏰ [AUTO-SAVE] Started for room ${roomCode} (every ${AUTO_SAVE_INTERVAL / 1000}s)`);
+  if (VERBOSE_LOGGING) {
+    console.log(`⏰ [AUTO-SAVE] Started for room ${roomCode} (every ${AUTO_SAVE_INTERVAL / 1000}s)`);
+  }
 }
 
 // Stop periodic auto-save for a room
@@ -2310,7 +2336,9 @@ function stopAutoSave(roomCode) {
   if (intervalId) {
     clearInterval(intervalId);
     autoSaveIntervals.delete(roomCode);
-    console.log(`⏹️ [AUTO-SAVE] Stopped for room ${roomCode}`);
+    if (VERBOSE_LOGGING) {
+      console.log(`⏹️ [AUTO-SAVE] Stopped for room ${roomCode}`);
+    }
   }
 }
 
@@ -2735,21 +2763,28 @@ io.on('connection', (socket) => {
       if (activeConnection) {
         const [activeSocketId] = activeConnection;
 
-        // Verify the active socket is actually still connected
-        const activeSocket = io.sockets.sockets.get(activeSocketId);
-
-        if (activeSocket && activeSocket.connected) {
-          // Truly active connection exists - reject this as duplicate
-          console.warn(`[DUPLICATE BLOCKED] ${playerUsername} attempted to join but is already connected via socket ${activeSocketId}`);
-          socket.emit('roomError', `Username "${playerUsername}" is already connected in this room. Please close other tabs/browsers.`);
-
-          // Clean up the rejected socket
-          socket.leave(roomCode);
-          return;
+        // Check if this is the same socket trying to rejoin (shouldn't happen, but handle it)
+        if (activeSocketId === socket.id) {
+          console.log(`[RECONNECT] ${playerUsername} socket ${activeSocketId} is already in room - updating state`);
+          // Just update the existing entry - fall through to state restoration below
         } else {
-          // Socket marked as connected but isn't actually - it's a zombie, clean it up
-          console.log(`[ZOMBIE CLEANUP] ${playerUsername} socket ${activeSocketId} marked connected but not found - cleaning up`);
-          delete room.players[activeSocketId];
+          // Different socket attempting to join - check if old socket is still connected
+          const activeSocket = io.sockets.sockets.get(activeSocketId);
+
+          if (activeSocket && activeSocket.connected) {
+            // Old socket is still connected - this is likely a reconnection race condition
+            // Force-disconnect the old socket and allow the new one to join
+            console.log(`[RECONNECT] ${playerUsername} reconnecting - force-disconnecting old socket ${activeSocketId} to allow new socket ${socket.id}`);
+            activeSocket.disconnect(true); // Force disconnect the old socket
+            delete room.players[activeSocketId]; // Clean up old player entry
+            // Fall through to allow new socket to join
+          } else {
+            // Socket marked as connected but isn't actually - it's a zombie, clean it up
+            if (VERBOSE_LOGGING) {
+              console.log(`[ZOMBIE CLEANUP] ${playerUsername} socket ${activeSocketId} marked connected but not found - cleaning up`);
+            }
+            delete room.players[activeSocketId];
+          }
         }
       }
 
@@ -2763,7 +2798,7 @@ io.on('connection', (socket) => {
         zombiesRemoved++;
       }
 
-      if (zombiesRemoved > 0 && !isSpectator) {
+      if (zombiesRemoved > 0 && !isSpectator && VERBOSE_LOGGING) {
         console.log(`[ZOMBIE CLEANUP] Removed ${zombiesRemoved} stale connection(s) for ${playerUsername}`);
       }
 
@@ -3187,12 +3222,16 @@ setInterval(() => {
         // Player has game data - keep entry but mark as disconnected
         player.connected = false;
         player.connectionState = 'disconnected';
-        console.log(`[ZOMBIE CLEANUP] Marked ${zombie.name} (${zombie.username}) as disconnected (preserving ${Object.keys(player.answers).length} answers)`);
+        if (VERBOSE_LOGGING) {
+          console.log(`[ZOMBIE CLEANUP] Marked ${zombie.name} (${zombie.username}) as disconnected (preserving ${Object.keys(player.answers).length} answers)`);
+        }
       } else {
         // No game data - safe to remove completely
         delete room.players[zombie.socketId];
         totalZombiesRemoved++;
-        console.log(`[ZOMBIE CLEANUP] Removed stale ${zombie.reason} connection: ${zombie.name} (${zombie.username}) from room ${roomCode} (no answers)`);
+        if (VERBOSE_LOGGING) {
+          console.log(`[ZOMBIE CLEANUP] Removed stale ${zombie.reason} connection: ${zombie.name} (${zombie.username}) from room ${roomCode} (no answers)`);
+        }
       }
     }
 
@@ -3205,7 +3244,7 @@ setInterval(() => {
     }
   }
 
-  if (totalZombiesRemoved > 0) {
+  if (totalZombiesRemoved > 0 && VERBOSE_LOGGING) {
     console.log(`[ZOMBIE CLEANUP] Total zombies removed across all rooms: ${totalZombiesRemoved}`);
   }
 }, ZOMBIE_CLEANUP_INTERVAL);

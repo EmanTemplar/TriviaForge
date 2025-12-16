@@ -18,13 +18,13 @@ services:
     restart: unless-stopped
   app:
     # PRODUCTION/DOCKER HUB: Uses Docker Hub image (default)
-    image: emancodetemplar/triviaforge:latest
+    # image: emancodetemplar/triviaforge:latest
 
     # LOCAL DEVELOPMENT: Uncomment below to build from local Dockerfile
-    # build:
-    #  context: ./app
-    #  dockerfile: Dockerfile
-    # image: triviaforge:local
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: triviaforge:local
 
     container_name: triviagame-app
     ports:
@@ -38,6 +38,7 @@ services:
       APP_PORT: 3000
       NODE_ENV: ${NODE_ENV:-production}
       DEBUG_MODE: ${DEBUG_MODE:-false}
+      VERBOSE_LOGGING: ${VERBOSE_LOGGING:-false}
       DATABASE_URL: postgres://trivia:trivia@db:5432/trivia
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
       TZ: ${TZ:-America/New_York}
