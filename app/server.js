@@ -145,10 +145,7 @@ const registrationLimiter = rateLimit({
 // --------------------
 
 // Configure CSRF protection with csrf-csrf
-const {
-  generateToken, // Used to generate CSRF tokens
-  doubleCsrfProtection // Middleware to protect routes
-} = doubleCsrf({
+const csrfProtection = doubleCsrf({
   getSecret: () => process.env.CSRF_SECRET || 'your-csrf-secret-change-in-production',
   cookieName: 'x-csrf-token',
   cookieOptions: {
@@ -161,6 +158,9 @@ const {
   ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
   getTokenFromRequest: (req) => req.headers['x-csrf-token']
 });
+
+const generateCsrfToken = csrfProtection.generateCsrfToken;
+const doubleCsrfProtection = csrfProtection.doubleCsrfProtection;
 
 // --------------------
 // Database Helper Functions
@@ -553,7 +553,7 @@ const requireAdmin = async (req, res, next) => {
 
 // CSRF token endpoint - GET is excluded from CSRF protection
 app.get('/api/csrf-token', (req, res) => {
-  const csrfToken = generateToken(req, res);
+  const csrfToken = generateCsrfToken(req, res);
   res.json({ csrfToken });
 });
 
