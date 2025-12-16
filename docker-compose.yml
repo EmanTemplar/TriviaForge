@@ -41,6 +41,7 @@ services:
       VERBOSE_LOGGING: ${VERBOSE_LOGGING:-false}
       DATABASE_URL: postgres://trivia:trivia@db:5432/trivia
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+      CSRF_SECRET: ${CSRF_SECRET:-default-csrf-secret-change-in-production}
       TZ: ${TZ:-America/New_York}
       SERVER_URL: ${SERVER_URL:-http://localhost:3000}
       HOST_IP: ${HOST_IP:-}

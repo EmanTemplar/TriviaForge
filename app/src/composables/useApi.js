@@ -3,15 +3,44 @@ import { useAuthStore } from '@/stores/auth.js'
 
 const apiClient = axios.create({
   baseURL: window.location.origin,
-  timeout: 10000
+  timeout: 10000,
+  withCredentials: true // Enable cookies for CSRF tokens
 })
 
-// Add token to all requests
-apiClient.interceptors.request.use((config) => {
+// CSRF token cache
+let csrfToken = null
+
+// Fetch CSRF token from server
+const fetchCsrfToken = async () => {
+  try {
+    const response = await apiClient.get('/api/csrf-token')
+    csrfToken = response.data.csrfToken
+    return csrfToken
+  } catch (error) {
+    console.error('Failed to fetch CSRF token:', error)
+    return null
+  }
+}
+
+// Add token and CSRF token to all requests
+apiClient.interceptors.request.use(async (config) => {
   const authStore = useAuthStore()
+
+  // Add auth token
   if (authStore.token) {
     config.headers.Authorization = `Bearer ${authStore.token}`
   }
+
+  // Add CSRF token for state-changing methods
+  if (['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase())) {
+    if (!csrfToken) {
+      await fetchCsrfToken()
+    }
+    if (csrfToken) {
+      config.headers['x-csrf-token'] = csrfToken
+    }
+  }
+
   return config
 }, (error) => {
   return Promise.reject(error)

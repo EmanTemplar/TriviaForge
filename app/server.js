@@ -6,9 +6,11 @@ import http from 'http';
 import { Server } from 'socket.io';
 import QRCode from 'qrcode';
 import os from 'os';
-import xlsx from 'xlsx';
 import multer from 'multer';
 import ExcelJS from 'exceljs';
+import rateLimit from 'express-rate-limit';
+import { doubleCsrf } from 'csrf-csrf';
+import cookieParser from 'cookie-parser';
 import pkg from 'pg';
 const { Pool } = pkg;
 import { initializeDatabase } from './db-init.js';
@@ -51,6 +53,7 @@ const getLocalIP = () => {
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
 // Load .env file from root directory (for both Docker and local development)
 // When running locally, looks for .env in parent directory
@@ -111,6 +114,53 @@ pool.on('error', (err) => {
 
 // Database connection and initialization happens in db-init.js
 // No early connection test here to avoid confusing timeout errors
+
+// --------------------
+// Rate Limiting Configuration
+// --------------------
+
+// Rate limiter for authentication endpoints to prevent brute-force attacks
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per window
+  message: 'Too many login attempts. Please try again in 15 minutes.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Skip rate limiting in debug mode for testing
+  skip: () => DEBUG_ENABLED
+});
+
+// Rate limiter for player registration to prevent spam
+const registrationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // 10 registrations per hour per IP
+  message: 'Too many registration attempts. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => DEBUG_ENABLED
+});
+
+// --------------------
+// CSRF Protection Configuration
+// --------------------
+
+// Configure CSRF protection with csrf-csrf
+const {
+  generateToken, // Used to generate CSRF tokens
+  doubleCsrfProtection // Middleware to protect routes
+} = doubleCsrf({
+  getSecret: () => process.env.CSRF_SECRET || 'your-csrf-secret-change-in-production',
+  cookieName: 'x-csrf-token',
+  cookieOptions: {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 3600000 // 1 hour
+  },
+  size: 64,
+  ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
+  getTokenFromRequest: (req) => req.headers['x-csrf-token']
+});
 
 // --------------------
 // Database Helper Functions
@@ -501,17 +551,21 @@ const requireAdmin = async (req, res, next) => {
 // Routes: Simple Authentication
 // --------------------
 
+// CSRF token endpoint - GET is excluded from CSRF protection
+app.get('/api/csrf-token', (req, res) => {
+  const csrfToken = generateToken(req, res);
+  res.json({ csrfToken });
+});
+
 // Simple password check
-app.post('/api/auth/check', (req, res) => {
+app.post('/api/auth/check', authLimiter, doubleCsrfProtection, (req, res) => {
   const { password } = req.body;
-  console.log('🔑 Auth attempt - Password provided:', password ? 'yes' : 'no');
-  console.log('🔑 Expected password:', ADMIN_PASSWORD);
-  
+
   if (password === ADMIN_PASSWORD) {
-    console.log('✅ Auth successful');
+    console.log('✅ Admin auth successful');
     res.json({ success: true });
   } else {
-    console.log('❌ Auth failed');
+    console.log('❌ Admin auth failed');
     res.status(401).json({ success: false });
   }
 });
@@ -674,7 +728,7 @@ app.get('/api/quizzes/:filename', requireAdmin, async (req, res) => {
 });
 
 // Create new quiz (in database)
-app.post('/api/quizzes', requireAdmin, async (req, res) => {
+app.post('/api/quizzes', doubleCsrfProtection, requireAdmin, async (req, res) => {
   const { title, description, questions } = req.body;
   const client = await pool.connect();
 
@@ -736,7 +790,7 @@ app.post('/api/quizzes', requireAdmin, async (req, res) => {
 });
 
 // Update quiz (in database)
-app.put('/api/quizzes/:filename', requireAdmin, async (req, res) => {
+app.put('/api/quizzes/:filename', doubleCsrfProtection, requireAdmin, async (req, res) => {
   const client = await pool.connect();
 
   try {
@@ -832,7 +886,7 @@ app.put('/api/quizzes/:filename', requireAdmin, async (req, res) => {
 });
 
 // Delete quiz (soft delete - sets is_active = false)
-app.delete('/api/quizzes/:filename', requireAdmin, async (req, res) => {
+app.delete('/api/quizzes/:filename', doubleCsrfProtection, requireAdmin, async (req, res) => {
   try {
     // Extract quiz ID from filename
     const filename = req.params.filename;
@@ -965,17 +1019,23 @@ app.get('/api/quiz-template', async (req, res) => {
 });
 
 // Import quiz from Excel
-app.post('/api/import-quiz', upload.single('file'), async (req, res) => {
+app.post('/api/import-quiz', doubleCsrfProtection, requireAdmin, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // Parse Excel file
-    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
+    // Parse Excel file with ExcelJS
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+    const worksheet = workbook.worksheets[0];
+
+    // Convert worksheet to array format (similar to xlsx.utils.sheet_to_json with header: 1)
+    const data = [];
+    worksheet.eachRow((row) => {
+      // ExcelJS row.values is 1-indexed, slice(1) to make it 0-indexed like xlsx
+      data.push(row.values.slice(1));
+    });
 
     // Extract quiz metadata (first 2 rows)
     if (data.length < 6) {
@@ -1167,7 +1227,7 @@ app.post('/api/auth/logout', requireAuth, async (req, res) => {
 });
 
 // Player registration - upgrade guest account to player account
-app.post('/api/auth/register-player', async (req, res) => {
+app.post('/api/auth/register-player', registrationLimiter, doubleCsrfProtection, async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -1370,7 +1430,7 @@ app.post('/api/auth/check-username', async (req, res) => {
 });
 
 // Player login (for registered accounts)
-app.post('/api/auth/player-login', async (req, res) => {
+app.post('/api/auth/player-login', authLimiter, doubleCsrfProtection, async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -1630,7 +1690,7 @@ app.get('/api/users', requireAdmin, async (req, res) => {
 });
 
 // Delete user (admin only)
-app.delete('/api/users/:userId', requireAdmin, async (req, res) => {
+app.delete('/api/users/:userId', doubleCsrfProtection, requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -1660,7 +1720,7 @@ app.delete('/api/users/:userId', requireAdmin, async (req, res) => {
 });
 
 // Downgrade user from player to guest (admin only)
-app.post('/api/users/:userId/downgrade', requireAdmin, async (req, res) => {
+app.post('/api/users/:userId/downgrade', doubleCsrfProtection, requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -1696,7 +1756,7 @@ app.post('/api/users/:userId/downgrade', requireAdmin, async (req, res) => {
 });
 
 // Reset a user's password (admin only)
-app.post('/api/users/:userId/reset-password', requireAdmin, async (req, res) => {
+app.post('/api/users/:userId/reset-password', doubleCsrfProtection, requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -1793,7 +1853,7 @@ app.get('/api/banned-names', requireAdmin, async (req, res) => {
 });
 
 // Add a banned display name (admin only)
-app.post('/api/banned-names', requireAdmin, async (req, res) => {
+app.post('/api/banned-names', doubleCsrfProtection, requireAdmin, async (req, res) => {
   try {
     const { pattern, patternType } = req.body;
     const adminUserId = req.user.id;
@@ -1830,7 +1890,7 @@ app.post('/api/banned-names', requireAdmin, async (req, res) => {
 });
 
 // Remove a banned display name (admin only)
-app.delete('/api/banned-names/:id', requireAdmin, async (req, res) => {
+app.delete('/api/banned-names/:id', doubleCsrfProtection, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
