@@ -736,7 +736,7 @@ const showCreateQuizModal = async () => {
 const downloadTemplate = async () => {
   try {
     const response = await get('/api/quiz-template', { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response]))
+    const url = window.URL.createObjectURL(response.data)
     const link = document.createElement('a')
     link.href = url
     link.setAttribute('download', 'quiz_template.xlsx')
