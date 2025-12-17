@@ -23,7 +23,7 @@ const fetchCsrfToken = async () => {
 }
 
 // Add token and CSRF token to all requests
-apiClient.interceptors.request.use(async (config) => {
+apiClient.interceptors.request.use((config) => {
   const authStore = useAuthStore()
 
   // Add auth token
@@ -32,15 +32,24 @@ apiClient.interceptors.request.use(async (config) => {
   }
 
   // Add CSRF token for state-changing methods
-  if (['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase())) {
-    if (!csrfToken) {
-      await fetchCsrfToken()
-    }
+  const method = config.method?.toLowerCase()
+  if (['post', 'put', 'delete', 'patch'].includes(method)) {
+    // If CSRF token is already cached, use it synchronously
     if (csrfToken) {
       config.headers['x-csrf-token'] = csrfToken
+      return config
     }
+
+    // Otherwise, fetch it asynchronously
+    return fetchCsrfToken().then(() => {
+      if (csrfToken) {
+        config.headers['x-csrf-token'] = csrfToken
+      }
+      return config
+    })
   }
 
+  // For GET/HEAD/OPTIONS, return synchronously
   return config
 }, (error) => {
   return Promise.reject(error)
