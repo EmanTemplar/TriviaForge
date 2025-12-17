@@ -736,13 +736,19 @@ const showCreateQuizModal = async () => {
 const downloadTemplate = async () => {
   try {
     const response = await get('/api/quiz-template', { responseType: 'blob' })
-    const url = window.URL.createObjectURL(response.data)
+    // Ensure blob has correct MIME type
+    const blob = new Blob([response.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    })
+    const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
     link.setAttribute('download', 'quiz_template.xlsx')
     document.body.appendChild(link)
     link.click()
     link.parentNode.removeChild(link)
+    // Clean up the URL object
+    window.URL.revokeObjectURL(url)
   } catch (err) {
     showAlert('Error downloading template: ' + err.message, 'Error')
   }
