@@ -1033,7 +1033,7 @@ app.post('/api/import-quiz', doubleCsrfProtection, requireAdmin, upload.single('
 
     // Convert worksheet to array format (similar to xlsx.utils.sheet_to_json with header: 1)
     const data = [];
-    worksheet.eachRow((row) => {
+    worksheet.eachRow({ includeEmpty: true }, (row) => {
       // ExcelJS row.values is 1-indexed, slice(1) to make it 0-indexed like xlsx
       data.push(row.values.slice(1));
     });
