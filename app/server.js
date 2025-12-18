@@ -1038,6 +1038,9 @@ app.post('/api/import-quiz', doubleCsrfProtection, requireAdmin, upload.single('
       data.push(row.values.slice(1));
     });
 
+    console.log('📊 Parsed data length:', data.length);
+    console.log('📊 First 6 rows:', JSON.stringify(data.slice(0, 6), null, 2));
+
     // Extract quiz metadata (first 2 rows)
     if (data.length < 6) {
       return res.status(400).json({ error: 'Invalid template format. Please use the provided template.' });
@@ -1045,6 +1048,9 @@ app.post('/api/import-quiz', doubleCsrfProtection, requireAdmin, upload.single('
 
     const title = data[0][1] || 'Untitled Quiz';
     const description = data[1][1] || '';
+
+    console.log('📊 Extracted title:', title);
+    console.log('📊 Extracted description:', description);
 
     // Extract questions (starting from row 5, after the index reference and header rows)
     const questions = [];
@@ -1067,8 +1073,11 @@ app.post('/api/import-quiz', doubleCsrfProtection, requireAdmin, upload.single('
       // Get correct answer index (column 11, since columns 1-10 are choices)
       const correctChoice = parseInt(row[11]);
 
+      console.log(`📊 Row ${i + 1}: Question="${questionText}", Choices=${choices.length}, CorrectChoice=${correctChoice}, row[11]=${row[11]}`);
+
       // Validate
       if (!questionText || choices.length < 2 || isNaN(correctChoice) || correctChoice < 0 || correctChoice >= choices.length) {
+        console.log(`❌ Validation failed at row ${i + 1}: questionText=${!!questionText}, choices=${choices.length}, correctChoice=${correctChoice}, valid range: 0-${choices.length - 1}`);
         return res.status(400).json({
           error: `Invalid question at row ${i + 1}: Must have question text, at least 2 choices, and valid correct answer index`
         });
@@ -1083,21 +1092,26 @@ app.post('/api/import-quiz', doubleCsrfProtection, requireAdmin, upload.single('
       });
     }
 
+    console.log(`📊 Total questions extracted: ${questions.length}`);
+
     if (questions.length === 0) {
       return res.status(400).json({ error: 'No valid questions found in the file' });
     }
 
     // Save quiz to database
+    console.log('📊 Attempting to save to database...');
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
       // Insert quiz
+      console.log(`📊 Inserting quiz: title="${title}", description="${description}"`);
       const quizResult = await client.query(
         'INSERT INTO quizzes (title, description, created_by) VALUES ($1, $2, $3) RETURNING id',
         [title, description, 1] // TODO: Use actual user ID from auth session
       );
       const quizId = quizResult.rows[0].id;
+      console.log(`📊 Quiz inserted with ID: ${quizId}`);
 
       // Insert each question with answers
       for (let i = 0; i < questions.length; i++) {
@@ -1127,6 +1141,7 @@ app.post('/api/import-quiz', doubleCsrfProtection, requireAdmin, upload.single('
       }
 
       await client.query('COMMIT');
+      console.log('📊 Database transaction committed successfully');
 
       const filename = `quiz_${quizId}.json`;
       res.json({
@@ -1137,6 +1152,7 @@ app.post('/api/import-quiz', doubleCsrfProtection, requireAdmin, upload.single('
         questionCount: questions.length
       });
     } catch (dbErr) {
+      console.error('❌ Database error:', dbErr);
       await client.query('ROLLBACK');
       throw dbErr;
     } finally {

@@ -771,8 +771,10 @@ const handleExcelUpload = async (e) => {
     loadQuizzes()
     setTimeout(() => { importStatus.value = '' }, 3000)
   } catch (err) {
-    importStatus.value = `Error: ${err.message}`
-    setTimeout(() => { importStatus.value = '' }, 3000)
+    // Show detailed error message from server response
+    const errorMessage = err.response?.data?.error || err.message
+    importStatus.value = `Error: ${errorMessage}`
+    setTimeout(() => { importStatus.value = '' }, 5000)
   }
 }
 
