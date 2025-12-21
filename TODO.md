@@ -2,6 +2,89 @@
 
 This document tracks planned features, improvements, and tasks for future development.
 
+## 🏗️ Active Development: Architecture Refactoring (v4.0.0)
+
+### Phase 1: Foundation Layer ✅ IN PROGRESS (2025-12-21)
+**Branch:** `refactor/architecture-phase1-foundation`
+**Status:** Foundation layer complete, ready for Phase 2
+**Goal:** Create structural building blocks for scalable development
+
+**Completed:**
+- ✅ Created organized `src/` directory structure
+- ✅ Extracted all constants to `src/config/constants.js` (500+ lines)
+  - User roles, room states, API endpoints, Socket.IO events
+  - HTTP status codes, error codes, validation rules
+  - Database table names, environment variables
+  - Single source of truth for all magic strings
+- ✅ Created custom error classes (`src/utils/errors.js`, 400+ lines)
+  - AppError, ValidationError, NotFoundError, UnauthorizedError
+  - ForbiddenError, ConflictError, BadRequestError, DatabaseError
+  - RoomError, UserError, SessionExpiredError, PasswordResetRequiredError
+  - Standardized error formatting with HTTP status codes
+- ✅ Created response utilities (`src/utils/responses.js`)
+  - Standardized success/error response formatting
+  - Pagination helpers, bulk operation responses
+  - Consistent API response structure
+- ✅ Created validation utilities (`src/utils/validators.js`, 500+ lines)
+  - Username, password, email, display name validators
+  - Room code, quiz title, question text validators
+  - Express middleware for body/query/param validation
+  - Input sanitization (XSS prevention)
+- ✅ Created database configuration (`src/config/database.js`)
+  - PostgreSQL connection pool with health checks
+  - Transaction helpers with automatic rollback
+  - Query execution with error handling
+  - Pool statistics monitoring
+- ✅ Created environment configuration (`src/config/environment.js`)
+  - Centralized environment variable access
+  - Type-safe configuration with validation
+  - Development/production mode detection
+  - Application info helpers
+- ✅ Created error handler middleware (`src/middleware/errorHandler.js`)
+  - Global error handling for Express routes
+  - Operational vs programming error detection
+  - Request context logging
+  - Async route wrapper for promise handling
+
+**Files Created:**
+- `app/src/config/constants.js`
+- `app/src/config/database.js`
+- `app/src/config/environment.js`
+- `app/src/utils/errors.js`
+- `app/src/utils/responses.js`
+- `app/src/utils/validators.js`
+- `app/src/middleware/errorHandler.js`
+
+**Benefits Delivered:**
+- 🎯 **DRY Principle:** Eliminated 100+ instances of magic strings
+- 🛡️ **Type Safety:** JSDoc-compatible type hints for better IDE support
+- 🔧 **Maintainability:** Single source of truth for constants
+- ✅ **Consistency:** Standardized error handling and validation
+- 📊 **Observability:** Better logging and error tracking
+- 🚀 **Scalability:** Foundation for modular architecture
+
+**Next Steps (Phase 2):**
+- [ ] Extract authentication routes from server.js
+- [ ] Extract quiz routes from server.js
+- [ ] Extract session routes from server.js
+- [ ] Extract user routes from server.js
+- [ ] Create route index and organize endpoints
+- **Target:** Reduce server.js from 4,275 to ~3,300 lines
+
+**Architecture Roadmap:**
+- **Phase 1:** Foundation layer (constants, errors, validation) ✅ COMPLETE
+- **Phase 2:** Extract routes into separate modules (Week 1-2)
+- **Phase 3:** Create service layer (RoomManager, SessionManager, QuizService) (Week 3-4)
+- **Phase 4:** Refactor large Vue components (AdminPage, PlayerPage) (Week 5-6)
+- **Phase 5:** Add unit tests for utilities and services (Week 7-8)
+
+**Documentation:**
+- See `DEV-SUMMARY.md` for detailed architectural analysis
+- All new modules include JSDoc comments for IDE autocomplete
+- Consistent import/export patterns using ES6 modules
+
+---
+
 ## Recent Completed Features (v3.2.2)
 
 ### 1. Player Reconnection Fix
