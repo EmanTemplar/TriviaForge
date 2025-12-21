@@ -13,7 +13,7 @@ import Notification from '@/components/common/Notification.vue'
 <style scoped>
 #app-container {
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }

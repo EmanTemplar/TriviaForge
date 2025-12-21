@@ -655,6 +655,9 @@ app.post('/api/options', requireAdmin, async (req, res) => {
       DO UPDATE SET setting_value = $1, updated_at = CURRENT_TIMESTAMP
     `, [answerDisplayTime.toString()]);
 
+    // Reload quiz options to update in-memory cache
+    await loadQuizOptions();
+
     res.json({ success: true, options: req.body });
   } catch (err) {
     console.error('Error saving options:', err);

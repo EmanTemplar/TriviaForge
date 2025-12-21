@@ -1259,7 +1259,7 @@ const getQuestionStatusText = (q) => {
 .player-page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
   background: linear-gradient(135deg, #1a1a1a, #2b2b2b);
   color: #fff;
 }
@@ -1410,11 +1410,11 @@ const getQuestionStatusText = (q) => {
 
 .player-container {
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
   gap: 1rem;
   padding: 1rem;
-  min-height: 0;
   position: relative;
+  box-sizing: border-box;
 }
 
 /* Missed Questions Banner */
@@ -1450,8 +1450,8 @@ const getQuestionStatusText = (q) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 .waiting-display {
@@ -1532,9 +1532,11 @@ const getQuestionStatusText = (q) => {
 
 .question-display-area {
   width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  box-sizing: border-box;
 }
 
 .question-text {
@@ -1548,9 +1550,10 @@ const getQuestionStatusText = (q) => {
 
 .choices-container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.5rem;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .choice-btn {
@@ -1562,7 +1565,15 @@ const getQuestionStatusText = (q) => {
   font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.3s;
-  fill-rule: false;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  -ms-hyphens: auto;
+  hyphens: auto;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .choice-btn:hover:not(:disabled) {

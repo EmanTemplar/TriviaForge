@@ -1143,6 +1143,13 @@ onUnmounted(() => {
   padding: 0;
   font-size: 0.9rem;
   color: #aaa;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  -ms-hyphens: auto;
+  hyphens: auto;
 }
 
 .presenter-controls {

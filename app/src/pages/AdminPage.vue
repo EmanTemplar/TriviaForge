@@ -73,7 +73,10 @@
 
         <!-- Middle Column: Question Editor (Fixed) -->
         <section class="question-editor-panel" @mousedown.stop="startResize(2, $event)">
-          <h2>Question Editor</h2>
+          <div class="editor-header">
+            <h2>Question Editor</h2>
+            <button @click="clearQuestionForm" class="btn-new-question" title="Start new question">+ New Question</button>
+          </div>
           <textarea v-model="questionText" placeholder="Question Text" class="question-text-input" rows="3"></textarea>
 
           <div class="choices-header">
@@ -349,7 +352,7 @@
             <h2>About TriviaForge</h2>
             <div class="version-box">
               <div class="version-label">Version</div>
-              <div class="version-number">3.3.0</div>
+              <div class="version-number">3.3.1</div>
             </div>
           </div>
 
@@ -428,7 +431,7 @@
               With features like session resumption, user authentication, player connection monitoring, and mobile-optimized interfaces, TriviaForge provides a seamless experience for presenters and players. Whether you're running classroom quizzes, corporate events, or casual game nights, TriviaForge adapts to your needs.
             </p>
             <p>
-              Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. Version 3.3.0 implements critical Phase 1 security improvements including CSRF protection, rate limiting on authentication endpoints, secure Excel import with ExcelJS (replacing vulnerable xlsx package), and enhanced error handling for better user experience.
+              Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. Version 3.3.1 includes critical Phase 1 security improvements (CSRF protection, rate limiting, secure Excel import with ExcelJS) plus UI/UX bug fixes: answer timeout loading from Admin Options, long word wrapping and hyphenation across all views, mobile scrolling for players, background gradient fixes, and viewport-constrained display scaling.
             </p>
           </div>
 
@@ -577,7 +580,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Modal from '@/components/common/Modal.vue'
 import { useApi } from '@/composables/useApi.js'
@@ -1482,6 +1485,14 @@ const getAccuracy = (result) => {
   return ((result.correct / result.answered) * 100).toFixed(1)
 }
 
+// Watch for quiz deselection to clear question editor
+watch(selectedQuiz, (newQuiz) => {
+  // Clear question editor fields when quiz is deselected or changed
+  if (!newQuiz) {
+    clearQuestionForm()
+  }
+})
+
 // Lifecycle
 onMounted(() => {
   loadQuizzes()
@@ -1683,6 +1694,35 @@ onUnmounted(() => {
 .questions-sidebar h2 {
   margin: 0 0 1rem 0;
   font-size: 1.1rem;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.editor-header h2 {
+  margin: 0;
+}
+
+.btn-new-question {
+  padding: 0.4rem 0.8rem;
+  background: rgba(79, 195, 247, 0.2);
+  border: 1px solid rgba(79, 195, 247, 0.4);
+  border-radius: 6px;
+  color: #4fc3f7;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-new-question:hover {
+  background: rgba(79, 195, 247, 0.3);
+  border-color: rgba(79, 195, 247, 0.6);
 }
 
 .question-editor-panel h3 {
