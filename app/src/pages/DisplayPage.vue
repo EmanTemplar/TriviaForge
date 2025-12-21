@@ -295,10 +295,12 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 3rem;
+  padding: 2rem;
   text-align: center;
   overflow: hidden;
   min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
 .waiting-display {
@@ -322,10 +324,14 @@ onUnmounted(() => {
 
 .question-display-area {
   width: 100%;
+  max-width: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   animation: fadeIn 0.3s ease-in;
+  box-sizing: border-box;
+  min-height: 0;
 }
 
 .question-text {
@@ -338,33 +344,42 @@ onUnmounted(() => {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  text-align: center;
   color: #fff;
+  flex-shrink: 0;
 }
 
 .choices-display {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: min-content;
+  gap: 1rem;
   width: 100%;
-  max-width: 1000px;
-  margin: 0 auto;
   box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  align-content: start;
 }
 
 .choice-display {
-  padding: 2rem;
+  padding: 1rem;
   background: rgba(255, 255, 255, 0.1);
   border: 3px solid rgba(255, 255, 255, 0.2);
   border-radius: 15px;
-  font-size: 1.5rem;
+  font-size: clamp(1rem, 2vw, 1.5rem);
   text-align: center;
   transition: all 0.3s;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  word-break: break-word;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  -ms-hyphens: auto;
+  hyphens: auto;
   box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-  line-height: 1.4;
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.3;
   color: #fff;
 }
 
