@@ -17,6 +17,7 @@ import { initializeDatabase } from './db-init.js';
 import authRoutes from './src/routes/auth.routes.js';
 import quizRoutes, { templateRouter, importRouter } from './src/routes/quiz.routes.js';
 import sessionRoutes from './src/routes/session.routes.js';
+import userRoutes from './src/routes/user.routes.js';
 import { requireAuth, requireAdmin } from './src/middleware/auth.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { env } from './src/config/environment.js';
@@ -484,6 +485,17 @@ app.use('/api/sessions', (req, res, next) => {
 });
 app.use('/api/sessions', sessionRoutes);
 
+// Routes: User Management (NEW - Modular Architecture)
+// Apply CSRF protection to user mutation routes
+app.use('/api/users', (req, res, next) => {
+  // Apply CSRF protection to DELETE and POST (mutation operations)
+  if (['DELETE', 'POST'].includes(req.method)) {
+    return doubleCsrfProtection(req, res, next);
+  }
+  next();
+});
+app.use('/api/users', userRoutes);
+
 // Simple password check
 app.post('/api/auth/check', authLimiter, doubleCsrfProtection, (req, res) => {
   const { password } = req.body;
@@ -604,147 +616,10 @@ app.post('/api/options', requireAdmin, async (req, res) => {
 // See lines 528-534 for new route registration
 
 // --------------------
-// Routes: User Management
+// Routes: User Management (REMOVED - Now using modular architecture)
 // --------------------
-
-// Get all users (admin only)
-app.get('/api/users', requireAdmin, async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT
-        u.id,
-        u.username,
-        u.account_type,
-        u.created_at,
-        COUNT(DISTINCT gp.game_session_id) as games_played,
-        MAX(gs.created_at) as last_seen
-      FROM users u
-      LEFT JOIN game_participants gp ON u.id = gp.user_id
-      LEFT JOIN game_sessions gs ON gp.game_session_id = gs.id
-      WHERE u.account_type IN ('guest', 'player')
-      GROUP BY u.id, u.username, u.account_type, u.created_at
-      ORDER BY u.created_at DESC
-    `);
-
-    const users = result.rows.map(row => ({
-      id: row.id,
-      username: row.username,
-      accountType: row.account_type,
-      createdAt: row.created_at,
-      gamesPlayed: parseInt(row.games_played),
-      lastSeen: row.last_seen
-    }));
-
-    res.json(users);
-  } catch (err) {
-    console.error('Error fetching users:', err);
-    res.status(500).json({ error: 'Failed to fetch users' });
-  }
-});
-
-// Delete user (admin only)
-app.delete('/api/users/:userId', doubleCsrfProtection, requireAdmin, async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Prevent deleting admin users
-    const userCheck = await pool.query(
-      'SELECT account_type FROM users WHERE id = $1',
-      [userId]
-    );
-
-    if (userCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    if (userCheck.rows[0].account_type === 'admin') {
-      return res.status(403).json({ error: 'Cannot delete admin users' });
-    }
-
-    // Delete user and all associated data (cascading deletes handled by database)
-    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
-
-    console.log(`User ${userId} deleted by admin`);
-    res.json({ success: true, message: 'User deleted successfully' });
-  } catch (err) {
-    console.error('Error deleting user:', err);
-    res.status(500).json({ error: 'Failed to delete user' });
-  }
-});
-
-// Downgrade user from player to guest (admin only)
-app.post('/api/users/:userId/downgrade', doubleCsrfProtection, requireAdmin, async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Check user exists and is a player
-    const userCheck = await pool.query(
-      'SELECT account_type FROM users WHERE id = $1',
-      [userId]
-    );
-
-    if (userCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    if (userCheck.rows[0].account_type !== 'player') {
-      return res.status(400).json({ error: 'User is not a registered player' });
-    }
-
-    // Downgrade to guest (remove password, change account type)
-    await pool.query(
-      'UPDATE users SET account_type = $1, password_hash = NULL WHERE id = $2',
-      ['guest', userId]
-    );
-
-    // Invalidate all user sessions
-    await pool.query('DELETE FROM user_sessions WHERE user_id = $1', [userId]);
-
-    console.log(`User ${userId} downgraded to guest by admin`);
-    res.json({ success: true, message: 'User downgraded to guest successfully' });
-  } catch (err) {
-    console.error('Error downgrading user:', err);
-    res.status(500).json({ error: 'Failed to downgrade user' });
-  }
-});
-
-// Reset a user's password (admin only)
-app.post('/api/users/:userId/reset-password', doubleCsrfProtection, requireAdmin, async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Check user exists and is a registered player
-    const userCheck = await pool.query(
-      'SELECT username, account_type FROM users WHERE id = $1',
-      [userId]
-    );
-
-    if (userCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    if (userCheck.rows[0].account_type !== 'player') {
-      return res.status(400).json({ error: 'User is not a registered player' });
-    }
-
-    const username = userCheck.rows[0].username;
-
-    // Reset password (set to NULL) - user will be prompted to set new password on next login
-    await pool.query(
-      'UPDATE users SET password_hash = NULL WHERE id = $1',
-      [userId]
-    );
-
-    // Invalidate all user sessions
-    await pool.query('DELETE FROM user_sessions WHERE user_id = $1', [userId]);
-
-    console.log(`Password reset for user ${username} (ID: ${userId}) by admin`);
-    res.json({ success: true, message: 'Password reset successfully. User will be prompted to set a new password on next login.' });
-  } catch (err) {
-    console.error('Error resetting password:', err);
-    res.status(500).json({ error: 'Failed to reset password' });
-  }
-});
+// User routes have been extracted to src/routes/user.routes.js
+// and src/controllers/user.controller.js
 
 // ============================================================================
 // Banned Display Names Management (Admin Only)
