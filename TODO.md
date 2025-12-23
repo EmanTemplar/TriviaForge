@@ -63,18 +63,43 @@ This document tracks planned features, improvements, and tasks for future develo
 - 📊 **Observability:** Better logging and error tracking
 - 🚀 **Scalability:** Foundation for modular architecture
 
-**Next Steps (Phase 2):**
-- [ ] Extract authentication routes from server.js
-- [ ] Extract quiz routes from server.js
-- [ ] Extract session routes from server.js
-- [ ] Extract user routes from server.js
-- [ ] Create route index and organize endpoints
-- **Target:** Reduce server.js from 4,275 to ~3,300 lines
+### Phase 2: REST API Routes Modularization ✅ COMPLETE (2025-12-22)
+**Branch:** `refactor/architecture-phase1-foundation`
+**Status:** All REST API routes extracted to modular architecture
+**Goal:** Separate route definitions from business logic for maintainability
+
+**Completed:**
+- ✅ Extract authentication routes (Phase 2a)
+  - Created `src/routes/auth.routes.js` - Route definitions
+  - Created `src/controllers/auth.controller.js` - Auth business logic
+  - Handles: login, logout, registration, password reset, token verification
+- ✅ Extract quiz routes (Phase 2b)
+  - Created `src/routes/quiz.routes.js` (115 lines) - Route definitions
+  - Created `src/controllers/quiz.controller.js` (720+ lines) - Quiz business logic
+  - Handles: CRUD operations, Excel import/export, quiz templates
+  - Removed ~580 lines from server.js
+- ✅ Extract session routes (Phase 2c)
+  - Created `src/routes/session.routes.js` (58 lines) - Route definitions
+  - Created `src/controllers/session.controller.js` (367 lines) - Session business logic
+  - Handles: List sessions (all/completed/incomplete), get session details, delete session
+  - Removed ~300 lines from server.js
+- ✅ Extract user routes (Phase 2d)
+  - Created `src/routes/user.routes.js` (62 lines) - Route definitions
+  - Created `src/controllers/user.controller.js` (170 lines) - User management logic
+  - Handles: List users, delete user, downgrade player to guest, reset password
+  - Removed ~140 lines from server.js
+- [ ] Create route index and organize endpoints (optional - routes working well as is)
+
+**Results:**
+- **server.js reduction:** 4,275 lines → 2,859 lines (33% reduction, 1,416 lines removed)
+- **Exceeded target:** Original target was 3,300 lines, achieved 2,859 lines (441 lines better)
+- **New architecture:** Clear separation of routes → controllers → database
+- **All features working:** No functionality lost, all endpoints tested and operational
 
 **Architecture Roadmap:**
 - **Phase 1:** Foundation layer (constants, errors, validation) ✅ COMPLETE
-- **Phase 2:** Extract routes into separate modules (Week 1-2)
-- **Phase 3:** Create service layer (RoomManager, SessionManager, QuizService) (Week 3-4)
+- **Phase 2:** Extract routes into separate modules ✅ COMPLETE
+- **Phase 3:** Create service layer (RoomManager, SessionManager, QuizService) - NEXT
 - **Phase 4:** Refactor large Vue components (AdminPage, PlayerPage) (Week 5-6)
 - **Phase 5:** Add unit tests for utilities and services (Week 7-8)
 
