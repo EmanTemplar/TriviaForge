@@ -22,6 +22,11 @@ import { requireAuth, requireAdmin } from './src/middleware/auth.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { env } from './src/config/environment.js';
 
+// Import services (Phase 3: Service Layer)
+import { roomService } from './src/services/room.service.js';
+import { sessionService } from './src/services/session.service.js';
+import { quizService } from './src/services/quiz.service.js';
+
 // --------------------
 // Helper: Auto-detect local IP
 // --------------------
@@ -179,79 +184,12 @@ const doubleCsrfProtection = csrfProtection.doubleCsrfProtection;
 /**
  * Fetch a complete quiz by ID with all questions and answers
  * Used by Socket.IO handlers for room management
+ * (Phase 3: Wrapper for quizService.getQuizById)
  * @param {number} quizId - The quiz ID to fetch
  * @returns {Promise<Object>} Quiz object with questions and answers
  */
 const getQuizById = async (quizId) => {
-  const client = await pool.connect();
-  try {
-    // Fetch quiz metadata
-    const quizResult = await client.query(
-      'SELECT id, title, description, answer_display_timeout, created_at FROM quizzes WHERE id = $1 AND is_active = TRUE',
-      [quizId]
-    );
-
-    if (quizResult.rows.length === 0) {
-      return null;
-    }
-
-    const quiz = quizResult.rows[0];
-
-    // Fetch questions with answers (using the view for convenience)
-    const questionsResult = await client.query(
-      `
-      SELECT
-        question_id,
-        question_text,
-        question_type,
-        question_order,
-        answer_id,
-        answer_text,
-        is_correct,
-        display_order
-      FROM quiz_full_details
-      WHERE quiz_id = $1
-      ORDER BY question_order, display_order
-    `,
-      [quizId]
-    );
-
-    // Group answers by question
-    const questionsMap = new Map();
-    for (const row of questionsResult.rows) {
-      if (!questionsMap.has(row.question_id)) {
-        questionsMap.set(row.question_id, {
-          id: row.question_id,
-          text: row.question_text,
-          type: row.question_type,
-          order: row.question_order,
-          choices: [],
-        });
-      }
-      questionsMap.get(row.question_id).choices.push({
-        id: row.answer_id,
-        text: row.answer_text,
-        isCorrect: row.is_correct,
-        order: row.display_order,
-      });
-    }
-
-    // Convert map to array sorted by question_order
-    const questions = Array.from(questionsMap.values()).sort(
-      (a, b) => a.order - b.order
-    );
-
-    return {
-      id: quiz.id,
-      title: quiz.title,
-      description: quiz.description,
-      answerDisplayTimeout: quiz.answer_display_timeout,
-      createdAt: quiz.created_at,
-      questions,
-    };
-  } finally {
-    client.release();
-  }
+  return await quizService.getQuizById(quizId);
 };
 
 // Use HOST_IP from environment (set by docker-compose), or auto-detect, or use SERVER_URL from .env
@@ -273,157 +211,10 @@ await fs.mkdir(COMPLETED_FOLDER, { recursive: true });
 // Old file-based function removed - use listQuizzesFromDB() instead
 
 // --------------------
-// Helper: save session to database
+// Helper: save session to database (Phase 3: Wrapper for sessionService.saveSession)
 // --------------------
 const saveSession = async (roomCode, room) => {
-  const client = await pool.connect();
-
-  try {
-    await client.query('BEGIN');
-
-    // 1. Insert or update game_sessions
-    // For resumed sessions, use resumedAt as the created_at timestamp
-    const sessionTimestamp = room.resumedAt || room.createdAt;
-
-    const sessionResult = await client.query(`
-      INSERT INTO game_sessions (
-        quiz_id, room_code, status, current_question_index,
-        created_at, completed_at, original_session_id
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      ON CONFLICT (room_code) DO UPDATE SET
-        status = $3,
-        current_question_index = $4,
-        completed_at = $6
-      RETURNING id
-    `, [
-      room.quizId,
-      roomCode,
-      room.status || 'in_progress',
-      room.currentQuestionIndex,
-      sessionTimestamp,
-      room.completedAt || null,
-      room.originalSessionId || null
-    ]);
-
-    const sessionId = sessionResult.rows[0].id;
-
-    // 2. Insert or update session_questions (track presented/revealed status)
-    // Use UPSERT instead of DELETE+INSERT to reduce queries
-    const presentedSet = new Set(room.presentedQuestions || []);
-    const revealedSet = new Set(room.revealedQuestions || []);
-
-    for (let i = 0; i < room.quizData.questions.length; i++) {
-      const question = room.quizData.questions[i];
-      const isPresented = presentedSet.has(i);
-      const isRevealed = revealedSet.has(i);
-
-      await client.query(`
-        INSERT INTO session_questions (
-          game_session_id, question_id, presentation_order,
-          is_presented, is_revealed
-        )
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (game_session_id, question_id) DO UPDATE SET
-          presentation_order = EXCLUDED.presentation_order,
-          is_presented = EXCLUDED.is_presented,
-          is_revealed = EXCLUDED.is_revealed
-      `, [sessionId, question.id, i, isPresented, isRevealed]);
-    }
-
-    // 3. Insert or update game_participants and their answers
-    // Use UPSERT instead of DELETE+INSERT to preserve participant IDs
-    for (const player of Object.values(room.players)) {
-      // Skip spectators from database saves
-      if (player.isSpectator) continue;
-
-      // Insert or update participant with user_id from guest/registered account
-      const participantResult = await client.query(`
-        INSERT INTO game_participants (
-          user_id, game_session_id, display_name, score,
-          is_connected, socket_id, joined_at, last_seen
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        ON CONFLICT (user_id, game_session_id) DO UPDATE SET
-          display_name = EXCLUDED.display_name,
-          is_connected = EXCLUDED.is_connected,
-          socket_id = EXCLUDED.socket_id,
-          last_seen = EXCLUDED.last_seen
-        RETURNING id
-      `, [
-        player.userId || null, // user_id from guest or registered account
-        sessionId,
-        player.name,
-        0, // score (calculated from correct answers)
-        player.connected || false,
-        player.id, // socket_id
-        new Date(),
-        new Date()
-      ]);
-
-      const participantId = participantResult.rows[0].id;
-
-      // 4. Insert participant answers
-      if (player.answers && typeof player.answers === 'object') {
-        for (const [questionIndexStr, choiceIndex] of Object.entries(player.answers)) {
-          const questionIndex = parseInt(questionIndexStr);
-          const question = room.quizData.questions[questionIndex];
-
-          if (question && question.id) {
-            // Find the answer_id for this choice
-            const answerResult = await client.query(`
-              SELECT id, is_correct
-              FROM answers
-              WHERE question_id = $1 AND display_order = $2
-            `, [question.id, choiceIndex]);
-
-            if (answerResult.rows.length > 0) {
-              const answer = answerResult.rows[0];
-
-              await client.query(`
-                INSERT INTO participant_answers (
-                  participant_id, question_id, answer_id, is_correct, answered_at
-                )
-                VALUES ($1, $2, $3, $4, $5)
-                ON CONFLICT (participant_id, question_id) DO NOTHING
-              `, [
-                participantId,
-                question.id,
-                answer.id,
-                answer.is_correct,
-                new Date()
-              ]);
-            }
-          }
-        }
-      }
-    }
-
-    // Remove participants who are no longer in the room (kicked/left)
-    const currentUserIds = Object.values(room.players)
-      .filter(p => !p.isSpectator && p.userId)
-      .map(p => p.userId);
-
-    if (currentUserIds.length > 0) {
-      await client.query(`
-        DELETE FROM game_participants
-        WHERE game_session_id = $1
-          AND user_id NOT IN (${currentUserIds.map((_, i) => `$${i + 2}`).join(', ')})
-      `, [sessionId, ...currentUserIds]);
-    }
-
-    await client.query('COMMIT');
-
-    console.log(`✅ Session ${roomCode} saved to database (session_id: ${sessionId})`);
-    return sessionId.toString();
-
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('❌ Error saving session to database:', err);
-    throw err;
-  } finally {
-    client.release();
-  }
+  return await sessionService.saveSession(roomCode, room);
 };
 
 // --------------------
@@ -749,7 +540,7 @@ app.post('/api/rooms/check-active', async (req, res) => {
     }
 
     // Filter room codes to only include those that exist in liveRooms
-    const activeRooms = roomCodes.filter(code => liveRooms[code] !== undefined);
+    const activeRooms = roomCodes.filter(code => roomService.liveRooms[code] !== undefined);
 
     res.json({ activeRooms });
   } catch (err) {
@@ -778,7 +569,7 @@ app.get('/api/player/progress/:roomCode', async (req, res) => {
       return res.status(400).json({ error: 'Username is required' });
     }
 
-    const room = liveRooms[roomCode];
+    const room = roomService.liveRooms[roomCode];
     if (!room) {
       return res.status(404).json({ error: 'Room not found or session ended' });
     }
@@ -839,7 +630,7 @@ app.get('/api/room/progress/:roomCode', async (req, res) => {
   try {
     const { roomCode } = req.params;
 
-    const room = liveRooms[roomCode];
+    const room = roomService.liveRooms[roomCode];
     if (!room) {
       return res.status(404).json({ error: 'Room not found or session ended' });
     }
@@ -906,58 +697,23 @@ const io = new Server(server, {
 });
 
 // --------------------
-// Live Rooms Logic with Session Recording
+// Live Rooms Logic with Session Recording (Phase 3: Using RoomService)
 // --------------------
-const liveRooms = {}; // { roomCode: { quizFilename, quizId, quizData (from DB), players: {}, presenterId, currentQuestionIndex, presentedQuestions: [], status, createdAt } }
+// REMOVED: const liveRooms = {}; - Now using roomService.liveRooms
 let quizOptions = { answerDisplayTime: 30 }; // Default options
 
-// Periodic Auto-Save Configuration
-const AUTO_SAVE_INTERVAL = 120000; // 120 seconds (2 minutes) - reduces database load while maintaining data safety
-const autoSaveIntervals = new Map(); // Track auto-save interval IDs per room
+// Periodic Auto-Save Configuration (Phase 3: Using SessionService)
+// REMOVED: const AUTO_SAVE_INTERVAL = 120000; - Now in sessionService
+// REMOVED: const autoSaveIntervals = new Map(); - Now managed by sessionService
 
-// Start periodic auto-save for a room
+// Start periodic auto-save for a room (Phase 3: Using SessionService)
 function startAutoSave(roomCode) {
-  // Don't start if already running
-  if (autoSaveIntervals.has(roomCode)) {
-    return;
-  }
-
-  const intervalId = setInterval(async () => {
-    const room = liveRooms[roomCode];
-    if (!room) {
-      stopAutoSave(roomCode);
-      return;
-    }
-
-    // Only auto-save if there are answers to save
-    if (sessionHasAnswers(room)) {
-      try {
-        await saveSession(roomCode, room);
-        if (VERBOSE_LOGGING) {
-          console.log(`💾 [AUTO-SAVE] Room ${roomCode} saved to database`);
-        }
-      } catch (err) {
-        console.error(`❌ [AUTO-SAVE] Failed to save room ${roomCode}:`, err);
-      }
-    }
-  }, AUTO_SAVE_INTERVAL);
-
-  autoSaveIntervals.set(roomCode, intervalId);
-  if (VERBOSE_LOGGING) {
-    console.log(`⏰ [AUTO-SAVE] Started for room ${roomCode} (every ${AUTO_SAVE_INTERVAL / 1000}s)`);
-  }
+  sessionService.scheduleAutoSave(roomCode, (code) => roomService.getRoom(code));
 }
 
-// Stop periodic auto-save for a room
+// Stop periodic auto-save for a room (Phase 3: Using SessionService)
 function stopAutoSave(roomCode) {
-  const intervalId = autoSaveIntervals.get(roomCode);
-  if (intervalId) {
-    clearInterval(intervalId);
-    autoSaveIntervals.delete(roomCode);
-    if (VERBOSE_LOGGING) {
-      console.log(`⏹️ [AUTO-SAVE] Stopped for room ${roomCode}`);
-    }
-  }
+  sessionService.clearAutoSave(roomCode);
 }
 
 // Quiz options will be loaded after database initialization
@@ -1022,13 +778,13 @@ io.on('connection', (socket) => {
       };
 
       // Check if room already exists (presenter reconnecting)
-      if (liveRooms[roomCode]) {
+      if (roomService.liveRooms[roomCode]) {
         // Presenter is reconnecting - update presenter socket ID
         console.log(`✅ [PRESENTER] Reconnected to room ${roomCode}`);
-        liveRooms[roomCode].presenterId = socket.id;
+        roomService.liveRooms[roomCode].presenterId = socket.id;
       } else {
         // Create new room
-        liveRooms[roomCode] = {
+        roomService.liveRooms[roomCode] = {
           quizFilename,
           quizId,
           quizData,
@@ -1048,27 +804,27 @@ io.on('connection', (socket) => {
 
       // Log room state being sent to presenter
       const roomState = {
-        currentQuestionIndex: liveRooms[roomCode].currentQuestionIndex,
-        presentedQuestions: liveRooms[roomCode].presentedQuestions,
-        revealedQuestions: liveRooms[roomCode].revealedQuestions
+        currentQuestionIndex: roomService.liveRooms[roomCode].currentQuestionIndex,
+        presentedQuestions: roomService.liveRooms[roomCode].presentedQuestions,
+        revealedQuestions: roomService.liveRooms[roomCode].revealedQuestions
       };
       console.log(`[PRESENTER] Sending room state to presenter for room ${roomCode}:`, roomState);
 
       socket.emit('roomCreated', {
         roomCode,
-        quizFilename: liveRooms[roomCode].quizFilename,
+        quizFilename: roomService.liveRooms[roomCode].quizFilename,
         quizTitle: quizData.title,
         questions: quizData.questions,
-        currentQuestionIndex: liveRooms[roomCode].currentQuestionIndex,
-        presentedQuestions: liveRooms[roomCode].presentedQuestions,
-        revealedQuestions: liveRooms[roomCode].revealedQuestions,
-        isResumed: !!liveRooms[roomCode].players && Object.keys(liveRooms[roomCode].players).length > 0
+        currentQuestionIndex: roomService.liveRooms[roomCode].currentQuestionIndex,
+        presentedQuestions: roomService.liveRooms[roomCode].presentedQuestions,
+        revealedQuestions: roomService.liveRooms[roomCode].revealedQuestions,
+        isResumed: !!roomService.liveRooms[roomCode].players && Object.keys(roomService.liveRooms[roomCode].players).length > 0
       });
 
       // Send current player list to presenter (especially important on reconnection)
       io.to(roomCode).emit('playerListUpdate', {
         roomCode,
-        players: Object.values(liveRooms[roomCode].players).filter(p => !p.isSpectator)
+        players: Object.values(roomService.liveRooms[roomCode].players).filter(p => !p.isSpectator)
       });
 
       io.emit('activeRoomsUpdate', getActiveRoomsSummary());
@@ -1226,7 +982,7 @@ io.on('connection', (socket) => {
         console.log(`[RESUME] Found live question ${liveQuestion} (presented but not revealed)`);
       }
 
-      liveRooms[roomCode] = {
+      roomService.liveRooms[roomCode] = {
         quizFilename: `quiz_${session.quiz_id}.json`,
         quizId: session.quiz_id,
         quizData,
@@ -1250,12 +1006,12 @@ io.on('connection', (socket) => {
       socket.join(roomCode);
       socket.emit('roomCreated', {
         roomCode,
-        quizFilename: liveRooms[roomCode].quizFilename,
+        quizFilename: roomService.liveRooms[roomCode].quizFilename,
         quizTitle: quizData.title,
         questions: quizData.questions,
-        currentQuestionIndex: liveRooms[roomCode].currentQuestionIndex,
-        presentedQuestions: liveRooms[roomCode].presentedQuestions,
-        revealedQuestions: liveRooms[roomCode].revealedQuestions,
+        currentQuestionIndex: roomService.liveRooms[roomCode].currentQuestionIndex,
+        presentedQuestions: roomService.liveRooms[roomCode].presentedQuestions,
+        revealedQuestions: roomService.liveRooms[roomCode].revealedQuestions,
         isResumed: true,
         originalRoomCode: session.original_room_code
       });
@@ -1263,7 +1019,7 @@ io.on('connection', (socket) => {
       // Send the player list to the presenter (shows disconnected players from previous session, excluding spectators)
       io.to(roomCode).emit('playerListUpdate', {
         roomCode,
-        players: Object.values(liveRooms[roomCode].players).filter(p => !p.isSpectator)
+        players: Object.values(roomService.liveRooms[roomCode].players).filter(p => !p.isSpectator)
       });
 
       // Start auto-save if session has already been in progress
@@ -1286,7 +1042,7 @@ io.on('connection', (socket) => {
 
   // Presenter views a room
   socket.on('viewRoom', ({ roomCode }) => {
-    const room = liveRooms[roomCode];
+    const room = roomService.liveRooms[roomCode];
     if (!room) {
       socket.emit('roomError', 'Room not found.');
       return;
@@ -1321,7 +1077,7 @@ io.on('connection', (socket) => {
 
   // Player joins a room
   socket.on('joinRoom', async ({ roomCode, username, displayName }) => {
-    const room = liveRooms[roomCode];
+    const room = roomService.liveRooms[roomCode];
     if (!room) {
       socket.emit('roomError', 'Room not found.');
       return;
@@ -1565,7 +1321,7 @@ io.on('connection', (socket) => {
 
   // Player connection state change
   socket.on('playerStateChange', ({ roomCode, username, state }) => {
-    const room = liveRooms[roomCode];
+    const room = roomService.liveRooms[roomCode];
     if (!room || !room.players[socket.id]) return;
 
     const player = room.players[socket.id];
@@ -1585,7 +1341,7 @@ io.on('connection', (socket) => {
 
   // Presenter presents a question
   socket.on('presentQuestion', ({ roomCode, questionIndex }) => {
-    const room = liveRooms[roomCode];
+    const room = roomService.liveRooms[roomCode];
     if (!room) return;
 
     room.currentQuestionIndex = questionIndex;
@@ -1621,7 +1377,7 @@ io.on('connection', (socket) => {
 
   // Player submits answer
   socket.on('submitAnswer', ({ roomCode, choice }) => {
-    const room = liveRooms[roomCode];
+    const room = roomService.liveRooms[roomCode];
     if (!room || room.currentQuestionIndex === null) return;
 
     if (room.players[socket.id]) {
@@ -1651,7 +1407,7 @@ io.on('connection', (socket) => {
 
   // Presenter reveals answer
   socket.on('revealAnswer', ({ roomCode }) => {
-    const room = liveRooms[roomCode];
+    const room = roomService.liveRooms[roomCode];
     if (!room || room.currentQuestionIndex === null) return;
 
     const question = room.quizData.questions[room.currentQuestionIndex];
@@ -1680,7 +1436,7 @@ io.on('connection', (socket) => {
 
   // Presenter completes quiz
   socket.on('completeQuiz', async ({ roomCode }) => {
-    const room = liveRooms[roomCode];
+    const room = roomService.liveRooms[roomCode];
     if (!room) return;
 
     room.status = 'completed';
@@ -1708,7 +1464,7 @@ io.on('connection', (socket) => {
 
   // Close room
   socket.on('closeRoom', async ({ roomCode }) => {
-    const room = liveRooms[roomCode];
+    const room = roomService.liveRooms[roomCode];
     if (!room) return;
 
     // Stop periodic auto-save
@@ -1728,7 +1484,7 @@ io.on('connection', (socket) => {
       }
     }
 
-    delete liveRooms[roomCode];
+    delete roomService.liveRooms[roomCode];
     io.to(roomCode).emit('roomClosed', { roomCode });
     io.socketsLeave(roomCode);
     console.log(`Room ${roomCode} closed.`);
@@ -1737,7 +1493,7 @@ io.on('connection', (socket) => {
 
   // Kick player from room
   socket.on('kickPlayer', ({ roomCode, username }) => {
-    const room = liveRooms[roomCode];
+    const room = roomService.liveRooms[roomCode];
     if (!room) return;
 
     // Verify the requester is the presenter
@@ -1775,7 +1531,7 @@ io.on('connection', (socket) => {
 
   // Heartbeat mechanism to track connection health
   socket.on('heartbeat', ({ roomCode }) => {
-    const room = liveRooms[roomCode];
+    const room = roomService.liveRooms[roomCode];
     if (!room || !room.players[socket.id]) return;
 
     // Update last heartbeat timestamp
@@ -1787,7 +1543,7 @@ io.on('connection', (socket) => {
 
   // Handle disconnect
   socket.on('disconnect', (reason) => {
-    for (const [roomCode, room] of Object.entries(liveRooms)) {
+    for (const [roomCode, room] of Object.entries(roomService.liveRooms)) {
       // Handle player disconnection
       if (room.players[socket.id]) {
         const playerName = room.players[socket.id].name;
@@ -1808,16 +1564,10 @@ io.on('connection', (socket) => {
 });
 
 // --------------------
-// Helper: Active Room Summary
+// Helper: Active Room Summary (Phase 3: Using RoomService)
 // --------------------
 function getActiveRoomsSummary() {
-  return Object.entries(liveRooms).map(([roomCode, room]) => ({
-    roomCode,
-    quizTitle: room.quizData.title,
-    playerCount: Object.values(room.players).filter(p => !p.isSpectator).length,
-    isActive: room.currentQuestionIndex !== null,
-    status: room.status
-  }));
+  return roomService.getActiveRoomsSummary();
 }
 
 // --------------------
@@ -1832,7 +1582,7 @@ setInterval(() => {
   const now = Date.now();
   let totalZombiesRemoved = 0;
 
-  for (const [roomCode, room] of Object.entries(liveRooms)) {
+  for (const [roomCode, room] of Object.entries(roomService.liveRooms)) {
     const zombieSockets = [];
 
     for (const [socketId, player] of Object.entries(room.players)) {
@@ -1915,7 +1665,7 @@ if (DEBUG_ENABLED) {
   // --------------------
   app.get('/api/debug/state', (_req, res) => {
     const state = {
-      liveRooms: Object.entries(liveRooms).map(([code, room]) => ({
+      liveRooms: Object.entries(roomService.liveRooms).map(([code, room]) => ({
         roomCode: code,
         quizTitle: room.quizData?.title,
         quizId: room.quizData?.id,
@@ -1933,8 +1683,8 @@ if (DEBUG_ENABLED) {
         status: room.status,
         createdAt: room.createdAt
       })),
-      totalRooms: Object.keys(liveRooms).length,
-      totalPlayers: Object.values(liveRooms).reduce((sum, room) =>
+      totalRooms: Object.keys(roomService.liveRooms).length,
+      totalPlayers: Object.values(roomService.liveRooms).reduce((sum, room) =>
         sum + Object.values(room.players).filter(p => !p.isSpectator).length, 0),
       serverUptime: process.uptime(),
       memoryUsage: process.memoryUsage()
@@ -1947,7 +1697,7 @@ if (DEBUG_ENABLED) {
   // --------------------
   app.get('/api/debug/room/:roomCode', (req, res) => {
     const { roomCode } = req.params;
-    const room = liveRooms[roomCode];
+    const room = roomService.liveRooms[roomCode];
 
     if (!room) {
       return res.status(404).json({ error: 'Room not found' });
@@ -1991,7 +1741,7 @@ if (DEBUG_ENABLED) {
       const finalRoomCode = roomCode || Math.random().toString(36).substring(2, 8).toUpperCase();
 
       // Check if room already exists
-      if (liveRooms[finalRoomCode]) {
+      if (roomService.liveRooms[finalRoomCode]) {
         return res.status(400).json({ error: 'Room code already exists' });
       }
 
@@ -2012,7 +1762,7 @@ if (DEBUG_ENABLED) {
       }
 
       // Create room
-      liveRooms[finalRoomCode] = {
+      roomService.liveRooms[finalRoomCode] = {
         quizData: {
           id: quiz.id,
           title: quiz.title,
@@ -2057,7 +1807,7 @@ if (DEBUG_ENABLED) {
         return res.status(400).json({ error: 'roomCode and username are required' });
       }
 
-      const room = liveRooms[roomCode];
+      const room = roomService.liveRooms[roomCode];
       if (!room) {
         return res.status(404).json({ error: 'Room not found' });
       }
@@ -2123,7 +1873,7 @@ if (DEBUG_ENABLED) {
         return res.status(400).json({ error: 'roomCode, username, and choice are required' });
       }
 
-      const room = liveRooms[roomCode];
+      const room = roomService.liveRooms[roomCode];
       if (!room) {
         return res.status(404).json({ error: 'Room not found' });
       }
@@ -2177,7 +1927,7 @@ if (DEBUG_ENABLED) {
         return res.status(400).json({ error: 'roomCode and questionIndex are required' });
       }
 
-      const room = liveRooms[roomCode];
+      const room = roomService.liveRooms[roomCode];
       if (!room) {
         return res.status(404).json({ error: 'Room not found' });
       }
@@ -2224,7 +1974,7 @@ if (DEBUG_ENABLED) {
         return res.status(400).json({ error: 'roomCode is required' });
       }
 
-      const room = liveRooms[roomCode];
+      const room = roomService.liveRooms[roomCode];
       if (!room) {
         return res.status(404).json({ error: 'Room not found' });
       }
@@ -2277,7 +2027,7 @@ if (DEBUG_ENABLED) {
       };
 
       // Delete specific room if roomCode provided
-      if (roomCode && liveRooms[roomCode]) {
+      if (roomCode && roomService.liveRooms[roomCode]) {
         // Stop auto-save if running
         if (autoSaveIntervals.has(roomCode)) {
           clearInterval(autoSaveIntervals.get(roomCode));
@@ -2285,7 +2035,7 @@ if (DEBUG_ENABLED) {
         }
 
         // Delete from memory
-        delete liveRooms[roomCode];
+        delete roomService.liveRooms[roomCode];
         results.roomsDeleted = 1;
 
         // Delete completed session from database
@@ -2302,7 +2052,7 @@ if (DEBUG_ENABLED) {
 
       // Delete all live rooms (if explicitly requested)
       if (deleteRooms) {
-        const roomCount = Object.keys(liveRooms).length;
+        const roomCount = Object.keys(roomService.liveRooms).length;
 
         // Clear all auto-save intervals
         autoSaveIntervals.forEach((interval) => {
@@ -2311,8 +2061,8 @@ if (DEBUG_ENABLED) {
         autoSaveIntervals.clear();
 
         // Clear all rooms
-        Object.keys(liveRooms).forEach(code => {
-          delete liveRooms[code];
+        Object.keys(roomService.liveRooms).forEach(code => {
+          delete roomService.liveRooms[code];
         });
 
         results.roomsDeleted = roomCount;
@@ -2366,7 +2116,7 @@ if (DEBUG_ENABLED) {
         const quiz = await getQuizById(quizzes[0].id);
         const roomCode = 'TEST' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
-        liveRooms[roomCode] = {
+        roomService.liveRooms[roomCode] = {
           quizData: {
             id: quiz.id,
             title: quiz.title,
@@ -2391,7 +2141,7 @@ if (DEBUG_ENABLED) {
         const testPlayers = ['testPlayer1', 'testPlayer2', 'testPlayer3'];
         for (const username of testPlayers) {
           const fakeSocketId = `debug_${username}_${Date.now()}`;
-          liveRooms[roomCode].players[fakeSocketId] = {
+          roomService.liveRooms[roomCode].players[fakeSocketId] = {
             id: fakeSocketId,
             username,
             name: username,
@@ -2406,13 +2156,13 @@ if (DEBUG_ENABLED) {
         results.steps.push({ step: 'add-players', count: testPlayers.length, success: true });
 
         // Step 3: Present first question
-        liveRooms[roomCode].currentQuestionIndex = 0;
-        liveRooms[roomCode].presentedQuestions.push(0);
+        roomService.liveRooms[roomCode].currentQuestionIndex = 0;
+        roomService.liveRooms[roomCode].presentedQuestions.push(0);
         results.steps.push({ step: 'present-question', questionIndex: 0, success: true });
 
         // Step 4: Submit random answers
-        const question = liveRooms[roomCode].quizData.questions[0];
-        Object.values(liveRooms[roomCode].players).forEach(player => {
+        const question = roomService.liveRooms[roomCode].quizData.questions[0];
+        Object.values(roomService.liveRooms[roomCode].players).forEach(player => {
           const randomChoice = Math.floor(Math.random() * question.choices.length);
           player.choice = randomChoice;
           player.answers[0] = randomChoice;
@@ -2420,8 +2170,8 @@ if (DEBUG_ENABLED) {
         results.steps.push({ step: 'submit-answers', count: testPlayers.length, success: true });
 
         // Step 5: Reveal answer
-        liveRooms[roomCode].revealedQuestions.push(0);
-        const correctAnswers = Object.values(liveRooms[roomCode].players).filter(
+        roomService.liveRooms[roomCode].revealedQuestions.push(0);
+        const correctAnswers = Object.values(roomService.liveRooms[roomCode].players).filter(
           p => p.choice === question.correctChoice
         ).length;
         results.steps.push({
