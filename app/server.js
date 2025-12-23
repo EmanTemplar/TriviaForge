@@ -16,6 +16,7 @@ import { initializeDatabase } from './db-init.js';
 // Import new modular architecture
 import authRoutes from './src/routes/auth.routes.js';
 import quizRoutes, { templateRouter, importRouter } from './src/routes/quiz.routes.js';
+import sessionRoutes from './src/routes/session.routes.js';
 import { requireAuth, requireAdmin } from './src/middleware/auth.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { env } from './src/config/environment.js';
@@ -271,50 +272,6 @@ await fs.mkdir(COMPLETED_FOLDER, { recursive: true });
 // Old file-based function removed - use listQuizzesFromDB() instead
 
 // --------------------
-// Helper: list completed sessions from database
-// --------------------
-const listCompletedSessions = async () => {
-  try {
-    const result = await pool.query(`
-      SELECT
-        gs.id,
-        gs.room_code,
-        gs.status,
-        gs.created_at,
-        gs.completed_at,
-        gs.original_session_id,
-        q.title as quiz_title,
-        COUNT(DISTINCT CASE WHEN gp.display_name != 'Spectator Display' THEN gp.id END) as player_count,
-        COUNT(DISTINCT sq.id) as question_count,
-        COUNT(DISTINCT CASE WHEN sq.is_presented THEN sq.id END) as presented_count
-      FROM game_sessions gs
-      JOIN quizzes q ON gs.quiz_id = q.id
-      LEFT JOIN game_participants gp ON gs.id = gp.game_session_id
-      LEFT JOIN session_questions sq ON gs.id = sq.game_session_id
-      GROUP BY gs.id, gs.room_code, gs.status, gs.created_at, gs.completed_at, gs.original_session_id, q.title
-      ORDER BY gs.created_at DESC
-    `);
-
-    return result.rows.map(row => ({
-      session_id: row.id,
-      room_code: row.room_code,
-      quiz_title: row.quiz_title,
-      status: row.status,
-      created_at: row.created_at,
-      completed_at: row.completed_at,
-      resumed_at: row.original_session_id ? row.created_at : null, // If this is a resumed session, created_at is when it was resumed
-      original_session_id: row.original_session_id,
-      player_count: parseInt(row.player_count),
-      question_count: parseInt(row.question_count),
-      presented_count: parseInt(row.presented_count)
-    }));
-  } catch (err) {
-    console.error('Error listing sessions from database:', err);
-    return [];
-  }
-};
-
-// --------------------
 // Helper: save session to database
 // --------------------
 const saveSession = async (roomCode, room) => {
@@ -515,6 +472,17 @@ app.use('/api/quizzes', (req, res, next) => {
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/quiz-template', templateRouter);
 app.use('/api/import-quiz', doubleCsrfProtection, importRouter);
+
+// Routes: Session Management (NEW - Modular Architecture)
+// Apply CSRF protection to session mutation routes
+app.use('/api/sessions', (req, res, next) => {
+  // Apply CSRF protection only to DELETE
+  if (req.method === 'DELETE') {
+    return doubleCsrfProtection(req, res, next);
+  }
+  next();
+});
+app.use('/api/sessions', sessionRoutes);
 
 // Simple password check
 app.post('/api/auth/check', authLimiter, doubleCsrfProtection, (req, res) => {
@@ -916,271 +884,14 @@ app.post('/api/rooms/check-active', async (req, res) => {
 });
 
 // --------------------
-// Routes: Completed Sessions
+// Routes: Session Management (REMOVED - Now using modular architecture)
 // --------------------
+// Session routes have been extracted to src/routes/session.routes.js
+// and src/controllers/session.controller.js
 
-// Get all completed sessions
-app.get('/api/sessions', requireAdmin, async (req, res) => {
-  const sessions = await listCompletedSessions();
-
-  // Format for frontend compatibility
-  const formatted = sessions.map(s => ({
-    filename: `session_${s.session_id}.json`, // For backward compatibility
-    sessionId: s.session_id,
-    roomCode: s.room_code,
-    quizTitle: s.quiz_title,
-    status: s.status,
-    createdAt: s.created_at,
-    completedAt: s.completed_at,
-    resumedAt: s.resumed_at || null,
-    playerCount: s.player_count,
-    questionCount: s.question_count,
-    presentedCount: s.presented_count
-  }));
-
-  res.json(formatted);
-});
-
-// Get incomplete sessions only
-app.get('/api/sessions/incomplete', requireAdmin, async (req, res) => {
-  const sessions = await listCompletedSessions();
-  const incomplete = sessions.filter(s => s.status !== 'completed');
-
-  // Format for frontend compatibility
-  const formatted = incomplete.map(s => ({
-    filename: `session_${s.session_id}.json`, // For backward compatibility
-    sessionId: s.session_id,
-    roomCode: s.room_code,
-    quizTitle: s.quiz_title,
-    status: s.status,
-    createdAt: s.created_at,
-    completedAt: s.completed_at,
-    resumedAt: s.resumed_at || null,
-    playerCount: s.player_count,
-    questionCount: s.question_count,
-    presentedCount: s.presented_count
-  }));
-
-  res.json(formatted);
-});
-
-// Get completed sessions only
-app.get('/api/sessions/completed', requireAdmin, async (req, res) => {
-  const sessions = await listCompletedSessions();
-  const completed = sessions.filter(s => s.status === 'completed');
-
-  // Format for frontend compatibility
-  const formatted = completed.map(s => ({
-    filename: `session_${s.session_id}.json`, // For backward compatibility
-    sessionId: s.session_id,
-    roomCode: s.room_code,
-    quizTitle: s.quiz_title,
-    status: s.status,
-    createdAt: s.created_at,
-    completedAt: s.completed_at,
-    resumedAt: s.resumed_at || null,
-    playerCount: s.player_count,
-    questionCount: s.question_count,
-    presentedCount: s.presented_count
-  }));
-
-  res.json(formatted);
-});
-
-// Get single session (from database)
-app.get('/api/sessions/:filename', requireAdmin, async (req, res) => {
-  try {
-    // Extract session ID from filename (session_123.json → 123) or use directly
-    const sessionId = req.params.filename.includes('_')
-      ? parseInt(req.params.filename.split('_')[1].replace('.json', ''))
-      : parseInt(req.params.filename);
-
-    if (isNaN(sessionId)) {
-      return res.status(400).json({ error: 'Invalid session ID format' });
-    }
-
-    // Fetch session with all related data
-    const sessionResult = await pool.query(`
-      SELECT
-        gs.id,
-        gs.room_code,
-        gs.status,
-        gs.created_at,
-        gs.completed_at,
-        gs.original_session_id,
-        q.id as quiz_id,
-        q.title as quiz_title
-      FROM game_sessions gs
-      JOIN quizzes q ON gs.quiz_id = q.id
-      WHERE gs.id = $1
-    `, [sessionId]);
-
-    if (sessionResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-
-    const session = sessionResult.rows[0];
-
-    // Fetch participants with their answers (excluding Spectator Display)
-    const participantsResult = await pool.query(`
-      SELECT
-        gp.display_name,
-        pa.question_id,
-        pa.answer_id,
-        sq.presentation_order,
-        a.display_order as choice_index,
-        pa.is_correct
-      FROM game_participants gp
-      LEFT JOIN participant_answers pa ON gp.id = pa.participant_id
-      LEFT JOIN session_questions sq ON pa.question_id = sq.question_id AND sq.game_session_id = $1
-      LEFT JOIN answers a ON pa.answer_id = a.id
-      WHERE gp.game_session_id = $1 AND gp.display_name != 'Spectator Display'
-      ORDER BY gp.display_name, sq.presentation_order
-    `, [sessionId]);
-
-    // Group answers by player and calculate statistics
-    const playersMap = new Map();
-    for (const row of participantsResult.rows) {
-      if (!playersMap.has(row.display_name)) {
-        playersMap.set(row.display_name, {
-          name: row.display_name,
-          answers: {},
-          correct: 0,
-          answered: 0
-        });
-      }
-      const player = playersMap.get(row.display_name);
-      if (row.question_id && row.presentation_order !== null) {
-        player.answers[row.presentation_order] = row.choice_index;
-        player.answered++;
-        if (row.is_correct) {
-          player.correct++;
-        }
-      }
-    }
-
-    // Fetch quiz questions with full details
-    const questionsResult = await pool.query(`
-      SELECT
-        sq.presentation_order,
-        sq.is_presented,
-        sq.is_revealed,
-        qs.question_text,
-        qs.id as question_id
-      FROM session_questions sq
-      JOIN questions qs ON sq.question_id = qs.id
-      WHERE sq.game_session_id = $1
-      ORDER BY sq.presentation_order
-    `, [sessionId]);
-
-    const presentedQuestions = [];
-    const revealedQuestions = [];
-    const questions = [];
-
-    for (const row of questionsResult.rows) {
-      if (row.is_presented) presentedQuestions.push(row.presentation_order);
-      if (row.is_revealed) revealedQuestions.push(row.presentation_order);
-
-      // Fetch answers for this question
-      const answersResult = await pool.query(`
-        SELECT answer_text, is_correct, display_order
-        FROM answers
-        WHERE question_id = $1
-        ORDER BY display_order
-      `, [row.question_id]);
-
-      const choices = answersResult.rows.map(a => a.answer_text);
-      const correctChoice = answersResult.rows.findIndex(a => a.is_correct);
-
-      questions.push({
-        text: row.question_text,
-        choices,
-        correctChoice
-      });
-    }
-
-    // Format response to match frontend expectations
-    const playerResults = Array.from(playersMap.values());
-
-    const response = {
-      filename: `session_${session.id}.json`, // For deletion and backwards compatibility
-      sessionId: session.id,
-      roomCode: session.room_code,
-      quizTitle: session.quiz_title,
-      quizFilename: `quiz_${session.quiz_id}.json`,
-      status: session.status,
-      createdAt: session.created_at,
-      completedAt: session.completed_at,
-      originalRoomCode: session.original_session_id ? `Room ${session.original_session_id}` : null,
-      presentedQuestions,
-      revealedQuestions,
-      questions,
-      players: playerResults, // For backwards compatibility
-      playerResults // With calculated statistics for modal
-    };
-
-    res.json(response);
-  } catch (err) {
-    console.error('Error fetching session:', err);
-    res.status(500).json({ error: 'Failed to fetch session' });
-  }
-});
-
-// Delete session (from database)
-app.delete('/api/sessions/:filename', requireAdmin, async (req, res) => {
-  const client = await pool.connect();
-  try {
-    // Extract session ID from filename
-    const sessionId = req.params.filename.includes('_')
-      ? parseInt(req.params.filename.split('_')[1].replace('.json', ''))
-      : parseInt(req.params.filename);
-
-    if (isNaN(sessionId)) {
-      return res.status(400).json({ error: 'Invalid session ID format' });
-    }
-
-    await client.query('BEGIN');
-
-    // Delete child records first to avoid foreign key constraint violations
-    // Delete participant answers
-    await client.query(
-      'DELETE FROM participant_answers WHERE participant_id IN (SELECT id FROM game_participants WHERE game_session_id = $1)',
-      [sessionId]
-    );
-
-    // Delete participants
-    await client.query(
-      'DELETE FROM game_participants WHERE game_session_id = $1',
-      [sessionId]
-    );
-
-    // Delete session questions
-    await client.query(
-      'DELETE FROM session_questions WHERE game_session_id = $1',
-      [sessionId]
-    );
-
-    // Finally delete the session itself
-    const result = await client.query(
-      'DELETE FROM game_sessions WHERE id = $1 RETURNING id',
-      [sessionId]
-    );
-
-    if (result.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Session not found' });
-    }
-
-    await client.query('COMMIT');
-    res.json({ success: true });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('Error deleting session:', err);
-    res.status(500).json({ error: 'Failed to delete session', details: err.message });
-  } finally {
-    client.release();
-  }
-});
+// --------------------
+// Routes: Player Progress
+// --------------------
 
 // Get player progress in current room
 app.get('/api/player/progress/:roomCode', async (req, res) => {
