@@ -1494,14 +1494,19 @@ io.on('connection', (socket) => {
   // Presenter resumes an incomplete session
   socket.on('resumeSession', async ({ sessionFilename }) => {
     try {
+      console.log(`[RESUME] Attempting to resume session: ${sessionFilename}`);
+
       // Extract session ID from filename (session_123.json → 123)
       const sessionId = sessionFilename.includes('_')
         ? parseInt(sessionFilename.split('_')[1].replace('.json', ''))
         : parseInt(sessionFilename);
 
       if (isNaN(sessionId)) {
+        console.log(`[RESUME] ❌ Invalid session ID format: ${sessionFilename}`);
         return socket.emit('roomError', 'Invalid session ID format');
       }
+
+      console.log(`[RESUME] Parsed session ID: ${sessionId}`);
 
       // Load session data from database
       const sessionResult = await pool.query(`
@@ -1517,19 +1522,25 @@ io.on('connection', (socket) => {
       `, [sessionId]);
 
       if (sessionResult.rows.length === 0) {
+        console.log(`[RESUME] ❌ Session not found in database: ${sessionId}`);
         return socket.emit('roomError', 'Session not found');
       }
 
       const session = sessionResult.rows[0];
+      console.log(`[RESUME] Session found - Quiz ID: ${session.quiz_id}, Original Room: ${session.original_room_code}`);
 
       // Generate new room code for resumed session
       const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+      console.log(`[RESUME] Generated new room code: ${roomCode}`);
 
       // Load the quiz data from database
+      console.log(`[RESUME] Loading quiz data for quiz_id: ${session.quiz_id}`);
       const quiz = await getQuizById(session.quiz_id);
       if (!quiz) {
-        return socket.emit('roomError', 'Quiz not found for this session');
+        console.log(`[RESUME] ❌ Quiz not found for session. Quiz ID: ${session.quiz_id} may have been deleted or marked inactive.`);
+        return socket.emit('roomError', `Quiz not found for this session. The quiz may have been deleted.`);
       }
+      console.log(`[RESUME] ✅ Quiz loaded: ${quiz.title} with ${quiz.questions.length} questions`);
 
       // Convert database format to legacy format for compatibility
       const quizData = {
@@ -1657,12 +1668,14 @@ io.on('connection', (socket) => {
       // Start auto-save if session has already been in progress
       if (presentedQuestions.length > 0) {
         startAutoSave(roomCode);
+        console.log(`[RESUME] Auto-save started for room ${roomCode}`);
       }
 
+      console.log(`[RESUME] ✅ Session ${sessionId} successfully resumed as room ${roomCode}`);
       io.emit('activeRoomsUpdate', getActiveRoomsSummary());
     } catch (err) {
-      console.error('Error resuming session:', err);
-      socket.emit('roomError', 'Failed to resume session.');
+      console.error(`[RESUME] ❌ Error resuming session:`, err);
+      socket.emit('roomError', 'Failed to resume session: ' + err.message);
     }
   });
 
