@@ -24,7 +24,7 @@ function parseBoolean(value, defaultValue = false) {
  * @param {number} defaultValue - Default value if not set
  * @returns {number}
  */
-function parseInt Value(value, defaultValue = 0) {
+function parseIntValue(value, defaultValue = 0) {
   if (value === undefined || value === null) return defaultValue;
   const parsed = parseInt(value, 10);
   return isNaN(parsed) ? defaultValue : parsed;
