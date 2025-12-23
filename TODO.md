@@ -99,14 +99,59 @@ This document tracks planned features, improvements, and tasks for future develo
 **Architecture Roadmap:**
 - **Phase 1:** Foundation layer (constants, errors, validation) ✅ COMPLETE
 - **Phase 2:** Extract routes into separate modules ✅ COMPLETE
-- **Phase 3:** Create service layer (RoomManager, SessionManager, QuizService) - NEXT
-- **Phase 4:** Refactor large Vue components (AdminPage, PlayerPage) (Week 5-6)
-- **Phase 5:** Add unit tests for utilities and services (Week 7-8)
+- **Phase 3:** Create service layer (RoomService, SessionService, QuizService) ✅ COMPLETE
+- **Phase 4:** Refactor large Vue components (AdminPage, PlayerPage) - NEXT
+- **Phase 5:** Add unit tests for utilities and services
 
 **Documentation:**
 - See `DEV-SUMMARY.md` for detailed architectural analysis
 - All new modules include JSDoc comments for IDE autocomplete
 - Consistent import/export patterns using ES6 modules
+
+### Phase 3: Create Service Layer ✅ COMPLETE (2025-12-23)
+**Branch:** `refactor/architecture-phase1-foundation`
+**Status:** All business logic services extracted from Socket.IO handlers
+**Goal:** Separate Socket.IO event handlers from business logic for testability and reusability
+
+**Completed:**
+- ✅ Created RoomService (336 lines)
+  - Manages live game room state (previously `liveRooms` object)
+  - Methods: createOrUpdateRoom, restoreRoom, addPlayer, removePlayer, kickPlayer
+  - Methods: getRoom, getPlayers, isPlayerKicked, setCurrentQuestion
+  - Methods: markQuestionPresented, markQuestionRevealed, completeQuiz, deleteRoom
+  - Provides getActiveRoomsSummary for client API
+  - Singleton pattern with exported instance
+- ✅ Created SessionService (395 lines)
+  - Handles session persistence to PostgreSQL database
+  - Methods: saveSession with full transaction handling (UPSERT operations)
+  - Methods: loadSession to restore game state from database
+  - Auto-save scheduling and management (120 second intervals)
+  - Manages autoSaveIntervals for active rooms
+  - Database transaction rollback on errors
+- ✅ Created QuizService (145 lines)
+  - Data access layer for quiz operations
+  - Methods: getQuizById, parseQuizId, formatQuizForRoom, isValidQuiz
+  - Provides quiz data for Socket.IO handlers
+  - Database connection pooling and error handling
+- ✅ Refactored server.js Socket.IO handlers
+  - Replaced all direct `liveRooms` access with `roomService.liveRooms` (50+ occurrences)
+  - Updated disconnect handler, zombie cleanup, and debug endpoints
+  - Replaced saveSession/getQuizById functions with service wrappers
+  - Updated auto-save functions to use sessionService
+
+**Results:**
+- **Service layer complete:** 3 services (876 total lines) extracted from Socket.IO handlers
+- **Architecture improvement:** Clear separation of concerns (handlers → services → database)
+- **Maintainability:** Business logic now testable and reusable outside Socket.IO
+- **All features working:** Real-time gameplay, auto-save, reconnection all operational
+
+**Files Created:**
+- `app/src/services/room.service.js` (336 lines)
+- `app/src/services/session.service.js` (395 lines)
+- `app/src/services/quiz.service.js` (145 lines)
+
+**Files Modified:**
+- `app/server.js` - Socket.IO handlers refactored to use services
 
 ---
 
