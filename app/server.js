@@ -168,9 +168,88 @@ const generateCsrfToken = csrfProtection.generateCsrfToken;
 const doubleCsrfProtection = csrfProtection.doubleCsrfProtection;
 
 // --------------------
-// Database Helper Functions (REMOVED - Now in modular controllers)
+// Database Helper Functions
 // --------------------
-// Quiz helper functions moved to src/controllers/quiz.controller.js
+// Note: These helpers are used by Socket.IO event handlers
+// REST API routes use modular controllers in src/controllers/
+
+/**
+ * Fetch a complete quiz by ID with all questions and answers
+ * Used by Socket.IO handlers for room management
+ * @param {number} quizId - The quiz ID to fetch
+ * @returns {Promise<Object>} Quiz object with questions and answers
+ */
+const getQuizById = async (quizId) => {
+  const client = await pool.connect();
+  try {
+    // Fetch quiz metadata
+    const quizResult = await client.query(
+      'SELECT id, title, description, answer_display_timeout, created_at FROM quizzes WHERE id = $1 AND is_active = TRUE',
+      [quizId]
+    );
+
+    if (quizResult.rows.length === 0) {
+      return null;
+    }
+
+    const quiz = quizResult.rows[0];
+
+    // Fetch questions with answers (using the view for convenience)
+    const questionsResult = await client.query(
+      `
+      SELECT
+        question_id,
+        question_text,
+        question_type,
+        question_order,
+        answer_id,
+        answer_text,
+        is_correct,
+        display_order
+      FROM quiz_full_details
+      WHERE quiz_id = $1
+      ORDER BY question_order, display_order
+    `,
+      [quizId]
+    );
+
+    // Group answers by question
+    const questionsMap = new Map();
+    for (const row of questionsResult.rows) {
+      if (!questionsMap.has(row.question_id)) {
+        questionsMap.set(row.question_id, {
+          id: row.question_id,
+          text: row.question_text,
+          type: row.question_type,
+          order: row.question_order,
+          choices: [],
+        });
+      }
+      questionsMap.get(row.question_id).choices.push({
+        id: row.answer_id,
+        text: row.answer_text,
+        isCorrect: row.is_correct,
+        order: row.display_order,
+      });
+    }
+
+    // Convert map to array sorted by question_order
+    const questions = Array.from(questionsMap.values()).sort(
+      (a, b) => a.order - b.order
+    );
+
+    return {
+      id: quiz.id,
+      title: quiz.title,
+      description: quiz.description,
+      answerDisplayTimeout: quiz.answer_display_timeout,
+      createdAt: quiz.created_at,
+      questions,
+    };
+  } finally {
+    client.release();
+  }
+};
 
 // Use HOST_IP from environment (set by docker-compose), or auto-detect, or use SERVER_URL from .env
 const HOST_IP_ENV = process.env.HOST_IP;
