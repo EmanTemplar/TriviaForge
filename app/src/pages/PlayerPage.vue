@@ -182,68 +182,22 @@
 
     <!-- Modals -->
     <!-- Login Modal -->
-    <Modal :isOpen="showLoginModal" @close="loginCancelled" title="Login Required">
-      <template #default>
-        <p style="color: #aaa; margin-bottom: 1.5rem;">
-          This username belongs to a registered account. Please enter your password to continue.
-        </p>
-
-        <form @submit.prevent="handleLoginSubmit">
-          <FormInput
-            v-model="loginUsername"
-            label="Username"
-            type="text"
-            readonly
-          />
-          <FormInput
-            v-model="loginPassword"
-            label="Password"
-            type="password"
-            placeholder="Enter your password"
-            :error="loginError"
-          />
-        </form>
-      </template>
-      <template #footer>
-        <button class="btn-primary" @click="handleLoginSubmit">Login</button>
-        <button class="btn-secondary" @click="loginCancelled">Cancel</button>
-      </template>
-    </Modal>
+    <LoginModal
+      :isOpen="showLoginModal"
+      :username="loginUsername"
+      :error="loginError"
+      @submit="handleLoginSubmit"
+      @cancel="loginCancelled"
+    />
 
     <!-- Set Password Modal -->
-    <Modal :isOpen="showSetPasswordModal" @close="passwordSetupCancelled" title="Set New Password">
-      <template #default>
-        <p style="color: #aaa; margin-bottom: 1.5rem;">
-          Your password has been reset by an administrator. Please set a new password to continue.
-        </p>
-
-        <form @submit.prevent="handleSetPasswordSubmit">
-          <FormInput
-            v-model="setPasswordUsername"
-            label="Username"
-            type="text"
-            readonly
-          />
-          <FormInput
-            v-model="setPasswordNew"
-            label="New Password"
-            type="password"
-            placeholder="Enter new password (min 6 characters)"
-            :error="setPasswordError"
-          />
-          <FormInput
-            v-model="setPasswordConfirm"
-            label="Confirm Password"
-            type="password"
-            placeholder="Confirm new password"
-          />
-        </form>
-      </template>
-      <template #footer>
-        <button class="btn-primary" @click="handleSetPasswordSubmit">Set Password</button>
-        <button class="btn-secondary" @click="passwordSetupCancelled">Cancel</button>
-      </template>
-    </Modal>
+    <SetPasswordModal
+      :isOpen="showSetPasswordModal"
+      :username="setPasswordUsername"
+      :error="setPasswordError"
+      @submit="handleSetPasswordSubmit"
+      @cancel="passwordSetupCancelled"
+    />
 
     <!-- Progress Modal -->
     <Modal
@@ -312,32 +266,25 @@
     </Modal>
 
     <!-- Logout Confirmation Modal -->
-    <Modal :isOpen="showLogoutConfirmModal" @close="showLogoutConfirmModal = false" title="Confirm Logout">
-      <p style="color: #aaa; margin-bottom: 1.5rem;">
-        Are you sure you want to logout?
-      </p>
-      <p style="color: #aaa; margin-bottom: 1.5rem;">
-        This will clear your saved username and account data.
-      </p>
-      <template #footer>
-        <button class="btn-primary" @click="confirmLogout">Logout</button>
-        <button class="btn-secondary" @click="showLogoutConfirmModal = false">Cancel</button>
-      </template>
-    </Modal>
+    <LogoutConfirmModal
+      :isOpen="showLogoutConfirmModal"
+      @confirm="confirmLogout"
+      @close="showLogoutConfirmModal = false"
+    />
 
     <!-- Leave Room Confirmation Modal -->
-    <Modal :isOpen="showLeaveRoomConfirmModal" @close="showLeaveRoomConfirmModal = false" title="Leave Room">
-      <p style="color: #aaa; margin-bottom: 1.5rem;">
-        Are you sure you want to leave this room?
-      </p>
-      <p style="color: #aaa; margin-bottom: 1.5rem;">
-        You'll lose your connection and can rejoin if the room is still active.
-      </p>
-      <template #footer>
-        <button class="btn-danger" @click="confirmLeaveRoom">Leave Room</button>
-        <button class="btn-secondary" @click="showLeaveRoomConfirmModal = false">Cancel</button>
-      </template>
-    </Modal>
+    <LeaveRoomConfirmModal
+      :isOpen="showLeaveRoomConfirmModal"
+      @confirm="confirmLeaveRoom"
+      @close="showLeaveRoomConfirmModal = false"
+    />
+
+    <!-- Change Username Confirmation Modal -->
+    <ChangeUsernameConfirmModal
+      :isOpen="showChangeUsernameModal"
+      @confirm="confirmChangeUsername"
+      @close="showChangeUsernameModal = false"
+    />
   </div>
 </template>
 
@@ -349,7 +296,11 @@ import { useWakeLock } from '@/composables/useWakeLock.js'
 import { useApi } from '@/composables/useApi.js'
 import { useUIStore } from '@/stores/ui.js'
 import Modal from '@/components/common/Modal.vue'
-import FormInput from '@/components/common/FormInput.vue'
+import LoginModal from '@/components/modals/LoginModal.vue'
+import SetPasswordModal from '@/components/modals/SetPasswordModal.vue'
+import LogoutConfirmModal from '@/components/modals/LogoutConfirmModal.vue'
+import LeaveRoomConfirmModal from '@/components/modals/LeaveRoomConfirmModal.vue'
+import ChangeUsernameConfirmModal from '@/components/modals/ChangeUsernameConfirmModal.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -371,6 +322,7 @@ const showSetPasswordModal = ref(false)
 const showProgressModalFlag = ref(false)
 const showLogoutConfirmModal = ref(false)
 const showLeaveRoomConfirmModal = ref(false)
+const showChangeUsernameModal = ref(false)
 
 // Room/Player state
 const currentRoomCode = ref(null)
@@ -409,13 +361,10 @@ const lastJoinRoomAttempt = ref(0) // Track last joinRoom call to prevent duplic
 
 // Login form
 const loginUsername = ref('')
-const loginPassword = ref('')
 const loginError = ref('')
 
 // Set password form
 const setPasswordUsername = ref('')
-const setPasswordNew = ref('')
-const setPasswordConfirm = ref('')
 const setPasswordError = ref('')
 
 // Status message
@@ -940,16 +889,16 @@ const quickJoinRoom = async (roomCode) => {
 }
 
 const handleChangeUsername = async () => {
-  const confirmed = confirm(
-    'Changing your username will:\n- Create a new account or switch to a different account\n- Start fresh with no saved progress\n\nAre you sure?'
-  )
-  if (confirmed) {
-    localStorage.removeItem('playerUsername')
-    localStorage.removeItem('playerAccountType')
-    localStorage.removeItem('playerAuthToken')
-    savedUsername.value = null
-    usernameInput.value = ''
-  }
+  showChangeUsernameModal.value = true
+}
+
+const confirmChangeUsername = () => {
+  showChangeUsernameModal.value = false
+  localStorage.removeItem('playerUsername')
+  localStorage.removeItem('playerAccountType')
+  localStorage.removeItem('playerAuthToken')
+  savedUsername.value = null
+  usernameInput.value = ''
 }
 
 const selectAnswer = async (idx) => {
@@ -1020,11 +969,11 @@ const handleJoinRoom = async () => {
   }
 }
 
-const handleLoginSubmit = async () => {
+const handleLoginSubmit = async (password) => {
   try {
     const response = await post('/api/auth/player-login', {
       username: loginUsername.value,
-      password: loginPassword.value
+      password: password
     })
 
     localStorage.setItem('playerAuthToken', response.data.token)
@@ -1052,8 +1001,6 @@ const handleLoginSubmit = async () => {
       showLoginModal.value = false
       setPasswordUsername.value = loginUsername.value
       setPasswordError.value = ''
-      setPasswordNew.value = ''
-      setPasswordConfirm.value = ''
       showSetPasswordModal.value = true
       return
     }
@@ -1066,13 +1013,13 @@ const loginCancelled = () => {
   showLoginModal.value = false
 }
 
-const handleSetPasswordSubmit = async () => {
-  if (setPasswordNew.value !== setPasswordConfirm.value) {
+const handleSetPasswordSubmit = async ({ newPassword, confirmPassword }) => {
+  if (newPassword !== confirmPassword) {
     setPasswordError.value = 'Passwords do not match!'
     return
   }
 
-  if (setPasswordNew.value.length < 6) {
+  if (newPassword.length < 6) {
     setPasswordError.value = 'Password must be at least 6 characters'
     return
   }
@@ -1080,7 +1027,7 @@ const handleSetPasswordSubmit = async () => {
   try {
     const response = await post('/api/auth/set-new-password', {
       username: setPasswordUsername.value,
-      password: setPasswordNew.value
+      password: newPassword
     })
 
     localStorage.setItem('playerAuthToken', response.data.token)
