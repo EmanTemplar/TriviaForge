@@ -72,11 +72,22 @@ export async function requireAuth(req, res, next) {
  */
 export async function requireAdmin(req, res, next) {
   // First check authentication
-  await requireAuth(req, res, () => {
+  await requireAuth(req, res, (err) => {
+    // If authentication failed, pass error to error handler
+    if (err) {
+      return next(err);
+    }
+
+    // req.user should be set by requireAuth, but check just in case
+    if (!req.user) {
+      return next(new UnauthorizedError('Authentication required'));
+    }
+
     // Then check admin role
     if (req.user.account_type !== USER_ROLES.ADMIN) {
       return next(new ForbiddenError('Admin access required'));
     }
+
     next();
   });
 }
