@@ -1,447 +1,128 @@
 <template>
   <div class="admin-page">
     <!-- Navigation Bar -->
-    <nav class="navbar">
-      <div class="logo">Trivia Admin</div>
-      <div class="hamburger" @click.stop="toggleMenu">&#9776;</div>
-      <ul class="menu" :class="{ open: menuOpen }" id="menu">
-        <li><RouterLink to="/admin">Admin</RouterLink></li>
-        <li><RouterLink to="/player">Player</RouterLink></li>
-        <li><RouterLink to="/presenter">Presenter</RouterLink></li>
-        <li><RouterLink to="/display">Spectate</RouterLink></li>
-        <li class="username-item">
-          <span>{{ authStore.username || 'Admin' }}</span>
-        </li>
-        <li>
-          <a href="#" @click.prevent="logout" style="color: #f66;">Logout</a>
-        </li>
-      </ul>
-    </nav>
+    <AdminNavBar
+      :username="authStore.username"
+      :menuOpen="menuOpen"
+      @toggle-menu="toggleMenu"
+      @logout="logout"
+    />
 
     <!-- Tab Navigation -->
-    <div class="tabs-container">
-      <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        class="tab-btn"
-        :class="{ 'active-tab': activeTab === tab.id }"
-        @click="switchTab(tab.id)"
-      >
-        {{ tab.label }}
-      </button>
-    </div>
+    <AdminTabNavigation
+      :activeTab="activeTab"
+      :tabs="tabs"
+      @switchTab="switchTab"
+    />
 
     <!-- Main Content -->
     <main class="container">
       <!-- Quiz Management Tab -->
       <div v-if="activeTab === 'quiz'" class="tab-content quiz-management">
-        <!-- Left Column: Quiz Creation + Selection (Fixed) -->
-        <aside class="quiz-sidebar" @mousedown.stop="startResize(1, $event)">
-          <h2>Create / Select Quiz</h2>
-          <button class="btn-primary" @click="showCreateQuizModal">Create New Quiz</button>
+        <QuizSidebar
+          v-model:quizTitle="quizTitle"
+          v-model:quizDescription="quizDescription"
+          :quizzes="quizzes"
+          :importStatus="importStatus"
+          @createQuiz="showCreateQuizModal"
+          @downloadTemplate="downloadTemplate"
+          @excelUpload="handleExcelUpload"
+          @selectQuiz="selectQuiz"
+          @deleteQuiz="deleteQuiz"
+          @startResize="startResize"
+        />
 
-          <!-- Excel Import/Export -->
-          <div class="excel-import-box">
-            <h3>Import from Excel</h3>
-            <p>Upload an Excel file to create a quiz</p>
-            <button class="btn-download" @click="downloadTemplate">📥 Download Template</button>
-            <input
-              ref="excelFileInput"
-              type="file"
-              accept=".xlsx,.xls"
-              style="display: none"
-              @change="handleExcelUpload"
-            />
-            <button class="btn-upload" @click="$refs.excelFileInput.click()">📤 Upload Excel File</button>
-            <div v-if="importStatus" class="import-status">{{ importStatus }}</div>
-          </div>
+        <QuestionEditor
+          v-model:questionText="questionText"
+          v-model:correctChoice="correctChoice"
+          :choices="choices"
+          :editingQuestionIdx="editingQuestionIdx"
+          :draggedChoiceIdx="draggedChoiceIdx"
+          :dragOverChoiceIdx="dragOverChoiceIdx"
+          @updateChoice="updateChoice"
+          @addChoice="addChoice"
+          @removeChoice="removeChoice"
+          @saveQuestion="saveQuestion"
+          @clearForm="clearQuestionForm"
+          @startResize="startResize"
+          @choiceDragStart="handleChoiceDragStart"
+          @choiceDragOver="handleChoiceDragOver"
+          @choiceDragLeave="handleChoiceDragLeave"
+          @choiceDrop="handleChoiceDrop"
+          @choiceDragEnd="handleChoiceDragEnd"
+        />
 
-          <div class="quiz-form">
-            <input v-model="quizTitle" type="text" placeholder="Quiz Title" />
-            <textarea v-model="quizDescription" placeholder="Quiz Description"></textarea>
-          </div>
-
-          <div class="quiz-list">
-            <div v-if="quizzes.length === 0" class="empty-state"><em>No quizzes</em></div>
-            <div v-for="quiz in quizzes" :key="quiz.filename" class="quiz-item" @click="selectQuiz(quiz)">
-              <div class="quiz-name">{{ quiz.title }}</div>
-              <div class="quiz-count">{{ quiz.questionCount || 0 }} questions</div>
-              <button @click.stop="deleteQuiz(quiz.filename)" class="btn-delete">Delete</button>
-            </div>
-          </div>
-        </aside>
-
-        <!-- Middle Column: Question Editor (Fixed) -->
-        <section class="question-editor-panel" @mousedown.stop="startResize(2, $event)">
-          <div class="editor-header">
-            <h2>Question Editor</h2>
-            <button @click="clearQuestionForm" class="btn-new-question" title="Start new question">+ New Question</button>
-          </div>
-          <textarea v-model="questionText" placeholder="Question Text" class="question-text-input" rows="3"></textarea>
-
-          <div class="choices-header">
-            <h3>Choices</h3>
-            <div class="choice-buttons">
-              <button @click="addChoice" class="btn-add">+ Add</button>
-              <button @click="removeChoice" class="btn-remove">- Remove</button>
-            </div>
-          </div>
-
-          <div class="choices-container">
-            <div
-              v-for="(choice, idx) in choices"
-              :key="idx"
-              class="choice-input-wrapper"
-              :class="{
-                'dragging': draggedChoiceIdx === idx,
-                'drag-over': dragOverChoiceIdx === idx
-              }"
-              @dragover="handleChoiceDragOver($event, idx)"
-              @dragleave="handleChoiceDragLeave"
-              @drop="handleChoiceDrop($event, idx)"
-              @dragend="handleChoiceDragEnd"
-            >
-              <span
-                class="choice-label draggable"
-                draggable="true"
-                @dragstart="handleChoiceDragStart(idx)"
-                :title="`Drag to reorder choice ${String.fromCharCode(65 + idx)}`"
-              >
-                {{ String.fromCharCode(65 + idx) }}
-              </span>
-              <input v-model="choices[idx]" type="text" :placeholder="`Choice ${idx + 1}`" />
-            </div>
-          </div>
-
-          <div class="correct-choice-wrapper">
-            <label for="correctChoice">Correct Answer:</label>
-            <select v-model="correctChoice">
-              <option v-for="(choice, idx) in choices" :key="idx" :value="idx">
-                {{ choice || `Choice ${idx + 1}` }}
-              </option>
-            </select>
-          </div>
-
-          <div class="question-editor-buttons">
-            <button @click="saveQuestion" class="btn-primary">{{ editingQuestionIdx !== null ? 'Update' : 'Add' }}</button>
-            <button v-if="editingQuestionIdx !== null" @click="clearQuestionForm" class="btn-secondary">Cancel</button>
-          </div>
-        </section>
-
-        <!-- Right Column: Questions List (Scrollable) -->
-        <aside class="questions-sidebar">
-          <div class="questions-list-header">
-            <h2>Questions</h2>
-            <div v-if="selectedQuiz" class="shuffle-controls">
-              <button @click="shuffleQuestions" class="btn-shuffle" title="Shuffle Questions">🔀</button>
-              <button @click="shuffleAllChoices" class="btn-shuffle" title="Shuffle All Choices">🎲</button>
-            </div>
-          </div>
-          <div class="questions-list">
-            <div v-if="currentQuestions.length === 0" class="empty-state"><em>No questions</em></div>
-            <div
-              v-for="(question, idx) in currentQuestions"
-              :key="idx"
-              class="question-item"
-              :class="{
-                active: editingQuestionIdx === idx,
-                dragging: draggedQuestionIdx === idx,
-                'drag-over': dragOverIdx === idx
-              }"
-              draggable="true"
-              @dragstart="handleDragStart(idx)"
-              @dragover="handleDragOver($event, idx)"
-              @dragleave="handleDragLeave"
-              @drop="handleDrop($event, idx)"
-              @dragend="handleDragEnd"
-            >
-              <div class="question-content" @click="editQuestion(idx)">
-                <div class="question-text">Q{{ idx + 1 }}</div>
-                <div class="question-preview">{{ question.text }}</div>
-              </div>
-              <div class="question-actions">
-                <div class="reorder-buttons">
-                  <button @click.stop="moveQuestionToFirst(idx)" class="btn-reorder" :disabled="idx === 0" title="Move to First">⇈</button>
-                  <button @click.stop="moveQuestionUp(idx)" class="btn-reorder" :disabled="idx === 0" title="Move Up">↑</button>
-                  <button @click.stop="moveQuestionDown(idx)" class="btn-reorder" :disabled="idx === currentQuestions.length - 1" title="Move Down">↓</button>
-                  <button @click.stop="moveQuestionToLast(idx)" class="btn-reorder" :disabled="idx === currentQuestions.length - 1" title="Move to Last">⇊</button>
-                </div>
-                <button @click.stop="deleteQuestion(idx)" class="btn-delete" title="Delete">🗑️</button>
-              </div>
-            </div>
-          </div>
-        </aside>
+        <QuestionsList
+          :questions="currentQuestions"
+          :selectedQuiz="selectedQuiz"
+          :editingQuestionIdx="editingQuestionIdx"
+          :draggedQuestionIdx="draggedQuestionIdx"
+          :dragOverIdx="dragOverIdx"
+          @shuffleQuestions="shuffleQuestions"
+          @shuffleAllChoices="shuffleAllChoices"
+          @editQuestion="editQuestion"
+          @moveQuestionUp="moveQuestionUp"
+          @moveQuestionDown="moveQuestionDown"
+          @moveQuestionToFirst="moveQuestionToFirst"
+          @moveQuestionToLast="moveQuestionToLast"
+          @deleteQuestion="deleteQuestion"
+          @questionDragStart="handleDragStart"
+          @questionDragOver="handleDragOver"
+          @questionDragLeave="handleDragLeave"
+          @questionDrop="handleDrop"
+          @questionDragEnd="handleDragEnd"
+        />
       </div>
 
       <!-- Session Management Tab -->
       <div v-if="activeTab === 'sessions'" class="tab-content sessions-management">
-        <section>
-          <h2>Session Management</h2>
-          <div class="sessions-list">
-            <div v-if="completedSessions.length === 0" class="empty-state"><em>No sessions found</em></div>
-            <div v-for="session in completedSessions" :key="session.filename" class="session-item">
-              <div class="session-content" @click="viewSessionDetails(session)">
-                <div class="session-header">
-                  <div class="session-title">{{ session.quizTitle }} ({{ session.roomCode }})</div>
-                  <div class="session-status" :class="'status-' + session.status">{{ session.status }}</div>
-                </div>
-                <div class="session-date">{{ formatDate(session.completedAt || session.createdAt) }}</div>
-                <div class="session-stats">{{ session.playerCount || 0 }} players · {{ session.presentedCount || 0 }}/{{ session.questionCount || 0 }} presented</div>
-              </div>
-              <button class="btn-delete-inline" @click.stop="deleteSessionFromList(session)" title="Delete Session">🗑️</button>
-            </div>
-          </div>
-        </section>
+        <SessionsList
+          :sessions="completedSessions"
+          :formatDate="formatDate"
+          @viewSession="viewSessionDetails"
+          @deleteSession="deleteSessionFromList"
+        />
       </div>
 
       <!-- Quiz Options Tab -->
       <div v-if="activeTab === 'options'" class="tab-content options-management">
-        <section>
-          <h2>Quiz Options</h2>
-          <p class="section-description">Configure global quiz settings</p>
-
-          <div class="options-box">
-            <h3>Answer Display Timeout</h3>
-            <p class="option-description">
-              How long to show the revealed answer before auto-hiding (in seconds).
-              Players will also see the answer until the next question is presented.
-            </p>
-
-            <div class="timeout-input-wrapper">
-              <input v-model.number="answerDisplayTime" type="number" min="5" max="300" />
-              <span>seconds</span>
-            </div>
-
-            <div class="quick-buttons">
-              <button @click="setQuickTimeout(10)" class="btn-quick">10s</button>
-              <button @click="setQuickTimeout(30)" class="btn-quick">30s</button>
-              <button @click="setQuickTimeout(60)" class="btn-quick">1min</button>
-              <button @click="setQuickTimeout(120)" class="btn-quick">2min</button>
-            </div>
-
-            <button @click="saveQuizOptions" class="btn-primary">Save Options</button>
-
-            <div v-if="optionsSaveMessage" :class="['options-save-msg', optionsSaveMessageType]">
-              {{ optionsSaveMessage }}
-            </div>
-          </div>
-        </section>
+        <QuizOptionsPanel
+          v-model:answerDisplayTime="answerDisplayTime"
+          :saveMessage="optionsSaveMessage"
+          :saveMessageType="optionsSaveMessageType"
+          @setQuickTimeout="setQuickTimeout"
+          @saveOptions="saveQuizOptions"
+        />
       </div>
 
       <!-- User Management Tab -->
       <div v-if="activeTab === 'users'" class="tab-content users-management">
-        <section>
-          <h2>User Management</h2>
-          <p class="section-description">View and manage all user accounts</p>
-
-          <div class="users-header">
-            <button @click="loadUsers" class="btn-refresh">🔄 Refresh Users</button>
-            <div class="user-count">{{ users.length }} total user(s)</div>
-          </div>
-
-          <!-- Admins Section -->
-          <div class="user-category">
-            <div class="category-header admin-header">
-              <h3>🔐 Administrators</h3>
-              <span class="category-count">{{ adminUsers.length }}</span>
-            </div>
-            <div class="users-list-scrollable">
-              <div v-if="adminUsers.length === 0" class="empty-state"><em>No administrators</em></div>
-              <div v-for="user in adminUsers" :key="user.id" class="user-item admin-item">
-                <div class="user-info">
-                  <div class="user-name">{{ user.username }}</div>
-                  <div class="user-type type-admin">Admin</div>
-                </div>
-                <div class="user-stats">
-                  <div v-if="user.lastSeen" class="user-last-login">Last seen: {{ formatDate(user.lastSeen) }}</div>
-                  <div v-else class="user-last-login">Never logged in</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Registered Players Section -->
-          <div class="user-category">
-            <div class="category-header player-header">
-              <h3>👤 Registered Players</h3>
-              <span class="category-count">{{ playerUsers.length }}</span>
-            </div>
-            <div class="users-list-scrollable">
-              <div v-if="playerUsers.length === 0" class="empty-state"><em>No registered players</em></div>
-              <div v-for="user in playerUsers" :key="user.id" class="user-item player-item">
-                <div class="user-info">
-                  <div class="user-name">{{ user.username }}</div>
-                  <div class="user-type type-player">Player</div>
-                </div>
-                <div class="user-stats">
-                  <div v-if="user.lastSeen" class="user-last-login">Last seen: {{ formatDate(user.lastSeen) }}</div>
-                  <div v-else class="user-last-login">Never played</div>
-                </div>
-                <div class="user-actions">
-                  <button @click="resetUserPassword(user)" class="btn-reset" title="Reset Password">🔑</button>
-                  <button @click="downgradeUser(user)" class="btn-downgrade" title="Downgrade to Guest">⬇️</button>
-                  <button @click="deleteUser(user)" class="btn-delete" title="Delete User">🗑️</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Guests Section -->
-          <div class="user-category">
-            <div class="category-header guest-header">
-              <h3>👥 Guest Users</h3>
-              <span class="category-count">{{ guestUsers.length }}</span>
-            </div>
-            <div class="users-list-scrollable">
-              <div v-if="guestUsers.length === 0" class="empty-state"><em>No guest users</em></div>
-              <div v-for="user in guestUsers" :key="user.id" class="user-item guest-item">
-                <div class="user-info">
-                  <div class="user-name">{{ user.username }}</div>
-                  <div class="user-type type-guest">Guest</div>
-                </div>
-                <div class="user-stats">
-                  <div v-if="user.lastSeen" class="user-last-login">Last seen: {{ formatDate(user.lastSeen) }}</div>
-                  <div v-else class="user-last-login">Never played</div>
-                </div>
-                <div class="user-actions">
-                  <button @click="deleteUser(user)" class="btn-delete" title="Delete User">🗑️</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <UserManagementPanel
+          :adminUsers="adminUsers"
+          :playerUsers="playerUsers"
+          :guestUsers="guestUsers"
+          :formatDate="formatDate"
+          @refresh="loadUsers"
+          @deleteUser="deleteUser"
+          @resetPassword="resetUserPassword"
+          @downgrade="downgradeUser"
+        />
       </div>
 
       <!-- Banned Display Names Tab -->
       <div v-if="activeTab === 'banned-names'" class="tab-content banned-names-management">
-        <section>
-          <h2>Banned Display Names</h2>
-          <p class="section-description">Manage globally banned display names to prevent offensive or inappropriate names</p>
-
-          <div class="banned-names-header">
-            <button @click="showAddBannedNameModal" class="btn-primary">+ Add Banned Name</button>
-            <button @click="loadBannedNames" class="btn-refresh">🔄 Refresh</button>
-            <div class="banned-count">{{ bannedNames.length }} banned pattern(s)</div>
-          </div>
-
-          <div class="banned-names-list">
-            <div v-if="bannedNames.length === 0" class="empty-state"><em>No banned display names</em></div>
-            <div v-for="name in bannedNames" :key="name.id" class="banned-name-item">
-              <div class="banned-pattern">
-                <span class="pattern-text">{{ name.pattern }}</span>
-                <span class="pattern-type-badge" :class="'type-' + name.pattern_type">
-                  {{ name.pattern_type === 'exact' ? 'Exact' : 'Contains' }}
-                </span>
-              </div>
-              <div class="banned-meta">
-                <span class="banned-by">Banned by: {{ name.banned_by || 'System' }}</span>
-                <span class="banned-date">{{ formatDate(name.created_at) }}</span>
-              </div>
-              <div class="banned-actions">
-                <button @click="removeBannedName(name)" class="btn-delete" title="Remove Ban">🗑️</button>
-              </div>
-            </div>
-          </div>
-        </section>
+        <BannedNamesPanel
+          :bannedNames="bannedNames"
+          :formatDate="formatDate"
+          @addBannedName="showAddBannedNameModal"
+          @refresh="loadBannedNames"
+          @removeBannedName="removeBannedName"
+        />
       </div>
 
       <!-- About Tab -->
       <div v-if="activeTab === 'about'" class="tab-content about-management">
-        <section class="about-section">
-          <div class="about-header">
-            <h2>About TriviaForge</h2>
-            <div class="version-box">
-              <div class="version-label">Version</div>
-              <div class="version-number">3.3.1</div>
-            </div>
-          </div>
-
-          <div class="about-grid">
-            <!-- Features Column -->
-            <div class="about-card">
-              <h3>✨ Key Features</h3>
-              <ul>
-                <li>✓ Vue 3 modern interface</li>
-                <li>✓ Real-time quiz presentations</li>
-                <li>✓ Live leaderboards & rankings</li>
-                <li>✓ Independent room architecture</li>
-                <li>✓ Player connection monitoring</li>
-                <li>✓ Player authentication & accounts</li>
-                <li>✓ Excel bulk import</li>
-                <li>✓ Session resumption</li>
-                <li>✓ Mobile-optimized interface</li>
-                <li>✓ Spectator display mode</li>
-                <li>✓ Answer history tracking</li>
-              </ul>
-            </div>
-
-            <!-- Getting Started Column -->
-            <div class="about-card">
-              <h3>🚀 Quick Start</h3>
-              <ol>
-                <li><strong>Create a Quiz</strong> - Use the Quiz Management tab to create or import quizzes</li>
-                <li><strong>Launch Session</strong> - Go to Presenter page and make a quiz live</li>
-                <li><strong>Share Code</strong> - Players join using the room code or QR code</li>
-                <li><strong>Present Questions</strong> - Navigate and reveal answers in real-time</li>
-              </ol>
-            </div>
-
-            <!-- Support Column -->
-            <div class="about-card">
-              <h3>💡 Getting Help</h3>
-              <ul>
-                <li>📖 <a href="https://github.com/EmanTemplar/TriviaForge" target="_blank">View Documentation</a></li>
-                <li>🐛 <a href="https://github.com/EmanTemplar/TriviaForge/issues" target="_blank">Report Issues</a></li>
-                <li>💬 <a href="https://github.com/EmanTemplar/TriviaForge/discussions" target="_blank">Ask Questions</a></li>
-                <li>⭐ <a href="https://github.com/EmanTemplar/TriviaForge" target="_blank">Star on GitHub</a></li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- System Information -->
-          <div class="system-info-box">
-            <h3>📊 System Information</h3>
-            <div class="system-grid">
-              <div class="system-item">
-                <div class="system-label">Application</div>
-                <div class="system-value">TriviaForge</div>
-              </div>
-              <div class="system-item">
-                <div class="system-label">Environment</div>
-                <div class="system-value">Production</div>
-              </div>
-              <div class="system-item">
-                <div class="system-label">Database</div>
-                <div class="system-value">PostgreSQL 15</div>
-              </div>
-              <div class="system-item">
-                <div class="system-label">Real-time Protocol</div>
-                <div class="system-value">WebSocket (Socket.IO)</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- About Text -->
-          <div class="about-text-box">
-            <h3>About This Application</h3>
-            <p>
-              TriviaForge is a modern, real-time trivia game platform designed for educators, event organizers, and trivia enthusiasts. It enables interactive quiz sessions with instant feedback, live leaderboards, and comprehensive player analytics.
-            </p>
-            <p>
-              With features like session resumption, user authentication, player connection monitoring, and mobile-optimized interfaces, TriviaForge provides a seamless experience for presenters and players. Whether you're running classroom quizzes, corporate events, or casual game nights, TriviaForge adapts to your needs.
-            </p>
-            <p>
-              Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. Version 3.3.1 includes critical Phase 1 security improvements (CSRF protection, rate limiting, secure Excel import with ExcelJS) plus UI/UX bug fixes: answer timeout loading from Admin Options, long word wrapping and hyphenation across all views, mobile scrolling for players, background gradient fixes, and viewport-constrained display scaling.
-            </p>
-          </div>
-
-          <!-- License Info -->
-          <div class="license-box">
-            <p>
-              <strong>License:</strong> Licensed under the PolyForm Noncommercial License 1.0.0 - Free for educational and personal use. See GitHub for full license details.
-            </p>
-          </div>
-        </section>
+        <AboutPanel />
       </div>
     </main>
 
@@ -460,108 +141,15 @@
     </Modal>
 
     <!-- Session Detail Modal -->
-    <Modal :isOpen="showSessionModal" size="large" title="Session Details" @close="showSessionModal = false">
-      <div v-if="selectedSession" class="session-detail-content">
-        <div class="session-detail-header">
-          <h3>{{ selectedSession.quizTitle }}</h3>
-          <div class="session-detail-meta">
-            <span>Room: {{ selectedSession.roomCode }}</span>
-            <span class="session-status" :class="'status-' + selectedSession.status">{{ selectedSession.status }}</span>
-            <span v-if="selectedSession.completedAt">Completed: {{ formatDate(selectedSession.completedAt) }}</span>
-            <span v-else>Started: {{ formatDate(selectedSession.createdAt) }}</span>
-          </div>
-        </div>
-
-        <!-- Player Summary -->
-        <div v-if="selectedSession.playerResults && selectedSession.playerResults.length > 0" class="session-results">
-          <h4>Player Summary</h4>
-          <table class="results-table">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Player</th>
-                <th>Correct</th>
-                <th>Incorrect</th>
-                <th>Accuracy</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(result, idx) in rankedPlayers" :key="idx">
-                <td class="rank-cell">
-                  <span v-if="idx === 0" class="medal gold">🥇</span>
-                  <span v-else-if="idx === 1" class="medal silver">🥈</span>
-                  <span v-else-if="idx === 2" class="medal bronze">🥉</span>
-                  <span v-else class="rank-number">{{ idx + 1 }}</span>
-                </td>
-                <td>{{ result.name }}</td>
-                <td>{{ result.correct }}</td>
-                <td>{{ (result.answered || 0) - (result.correct || 0) }}</td>
-                <td>{{ getAccuracy(result) }}%</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div v-else class="session-results">
-          <p class="empty-state"><em>No player results available</em></p>
-        </div>
-
-        <!-- Detailed Question Breakdown -->
-        <div v-if="selectedSession.questions && selectedSession.questions.length > 0" class="question-breakdown">
-          <h4>Question Breakdown</h4>
-          <div v-for="(question, qIdx) in selectedSession.questions" :key="qIdx" class="question-detail">
-            <div class="question-header">
-              <strong>Q{{ qIdx + 1 }}:</strong> {{ question.text }}
-            </div>
-            <div class="question-choices">
-              <div
-                v-for="(choice, cIdx) in question.choices"
-                :key="cIdx"
-                :class="['choice-item', { 'choice-correct': cIdx === question.correctChoice }]"
-              >
-                <strong>{{ String.fromCharCode(65 + cIdx) }}.</strong> {{ choice }}
-                <span v-if="cIdx === question.correctChoice" class="correct-indicator">✓ Correct</span>
-              </div>
-            </div>
-            <div v-if="selectedSession.presentedQuestions && selectedSession.presentedQuestions.includes(qIdx)" class="player-answers">
-              <div class="player-answers-header" @click="toggleQuestionExpanded(qIdx)">
-                <strong>Player Responses:</strong>
-                <span class="toggle-arrow" :class="{ expanded: expandedQuestions.has(qIdx) }">▼</span>
-              </div>
-              <div v-if="expandedQuestions.has(qIdx)" class="player-responses-grid">
-                <div
-                  v-for="player in selectedSession.playerResults"
-                  :key="player.name"
-                  :class="['player-response', {
-                    'response-correct': player.answers[qIdx] === question.correctChoice,
-                    'response-incorrect': player.answers[qIdx] !== undefined && player.answers[qIdx] !== question.correctChoice,
-                    'response-unanswered': player.answers[qIdx] === undefined
-                  }]"
-                >
-                  <span class="player-name">{{ player.name }}:</span>
-                  <span class="player-answer">
-                    <template v-if="player.answers[qIdx] !== undefined">
-                      {{ String.fromCharCode(65 + player.answers[qIdx]) }}
-                      <span v-if="player.answers[qIdx] === question.correctChoice" class="answer-result">✓</span>
-                      <span v-else class="answer-result">✗</span>
-                    </template>
-                    <template v-else>
-                      <em>No answer</em>
-                    </template>
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div v-else class="not-presented">
-              <em>Question not presented</em>
-            </div>
-          </div>
-        </div>
-      </div>
-      <template #footer>
-        <button class="btn-danger" @click="confirmDeleteSession(selectedSession)">Delete Session</button>
-        <button class="btn-secondary" @click="showSessionModal = false">Close</button>
-      </template>
-    </Modal>
+    <SessionDetailModal
+      :isOpen="showSessionModal"
+      :session="selectedSession"
+      :expandedQuestions="expandedQuestions"
+      :formatDate="formatDate"
+      @close="showSessionModal = false"
+      @deleteSession="confirmDeleteSession"
+      @toggleQuestion="toggleQuestionExpanded"
+    />
 
     <!-- Delete Confirmation Modal -->
     <Modal :isOpen="showDeleteConfirmModal" @close="showDeleteConfirmModal = false" title="Confirm Deletion">
@@ -585,6 +173,19 @@ import { useRouter } from 'vue-router'
 import Modal from '@/components/common/Modal.vue'
 import { useApi } from '@/composables/useApi.js'
 import { useAuthStore } from '@/stores/auth.js'
+
+// Admin Components
+import AdminNavBar from '@/components/admin/AdminNavBar.vue'
+import AdminTabNavigation from '@/components/admin/AdminTabNavigation.vue'
+import QuizSidebar from '@/components/admin/QuizSidebar.vue'
+import QuestionEditor from '@/components/admin/QuestionEditor.vue'
+import QuestionsList from '@/components/admin/QuestionsList.vue'
+import SessionsList from '@/components/admin/SessionsList.vue'
+import QuizOptionsPanel from '@/components/admin/QuizOptionsPanel.vue'
+import UserManagementPanel from '@/components/admin/UserManagementPanel.vue'
+import BannedNamesPanel from '@/components/admin/BannedNamesPanel.vue'
+import AboutPanel from '@/components/admin/AboutPanel.vue'
+import SessionDetailModal from '@/components/admin/SessionDetailModal.vue'
 
 const router = useRouter()
 const { get, post, put, delete: delete_ } = useApi()
@@ -642,20 +243,6 @@ const users = ref([])
 const bannedNames = ref([])
 
 // Computed Properties
-const rankedPlayers = computed(() => {
-  if (!selectedSession.value || !selectedSession.value.playerResults) return []
-  // Sort players by correct answers (descending), then by accuracy (descending)
-  return [...selectedSession.value.playerResults].sort((a, b) => {
-    if (b.correct !== a.correct) {
-      return b.correct - a.correct
-    }
-    // If correct answers are the same, sort by accuracy
-    const accA = a.answered > 0 ? (a.correct / a.answered) * 100 : 0
-    const accB = b.answered > 0 ? (b.correct / b.answered) * 100 : 0
-    return accB - accA
-  })
-})
-
 // Group users by account type
 const adminUsers = computed(() => users.value.filter(user => user.accountType === 'admin'))
 const playerUsers = computed(() => users.value.filter(user => user.accountType === 'player'))
@@ -792,6 +379,10 @@ const removeChoice = () => {
       correctChoice.value = choices.value.length - 1
     }
   }
+}
+
+const updateChoice = (idx, value) => {
+  choices.value[idx] = value
 }
 
 const editQuestion = (idx) => {
@@ -1478,11 +1069,6 @@ const stopResize = () => {
 const formatDate = (date) => {
   if (!date) return 'N/A'
   return new Date(date).toLocaleString()
-}
-
-const getAccuracy = (result) => {
-  if (!result.answered || result.answered === 0) return '-'
-  return ((result.correct / result.answered) * 100).toFixed(1)
 }
 
 // Watch for quiz deselection to clear question editor
