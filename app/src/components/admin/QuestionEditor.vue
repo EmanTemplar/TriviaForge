@@ -129,6 +129,7 @@ const handleChoiceDragEnd = () => {
   min-height: 0;
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .editor-header {
