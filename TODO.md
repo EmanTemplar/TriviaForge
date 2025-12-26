@@ -153,6 +153,83 @@ This document tracks planned features, improvements, and tasks for future develo
 **Files Modified:**
 - `app/server.js` - Socket.IO handlers refactored to use services
 
+### Phase 4: Vue Component Refactoring ✅ IN PROGRESS (2025-12-26)
+**Branch:** `refactor/architecture-phase1-foundation`
+**Status:** PlayerPage refactoring complete, AdminPage pending
+**Goal:** Break down monolithic Vue components into smaller, maintainable, reusable components
+
+**Completed:**
+- ✅ Extracted PlayerPage modals (Phase 4a - 2025-12-26)
+  - Created 5 modal components: LoginModal, SetPasswordModal, LogoutConfirmModal, LeaveRoomConfirmModal, ChangeUsernameConfirmModal
+  - Reduced PlayerPage from 2,168 → 2,115 lines (-53 lines, 2.4% reduction)
+  - Replaced native `confirm()` dialogs with custom styled modals
+  - All modals use consistent props/emits pattern for communication
+
+- ✅ Extracted PlayerPage ProgressModal (Phase 4b - 2025-12-26)
+  - Created ProgressModal.vue component (280 lines) - self-contained progress tracking
+  - Manages own computed properties for stats (correct/incorrect/accuracy/answered)
+  - Includes helper functions for question status display (getQuestionStatusClass/Icon/Text)
+  - Reduced PlayerPage from 2,115 → 1,857 lines (-258 lines, 12% reduction)
+
+- ✅ Complete PlayerPage component extraction (Phase 4c - 2025-12-26)
+  - **Final Result:** PlayerPage 2,168 → 1,098 lines (-1,070 lines, 49.4% reduction)
+  - Created 7 new player components (957 lines total):
+    1. **PlayerNavbar.vue** (328 lines) - Navigation bar with hamburger menu, connection status, player list
+    2. **QuestionDisplay.vue** (146 lines) - Quiz questions with answer selection and feedback
+    3. **WaitingDisplay.vue** (123 lines) - Waiting screen with recent rooms quick join
+    4. **JoinRoomSection.vue** (164 lines) - Username, display name, room code input form
+    5. **RoomInfoSection.vue** (77 lines) - Room code display with action buttons
+    6. **PlayersList.vue** (72 lines) - Player list with online/offline status indicators
+    7. **StatusMessage.vue** (47 lines) - Dynamic status messages with type-based styling
+  - Removed ~600 lines of CSS (moved to scoped component styles)
+  - Simplified template from ~200 lines of nested markup to clean component tags
+  - All components use props-down/events-up communication pattern
+  - v-model syntax for JoinRoomSection form inputs
+  - Build successful, all components importing correctly
+
+**Results:**
+- **PlayerPage.vue:** 2,168 → 1,098 lines (-1,070 lines, 49.4% reduction)
+- **Total components created:** 8 (1 modal + 7 player components)
+- **Total extracted code:** 1,237 lines (ProgressModal + 7 player components)
+- **Maintainability:** Each component has single responsibility
+- **Reusability:** Components can be used in other views if needed
+- **Testability:** Isolated components easier to test
+- **Organization:** Related code grouped together with scoped styles
+
+**Files Created:**
+- `app/src/components/modals/ProgressModal.vue` (280 lines)
+- `app/src/components/modals/LoginModal.vue` (75 lines)
+- `app/src/components/modals/SetPasswordModal.vue` (92 lines)
+- `app/src/components/modals/LogoutConfirmModal.vue` (35 lines)
+- `app/src/components/modals/LeaveRoomConfirmModal.vue` (35 lines)
+- `app/src/components/modals/ChangeUsernameConfirmModal.vue` (40 lines)
+- `app/src/components/player/PlayerNavbar.vue` (328 lines)
+- `app/src/components/player/QuestionDisplay.vue` (146 lines)
+- `app/src/components/player/WaitingDisplay.vue` (123 lines)
+- `app/src/components/player/JoinRoomSection.vue` (164 lines)
+- `app/src/components/player/RoomInfoSection.vue` (77 lines)
+- `app/src/components/player/PlayersList.vue` (72 lines)
+- `app/src/components/player/StatusMessage.vue` (47 lines)
+
+**Files Modified:**
+- `app/src/pages/PlayerPage.vue` - Refactored to use extracted components
+
+**Pending:**
+- [ ] Refactor AdminPage.vue (3,345 lines → target ~500 lines)
+  - Extract NavigationBar, TabNavigation, AboutPanel
+  - Extract QuizOptionsPanel, BannedNamesPanel
+  - Extract SessionsPanel, UserManagementPanel, Quiz components
+  - Create composables (useQuizManagement, useDragAndDrop, useDialog)
+- [ ] Test extracted components in browser for runtime errors
+- [ ] Update documentation with Phase 4 completion details
+
+**Architecture Roadmap:**
+- **Phase 1:** Foundation layer (constants, errors, validation) ✅ COMPLETE
+- **Phase 2:** Extract routes into separate modules ✅ COMPLETE
+- **Phase 3:** Create service layer (RoomService, SessionService, QuizService) ✅ COMPLETE
+- **Phase 4:** Refactor large Vue components ⏳ IN PROGRESS (PlayerPage complete, AdminPage pending)
+- **Phase 5:** Add unit tests for utilities and services - NEXT
+
 ---
 
 ## Recent Completed Features (v3.2.2)
