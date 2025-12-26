@@ -1,45 +1,20 @@
 <template>
   <div class="player-page">
     <!-- Navbar -->
-    <nav class="navbar">
-      <div class="logo">Trivia Player</div>
-
-      <!-- Progress button in navbar -->
-      <div class="nav-progress-container">
-        <button v-if="inRoom" id="progressBtn" class="progress-btn" @click="showProgressModal">
-          📊 Progress
-        </button>
-      </div>
-
-      <div v-if="inRoom" class="nav-room-info" :class="{ active: inRoom }">
-        <span class="nav-room-code">{{ currentRoomCode || '----' }}</span>
-        <span class="nav-connection-status" :class="connectionStateClass">{{ connectionStateSymbol }}</span>
-        <span v-if="wakeLock.isActive.value" class="wake-lock-indicator" title="Screen will stay on">🔆</span>
-      </div>
-
-      <div class="hamburger" @click="toggleMenu">&#9776;</div>
-      <ul class="menu" :class="{ open: menuOpen }">
-        <li><RouterLink to="/display">Spectate</RouterLink></li>
-        <li v-if="inRoom" id="menuLeaveRoom" class="mobile-only-menu-item">
-          <a href="#" @click.prevent="handleLeaveRoomClick">Leave Room</a>
-        </li>
-        <li v-if="inRoom" id="menuPlayersSection" class="mobile-only-menu-item">
-          <div>Players in Room</div>
-          <div id="menuPlayersList" class="menu-players">
-            <div v-for="(player, idx) in nonSpectatorPlayers" :key="player.id" class="player-item">
-              <span>{{ idx + 1 }}.</span>
-              <span class="player-status" :class="{ online: player.connected, offline: !player.connected }">●</span>
-              <span>{{ player.name }}</span>
-              <span v-if="player.choice !== null">✓</span>
-            </div>
-            <em v-if="nonSpectatorPlayers.length === 0">Not in a room yet</em>
-          </div>
-        </li>
-        <li v-if="loginUsername" class="logout-item">
-          <a href="#" @click.prevent="handleLogout" style="color: #f66;">Logout</a>
-        </li>
-      </ul>
-    </nav>
+    <PlayerNavbar
+      :inRoom="inRoom"
+      :currentRoomCode="currentRoomCode"
+      :connectionStateClass="connectionStateClass"
+      :connectionStateSymbol="connectionStateSymbol"
+      :wakeLockActive="wakeLock.isActive.value"
+      :menuOpen="menuOpen"
+      :nonSpectatorPlayers="nonSpectatorPlayers"
+      :loginUsername="loginUsername"
+      @showProgress="showProgressModal"
+      @toggleMenu="toggleMenu"
+      @leaveRoom="handleLeaveRoomClick"
+      @logout="handleLogout"
+    />
 
     <!-- Main Content -->
     <div class="player-container">
@@ -51,132 +26,53 @@
       <!-- Left/Top: Question Display -->
       <div class="question-area">
         <!-- Waiting Screen -->
-        <div v-if="!questionDisplaying" class="waiting-display">
-          <h2 class="waiting-title">{{ inRoom ? 'Waiting for Question' : 'Join a Room to Start' }}</h2>
-          <p class="waiting-message">{{ inRoom ? 'Waiting for the presenter to start the quiz...' : 'Enter your name and room code to begin playing.' }}</p>
-
-          <!-- Recent Rooms Section -->
-          <div v-if="!inRoom && recentRooms.length > 0" class="recent-rooms-section">
-            <h3>Recent Rooms</h3>
-            <div class="recent-rooms-list">
-              <button
-                v-for="room in recentRooms"
-                :key="room.code"
-                class="recent-room-btn"
-                @click="quickJoinRoom(room.code)"
-              >
-                <div class="recent-room-content">
-                  <div class="recent-room-code">Room {{ room.code }}</div>
-                  <div class="recent-room-time">Joined {{ getTimeAgo(room.timestamp) }}</div>
-                </div>
-                <div class="recent-room-arrow">→ Quick Join</div>
-              </button>
-            </div>
-          </div>
-        </div>
+        <WaitingDisplay
+          v-if="!questionDisplaying"
+          :inRoom="inRoom"
+          :recentRooms="recentRooms"
+          @quickJoin="quickJoinRoom"
+        />
 
         <!-- Question Display -->
-        <div v-else class="question-display-area">
-          <h2 class="question-text">{{ currentQuestion?.text }}</h2>
-
-          <div class="choices-container">
-            <button
-              v-for="(choice, idx) in currentQuestion?.choices || []"
-              :key="idx"
-              class="choice-btn"
-              :class="{
-                selected: selectedAnswer === idx,
-                correct: idx === currentQuestion?.correctChoice && answerRevealed,
-                incorrect: idx === selectedAnswer && selectedAnswer !== currentQuestion?.correctChoice && answerRevealed
-              }"
-              :disabled="answeredCurrentQuestion || answerRevealed"
-              @click="selectAnswer(idx)"
-            >
-              <strong>{{ String.fromCharCode(65 + idx) }}.</strong> {{ choice }}
-            </button>
-          </div>
-
-          <div v-if="answerRevealed" class="answer-feedback" :class="{ correct: playerGotCorrect, incorrect: !playerGotCorrect }">
-            <span v-if="playerGotCorrect">✓ Correct!</span>
-            <span v-else>✗ Incorrect.</span>
-            The correct answer was: <strong>{{ currentQuestion?.choices[currentQuestion?.correctChoice] }}</strong>
-          </div>
-        </div>
+        <QuestionDisplay
+          v-else
+          :currentQuestion="currentQuestion"
+          :selectedAnswer="selectedAnswer"
+          :answerRevealed="answerRevealed"
+          :playerGotCorrect="playerGotCorrect"
+          :answeredCurrentQuestion="answeredCurrentQuestion"
+          @selectAnswer="selectAnswer"
+        />
       </div>
 
       <!-- Right/Bottom: Room/Sidebar -->
       <div class="sidebar" :class="{ 'hidden-mobile-in-room': inRoom }">
         <!-- Join Section -->
-        <div v-if="!inRoom" class="join-section">
-          <h3>Join Room</h3>
-
-          <!-- Username Input or Display -->
-          <div v-if="!savedUsername" class="username-input-section">
-            <label for="playerUsername">Username</label>
-            <input
-              id="playerUsername"
-              v-model="usernameInput"
-              type="text"
-              placeholder="Choose a username"
-            />
-            <p class="form-hint">This will be your account name</p>
-          </div>
-
-          <div v-else class="username-display-section">
-            <label>Username (Account)</label>
-            <div class="username-display">
-              <div class="username-value">{{ savedUsername }}</div>
-              <button class="change-username-btn" @click="handleChangeUsername">Change</button>
-            </div>
-          </div>
-
-          <label for="playerDisplayName">Display Name</label>
-          <input
-            id="playerDisplayName"
-            v-model="displayNameInput"
-            type="text"
-            placeholder="Name shown in game"
-          />
-          <p class="form-hint">This is what other players will see</p>
-
-          <label for="roomCodeManual">Room Code</label>
-          <input
-            id="roomCodeManual"
-            v-model="roomCodeInput"
-            type="text"
-            placeholder="Enter room code"
-          />
-
-          <button class="btn-primary" @click="handleJoinRoom">Join Room</button>
-          <button class="btn-secondary" @click="handleManageAccount">Manage Account</button>
-        </div>
+        <JoinRoomSection
+          v-if="!inRoom"
+          :savedUsername="savedUsername"
+          v-model:usernameInput="usernameInput"
+          v-model:displayNameInput="displayNameInput"
+          v-model:roomCodeInput="roomCodeInput"
+          @changeUsername="handleChangeUsername"
+          @joinRoom="handleJoinRoom"
+          @manageAccount="handleManageAccount"
+        />
 
         <!-- Room Info -->
-        <div v-else class="room-info">
-          <h3>Room Info</h3>
-          <div><strong>Room Code:</strong> <span>{{ currentRoomCode }}</span></div>
-          <div><strong>Your Name:</strong> <span>{{ currentDisplayName }}</span></div>
-
-          <button class="btn-info" @click="showProgressModal">📊 View Progress</button>
-          <button class="btn-danger" @click="handleLeaveRoomClick">Leave Room</button>
-        </div>
+        <RoomInfoSection
+          v-else
+          :currentRoomCode="currentRoomCode"
+          :currentDisplayName="currentDisplayName"
+          @showProgress="showProgressModal"
+          @leaveRoom="handleLeaveRoomClick"
+        />
 
         <!-- Players List -->
-        <div class="players-list-container">
-          <h3>Players in Room</h3>
-          <div class="players-list">
-            <div v-for="(player, idx) in nonSpectatorPlayers" :key="player.id" class="player-item">
-              <span class="player-number">{{ idx + 1 }}.</span>
-              <span class="player-status" :class="{ online: player.connected, offline: !player.connected }">●</span>
-              <span class="player-name">{{ player.name }}</span>
-              <span v-if="player.choice !== null" class="player-answer">✓</span>
-            </div>
-            <em v-if="nonSpectatorPlayers.length === 0">Not in a room yet</em>
-          </div>
-        </div>
+        <PlayersList :nonSpectatorPlayers="nonSpectatorPlayers" />
 
         <!-- Status Message -->
-        <div class="status-message" :class="statusMessageType">{{ statusMessage }}</div>
+        <StatusMessage :message="statusMessage" :messageType="statusMessageType" />
       </div>
     </div>
 
@@ -236,13 +132,19 @@ import { useSocket } from '@/composables/useSocket.js'
 import { useWakeLock } from '@/composables/useWakeLock.js'
 import { useApi } from '@/composables/useApi.js'
 import { useUIStore } from '@/stores/ui.js'
-import Modal from '@/components/common/Modal.vue'
 import LoginModal from '@/components/modals/LoginModal.vue'
 import SetPasswordModal from '@/components/modals/SetPasswordModal.vue'
 import LogoutConfirmModal from '@/components/modals/LogoutConfirmModal.vue'
 import LeaveRoomConfirmModal from '@/components/modals/LeaveRoomConfirmModal.vue'
 import ChangeUsernameConfirmModal from '@/components/modals/ChangeUsernameConfirmModal.vue'
 import ProgressModal from '@/components/modals/ProgressModal.vue'
+import PlayerNavbar from '@/components/player/PlayerNavbar.vue'
+import QuestionDisplay from '@/components/player/QuestionDisplay.vue'
+import WaitingDisplay from '@/components/player/WaitingDisplay.vue'
+import JoinRoomSection from '@/components/player/JoinRoomSection.vue'
+import RoomInfoSection from '@/components/player/RoomInfoSection.vue'
+import PlayersList from '@/components/player/PlayersList.vue'
+import StatusMessage from '@/components/player/StatusMessage.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -758,17 +660,6 @@ const closeMenuIfOutside = (e) => {
   }
 }
 
-const getTimeAgo = (timestamp) => {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000)
-  if (seconds < 60) return 'just now'
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes} min ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
-  const days = Math.floor(hours / 24)
-  return `${days} day${days > 1 ? 's' : ''} ago`
-}
-
 const loadRecentRooms = () => {
   const stored = localStorage.getItem('playerRecentRooms')
   let rooms = stored ? JSON.parse(stored) : []
@@ -1122,150 +1013,6 @@ const verifyAuthToken = async () => {
   color: #fff;
 }
 
-.navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem;
-  background: rgba(0, 0, 0, 0.3);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  gap: 1rem;
-  position: relative;
-  z-index: 100;
-}
-
-.logo {
-  font-weight: bold;
-  font-size: 1.2rem;
-  flex-shrink: 0;
-}
-
-.nav-progress-container {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-}
-
-.progress-btn {
-  padding: 0.5rem 1rem;
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.4);
-  border-radius: 8px;
-  color: #4fc3f7;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.progress-btn:hover {
-  background: rgba(79, 195, 247, 0.3);
-}
-
-.nav-room-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.nav-room-code {
-  color: #4fc3f7;
-  font-weight: bold;
-}
-
-.nav-connection-status {
-  font-size: 1.2rem;
-  transition: color 0.2s;
-}
-
-/* Connection states */
-.nav-connection-status.status-connected,
-.status-connected {
-  color: #0f0; /* Green */
-}
-
-.nav-connection-status.status-away,
-.status-away {
-  color: #ff8c00; /* Orange */
-}
-
-.nav-connection-status.status-disconnected,
-.status-disconnected {
-  color: #f00; /* Red */
-}
-
-.nav-connection-status.status-warning,
-.status-warning {
-  color: #ffd700; /* Yellow/Gold */
-  animation: pulse-warning 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-warning {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* Wake Lock Indicator */
-.wake-lock-indicator {
-  font-size: 1rem;
-  margin-left: 0.5rem;
-  cursor: help;
-  opacity: 0.9;
-}
-
-.hamburger {
-  display: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.menu {
-  display: flex;
-  list-style: none;
-  gap: 1.5rem;
-  padding: 0;
-  margin: 0;
-}
-
-.menu li {
-  display: flex;
-  align-items: center;
-}
-
-.menu a {
-  color: #fff;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.menu a:hover {
-  color: #4fc3f7;
-}
-
-/* Hide mobile-only menu items on desktop */
-@media (min-width: 1025px) {
-  .mobile-only-menu-item {
-    display: none !important;
-  }
-}
-
-.logout-item {
-  border-top: none;
-  padding-top: 0;
-  margin-top: 0;
-}
-
-/* Show separator only on mobile */
-@media (max-width: 1024px) {
-  .logout-item {
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 0.5rem;
-    margin-top: 0.5rem;
-  }
-}
-
 .player-container {
   display: flex;
   flex: 1 1 auto;
@@ -1312,180 +1059,6 @@ const verifyAuthToken = async () => {
   box-sizing: border-box;
 }
 
-.waiting-display {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-}
-
-.waiting-title {
-  font-size: 2rem;
-  margin: 0;
-}
-
-.waiting-message {
-  font-size: 1.1rem;
-  color: #aaa;
-  margin: 0;
-}
-
-.recent-rooms-section {
-  margin-top: 2rem;
-}
-
-.recent-rooms-section h3 {
-  font-size: 1.2rem;
-  margin-bottom: 1rem;
-  color: #4fc3f7;
-}
-
-.recent-rooms-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.recent-room-btn {
-  padding: 1rem;
-  background: rgba(79, 195, 247, 0.1);
-  border: 1px solid rgba(79, 195, 247, 0.3);
-  border-radius: 8px;
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: all 0.2s;
-}
-
-.recent-room-btn:hover {
-  background: rgba(79, 195, 247, 0.2);
-}
-
-.recent-room-content {
-  text-align: left;
-}
-
-.recent-room-code {
-  font-size: 1.1rem;
-  font-weight: bold;
-  color: #4fc3f7;
-}
-
-.recent-room-time {
-  font-size: 0.85rem;
-  color: #aaa;
-  margin-top: 0.25rem;
-}
-
-.recent-room-arrow {
-  font-size: 0.9rem;
-  color: #4fc3f7;
-}
-
-.question-display-area {
-  width: 100%;
-  max-width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  box-sizing: border-box;
-}
-
-.question-text {
-  text-align: center;
-  font-size: clamp(1.5rem, 5vw, 2.5rem);
-  margin: 0;
-  line-height: 1.3;
-  word-wrap: break-word;
-  color: #fff;
-}
-
-.choices-container {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.5rem;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.choice-btn {
-  padding: 2rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 3px solid rgba(255, 255, 255, 0.2);
-  border-radius: 15px;
-  color: #fff;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: all 0.3s;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  -webkit-hyphens: auto;
-  -moz-hyphens: auto;
-  -ms-hyphens: auto;
-  hyphens: auto;
-  min-width: 0;
-  box-sizing: border-box;
-}
-
-.choice-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.4);
-}
-
-.choice-btn.selected {
-  background: rgba(79, 195, 247, 0.3);
-  border-color: rgba(79, 195, 247, 0.6);
-}
-
-.choice-btn.correct {
-  background: rgba(0, 200, 0, 0.3);
-  border-color: #0f0;
-}
-
-.choice-btn.incorrect {
-  background: rgba(200, 0, 0, 0.3);
-  border-color: #f66;
-}
-
-.choice-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.answer-feedback {
-  padding: 1.5rem;
-  border-radius: 10px;
-  font-size: 1.1rem;
-  text-align: center;
-  animation: fadeIn 0.3s ease-in;
-}
-
-.answer-feedback.correct {
-  background: rgba(0, 200, 0, 0.2);
-  color: #0f0;
-}
-
-.answer-feedback.incorrect {
-  background: rgba(200, 0, 0, 0.2);
-  color: #f66;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 .sidebar {
   width: 300px;
   min-width: 300px;
@@ -1500,336 +1073,8 @@ const verifyAuthToken = async () => {
   gap: 2rem;
 }
 
-.join-section,
-.room-info {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.join-section h3,
-.room-info h3 {
-  margin: 0;
-  color: #4fc3f7;
-  font-size: 1.1rem;
-}
-
-.username-input-section,
-.username-display-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.username-display {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.username-value {
-  flex: 1;
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #4fc3f7;
-  font-weight: 500;
-}
-
-.change-username-btn {
-  padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #aaa;
-  cursor: pointer;
-  font-size: 0.85rem;
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-.change-username-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-.form-hint {
-  font-size: 0.85rem;
-  color: #aaa;
-  margin: 0;
-}
-
-.join-section input,
-.room-info input {
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  color: #fff;
-  font-size: 1rem;
-}
-
-.join-section label,
-.room-info label {
-  color: #aaa;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.btn-primary,
-.btn-secondary,
-.btn-info,
-.btn-danger {
-  padding: 0.75rem;
-  border: none;
-  border-radius: 8px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: rgba(0, 123, 255, 0.3);
-  border: 1px solid rgba(0, 123, 255, 0.5);
-  color: #4fc3f7;
-}
-
-.btn-primary:hover {
-  background: rgba(0, 123, 255, 0.5);
-}
-
-.btn-secondary {
-  background: rgba(0, 123, 255, 0.2);
-  border: 1px solid rgba(0, 123, 255, 0.3);
-  color: #4fc3f7;
-}
-
-.btn-secondary:hover {
-  background: rgba(0, 123, 255, 0.3);
-}
-
-.btn-info {
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.4);
-  color: #4fc3f7;
-}
-
-.btn-info:hover {
-  background: rgba(79, 195, 247, 0.3);
-}
-
-.btn-danger {
-  background: rgba(200, 0, 0, 0.2);
-  border: 1px solid rgba(200, 0, 0, 0.3);
-  color: #f66;
-}
-
-.btn-danger:hover {
-  background: rgba(200, 0, 0, 0.3);
-}
-
-.room-info div {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  color: #fff;
-}
-
-.room-info strong {
-  color: #aaa;
-}
-
-.players-list-container h3 {
-  margin: 0 0 1rem 0;
-  color: #4fc3f7;
-  font-size: 1.1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 0.5rem;
-}
-
-.players-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.player-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  font-size: 0.9rem;
-  color: #fff;
-}
-
-.player-number {
-  color: #aaa;
-}
-
-.player-status {
-  font-size: 1.2rem;
-  flex-shrink: 0;
-}
-
-.player-status.online {
-  color: #0f0;
-}
-
-.player-status.offline {
-  color: #f00;
-}
-
-.player-name {
-  flex: 1;
-}
-
-.player-answer {
-  color: #0f0;
-}
-
-.status-message {
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  text-align: center;
-  font-size: 0.9rem;
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  margin-top: auto;
-}
-
-.status-message.success {
-  background: rgba(0, 200, 0, 0.1);
-  border-color: rgba(0, 200, 0, 0.3);
-  color: #0f0;
-}
-
-.status-message.error {
-  background: rgba(200, 0, 0, 0.1);
-  border-color: rgba(200, 0, 0, 0.3);
-  color: #f66;
-}
-
-.status-message.warning {
-  background: rgba(255, 165, 0, 0.1);
-  border-color: rgba(255, 165, 0, 0.3);
-  color: #ffa500;
-}
-
-.status-message.info {
-  background: rgba(79, 195, 247, 0.1);
-  border-color: rgba(79, 195, 247, 0.3);
-  color: #4fc3f7;
-}
-
-.menu-players {
-  margin-top: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
 /* Mobile styles */
-@media (max-width: 1024px) {
-  .hamburger {
-    display: block !important;
-    z-index: 101;
-  }
-
-  .menu {
-    position: fixed;
-    top: 60px;
-    left: 0;
-    right: 0;
-    flex-direction: column;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    border-bottom: 1px solid rgba(79, 195, 247, 0.2);
-    padding: 1rem;
-    gap: 0.5rem;
-    display: none !important;
-    z-index: 999;
-    max-height: calc(100vh - 60px);
-    overflow-y: auto;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-  }
-
-  .menu.open {
-    display: flex !important;
-  }
-
-  .menu li {
-    width: 100%;
-    white-space: normal;
-    flex-direction: column;
-    align-items: flex-start;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 0.5rem 0;
-  }
-
-  .menu li:last-child {
-    border-bottom: none;
-  }
-
-  .menu a {
-    display: block;
-    padding: 0.75rem;
-    width: 100%;
-    border-radius: 8px;
-    transition: background 0.2s;
-  }
-
-  .menu a:hover {
-    background: rgba(79, 195, 247, 0.1);
-  }
-
-  .menu-players {
-    margin-left: 0;
-    margin-top: 0.5rem;
-    width: 100%;
-  }
-
-  .menu-players .player-item {
-    padding: 0.5rem 0.75rem;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 6px;
-    margin-bottom: 0.25rem;
-  }
-
-  /* Leave Room button - red outline */
-  #menuLeaveRoom a {
-    border: 2px solid rgba(255, 102, 102, 0.5);
-    background: rgba(255, 102, 102, 0.05);
-  }
-
-  #menuLeaveRoom a:hover {
-    background: rgba(255, 102, 102, 0.15);
-    border-color: rgba(255, 102, 102, 0.7);
-  }
-
-  /* Logout button - red transparent background */
-  .logout-item a {
-    background: rgba(255, 102, 102, 0.15);
-    border: 2px solid rgba(255, 102, 102, 0.6);
-  }
-
-  .logout-item a:hover {
-    background: rgba(255, 102, 102, 0.25);
-    border-color: rgba(255, 102, 102, 0.8);
-  }
-}
-
 @media (max-width: 768px) {
-  .menu {
-    background: rgba(0, 0, 0, 0.95);
-    backdrop-filter: blur(10px);
-  }
-
   .player-container {
     flex-direction: column;
   }
@@ -1848,10 +1093,6 @@ const verifyAuthToken = async () => {
 
   .sidebar.hidden-mobile-in-room {
     display: none;
-  }
-
-  .choices-container {
-    grid-template-columns: 1fr;
   }
 }
 </style>
