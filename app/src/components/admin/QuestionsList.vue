@@ -156,6 +156,8 @@ h2 {
   cursor: grab;
   transition: all 0.2s;
   overflow: hidden;
+  min-height: 80px;
+  flex-shrink: 0;
 }
 
 .question-item:hover {
