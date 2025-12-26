@@ -96,14 +96,15 @@ const handleDragEnd = () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  overflow-y: auto;
   min-height: 0;
+  height: 100%;
 }
 
 .questions-list-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 h2 {
@@ -138,6 +139,7 @@ h2 {
   gap: 0.75rem;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 .empty-state {

@@ -126,8 +126,9 @@ const handleChoiceDragEnd = () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  overflow-y: auto;
   min-height: 0;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .editor-header {

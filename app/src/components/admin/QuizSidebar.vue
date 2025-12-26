@@ -68,8 +68,9 @@ const handleFileChange = (event) => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  overflow-y: auto;
   min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 h2 {
@@ -179,6 +180,8 @@ h2 {
   flex-direction: column;
   gap: 0.5rem;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .empty-state {
