@@ -1259,8 +1259,10 @@ onUnmounted(() => {
 .questions-sidebar {
   padding: 0 0 0 1rem;
   min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  gap: 1rem;
 }
 
 .resize-handle {
