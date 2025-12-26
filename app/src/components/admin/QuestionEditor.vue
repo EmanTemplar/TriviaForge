@@ -123,15 +123,11 @@ const handleChoiceDragEnd = () => {
 
 <style scoped>
 .question-editor-panel {
-  background: rgba(255, 255, 255, 0.05);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  width: 450px;
-  flex-shrink: 0;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .editor-header {
@@ -243,8 +239,9 @@ h2 {
 }
 
 .choice-input-wrapper.drag-over {
-  border-color: rgba(79, 195, 247, 0.5);
-  background: rgba(79, 195, 247, 0.1);
+  border: 2px dashed rgba(255, 193, 7, 0.8);
+  background: rgba(255, 193, 7, 0.1);
+  border-radius: 4px;
 }
 
 .choice-label {

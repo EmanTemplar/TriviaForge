@@ -93,13 +93,11 @@ const handleDragEnd = () => {
 
 <style scoped>
 .questions-sidebar {
-  background: rgba(255, 255, 255, 0.05);
-  padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .questions-list-header {
@@ -174,8 +172,8 @@ h2 {
 }
 
 .question-item.drag-over {
-  border-color: rgba(79, 195, 247, 0.5);
-  background: rgba(79, 195, 247, 0.2);
+  border: 2px dashed rgba(255, 193, 7, 0.8);
+  background: rgba(255, 193, 7, 0.1);
 }
 
 .question-content {

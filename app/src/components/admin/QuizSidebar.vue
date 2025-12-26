@@ -65,15 +65,11 @@ const handleFileChange = (event) => {
 
 <style scoped>
 .quiz-sidebar {
-  background: rgba(255, 255, 255, 0.05);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  width: 280px;
-  flex-shrink: 0;
   overflow-y: auto;
+  min-height: 0;
 }
 
 h2 {
