@@ -81,8 +81,8 @@ h2 {
 
 .btn-primary {
   padding: 0.75rem;
-  background: rgba(0, 123, 255, 0.3);
-  border: 1px solid rgba(0, 123, 255, 0.5);
+  background: rgba(0, 123, 255, 0.4);
+  border: 1px solid rgba(0, 123, 255, 0.6);
   border-radius: 8px;
   color: #4fc3f7;
   font-weight: bold;
@@ -91,12 +91,12 @@ h2 {
 }
 
 .btn-primary:hover {
-  background: rgba(0, 123, 255, 0.5);
+  background: rgba(0, 123, 255, 0.6);
 }
 
 .excel-import-box {
-  background: rgba(79, 195, 247, 0.05);
-  border: 1px solid rgba(79, 195, 247, 0.2);
+  background: rgba(79, 195, 247, 0.08);
+  border: 1px solid rgba(79, 195, 247, 0.3);
   border-radius: 8px;
   padding: 1rem;
   display: flex;
@@ -127,23 +127,23 @@ h2 {
 }
 
 .btn-download {
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.3);
+  background: rgba(79, 195, 247, 0.25);
+  border: 1px solid rgba(79, 195, 247, 0.5);
   color: #4fc3f7;
 }
 
 .btn-download:hover {
-  background: rgba(79, 195, 247, 0.3);
+  background: rgba(79, 195, 247, 0.4);
 }
 
 .btn-upload {
-  background: rgba(76, 175, 80, 0.2);
-  border: 1px solid rgba(76, 175, 80, 0.3);
+  background: rgba(76, 175, 80, 0.25);
+  border: 1px solid rgba(76, 175, 80, 0.5);
   color: #81c784;
 }
 
 .btn-upload:hover {
-  background: rgba(76, 175, 80, 0.3);
+  background: rgba(76, 175, 80, 0.4);
 }
 
 .import-status {
@@ -193,8 +193,8 @@ h2 {
 
 .quiz-item {
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
@@ -204,8 +204,8 @@ h2 {
 }
 
 .quiz-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(79, 195, 247, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(79, 195, 247, 0.5);
 }
 
 .quiz-name {
@@ -221,10 +221,10 @@ h2 {
 
 .btn-delete {
   padding: 0.4rem 0.6rem;
-  background: rgba(200, 0, 0, 0.2);
-  border: 1px solid rgba(200, 0, 0, 0.3);
+  background: rgba(244, 67, 54, 0.25);
+  border: 1px solid rgba(244, 67, 54, 0.5);
   border-radius: 4px;
-  color: #f66;
+  color: #ff6b6b;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.8rem;
@@ -232,7 +232,7 @@ h2 {
 }
 
 .btn-delete:hover {
-  background: rgba(200, 0, 0, 0.3);
+  background: rgba(244, 67, 54, 0.4);
 }
 
 @media (max-width: 1024px) {

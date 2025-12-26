@@ -120,8 +120,8 @@ h2 {
 
 .btn-shuffle {
   padding: 0.5rem 0.75rem;
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.3);
+  background: rgba(79, 195, 247, 0.25);
+  border: 1px solid rgba(79, 195, 247, 0.5);
   border-radius: 6px;
   color: #4fc3f7;
   cursor: pointer;
@@ -130,7 +130,7 @@ h2 {
 }
 
 .btn-shuffle:hover {
-  background: rgba(79, 195, 247, 0.3);
+  background: rgba(79, 195, 247, 0.4);
 }
 
 .questions-list {
@@ -150,8 +150,8 @@ h2 {
 }
 
 .question-item {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   cursor: grab;
   transition: all 0.2s;
@@ -161,13 +161,13 @@ h2 {
 }
 
 .question-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(79, 195, 247, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(79, 195, 247, 0.5);
 }
 
 .question-item.active {
-  background: rgba(79, 195, 247, 0.15);
-  border-color: rgba(79, 195, 247, 0.5);
+  background: rgba(79, 195, 247, 0.2);
+  border-color: rgba(79, 195, 247, 0.6);
 }
 
 .question-item.dragging {
@@ -199,8 +199,11 @@ h2 {
   color: #ccc;
   font-size: 0.9rem;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+  max-height: 2.8em;
 }
 
 .question-actions {
@@ -227,13 +230,13 @@ h2 {
 }
 
 .btn-reorder {
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.3);
+  background: rgba(79, 195, 247, 0.25);
+  border: 1px solid rgba(79, 195, 247, 0.5);
   color: #4fc3f7;
 }
 
 .btn-reorder:hover:not(:disabled) {
-  background: rgba(79, 195, 247, 0.3);
+  background: rgba(79, 195, 247, 0.4);
 }
 
 .btn-reorder:disabled {
@@ -242,13 +245,13 @@ h2 {
 }
 
 .btn-delete {
-  background: rgba(200, 0, 0, 0.2);
-  border: 1px solid rgba(200, 0, 0, 0.3);
-  color: #f66;
+  background: rgba(244, 67, 54, 0.25);
+  border: 1px solid rgba(244, 67, 54, 0.5);
+  color: #ff6b6b;
 }
 
 .btn-delete:hover {
-  background: rgba(200, 0, 0, 0.3);
+  background: rgba(244, 67, 54, 0.4);
 }
 
 @media (max-width: 1024px) {

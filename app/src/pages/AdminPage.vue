@@ -1049,15 +1049,25 @@ const handleMouseMove = (e) => {
   const delta = e.clientX - resizingColumn.value.startX
   const { column, startCol1Width, startCol2Width } = resizingColumn.value
 
-  // Minimum column width is 200px
+  // Minimum column widths
   const minWidth = 200
+  const minCol3Width = 250 // Minimum width for questions list
+
+  // Get container width
+  const container = document.querySelector('.quiz-management')
+  if (!container) return
+  const containerWidth = container.clientWidth
 
   if (column === 1) {
     const newWidth = Math.max(minWidth, startCol1Width + delta)
-    col1Width.value = newWidth
+    // Ensure col1 + col2 doesn't exceed container width minus min col3 width
+    const maxWidth = containerWidth - col2Width.value - minCol3Width
+    col1Width.value = Math.min(newWidth, maxWidth)
   } else if (column === 2) {
     const newWidth = Math.max(minWidth, startCol2Width + delta)
-    col2Width.value = newWidth
+    // Ensure col1 + col2 doesn't exceed container width minus min col3 width
+    const maxWidth = containerWidth - col1Width.value - minCol3Width
+    col2Width.value = Math.min(newWidth, maxWidth)
   }
 }
 
@@ -1212,7 +1222,7 @@ onUnmounted(() => {
 /* Quiz Management Tab - 3-Column Layout */
 .quiz-management {
   display: grid;
-  grid-template-columns: v-bind(col1Width + 'px') v-bind(col2Width + 'px') 1fr;
+  grid-template-columns: v-bind(col1Width + 'px') v-bind(col2Width + 'px') minmax(250px, 1fr);
   gap: 0;
   height: 100%;
   position: relative;

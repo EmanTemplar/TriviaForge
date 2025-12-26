@@ -146,8 +146,8 @@ h2 {
 
 .btn-new-question {
   padding: 0.5rem 1rem;
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.3);
+  background: rgba(79, 195, 247, 0.25);
+  border: 1px solid rgba(79, 195, 247, 0.5);
   border-radius: 6px;
   color: #4fc3f7;
   cursor: pointer;
@@ -157,7 +157,7 @@ h2 {
 }
 
 .btn-new-question:hover {
-  background: rgba(79, 195, 247, 0.3);
+  background: rgba(79, 195, 247, 0.4);
 }
 
 .question-text-input {
@@ -199,23 +199,23 @@ h2 {
 }
 
 .btn-add {
-  background: rgba(76, 175, 80, 0.2);
-  border: 1px solid rgba(76, 175, 80, 0.3);
+  background: rgba(76, 175, 80, 0.25);
+  border: 1px solid rgba(76, 175, 80, 0.5);
   color: #81c784;
 }
 
 .btn-add:hover {
-  background: rgba(76, 175, 80, 0.3);
+  background: rgba(76, 175, 80, 0.4);
 }
 
 .btn-remove {
-  background: rgba(244, 67, 54, 0.2);
-  border: 1px solid rgba(244, 67, 54, 0.3);
-  color: #ef5350;
+  background: rgba(244, 67, 54, 0.25);
+  border: 1px solid rgba(244, 67, 54, 0.5);
+  color: #ff6b6b;
 }
 
 .btn-remove:hover {
-  background: rgba(244, 67, 54, 0.3);
+  background: rgba(244, 67, 54, 0.4);
 }
 
 .choices-container {
@@ -229,20 +229,20 @@ h2 {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
   transition: all 0.2s;
 }
 
 .choice-input-wrapper.dragging {
   opacity: 0.5;
-  background: rgba(79, 195, 247, 0.1);
+  background: rgba(79, 195, 247, 0.15);
 }
 
 .choice-input-wrapper.drag-over {
   border: 2px dashed rgba(255, 193, 7, 0.8);
-  background: rgba(255, 193, 7, 0.1);
+  background: rgba(255, 193, 7, 0.15);
   border-radius: 4px;
 }
 
@@ -252,8 +252,8 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.3);
+  background: rgba(79, 195, 247, 0.25);
+  border: 1px solid rgba(79, 195, 247, 0.5);
   border-radius: 6px;
   color: #4fc3f7;
   font-weight: bold;
@@ -315,13 +315,13 @@ h2 {
 
 .btn-primary {
   flex: 1;
-  background: rgba(0, 123, 255, 0.3);
-  border: 1px solid rgba(0, 123, 255, 0.5);
+  background: rgba(0, 123, 255, 0.4);
+  border: 1px solid rgba(0, 123, 255, 0.6);
   color: #4fc3f7;
 }
 
 .btn-primary:hover {
-  background: rgba(0, 123, 255, 0.5);
+  background: rgba(0, 123, 255, 0.6);
 }
 
 .btn-secondary {
