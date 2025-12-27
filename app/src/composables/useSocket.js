@@ -2,18 +2,22 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { io } from 'socket.io-client'
 import { useAuthStore } from '@/stores/auth.js'
 
+// CRITICAL: All refs must be module-scoped to match module-scoped socket
+// This ensures event listeners always update the SAME refs that components are watching
 let socket = null
 let heartbeatInterval = null
 let onlineHandler = null
 let offlineHandler = null
 let isConnecting = false  // Guard against concurrent socket creation
 
+// Module-scoped reactive state (shared across all useSocket() calls)
+const isConnected = ref(false)
+const connectionError = ref(null)
+const currentRoomCode = ref(null)
+const currentUsername = ref(null)
+
 export function useSocket() {
-  const isConnected = ref(false)
-  const connectionError = ref(null)
   const authStore = useAuthStore()
-  const currentRoomCode = ref(null)
-  const currentUsername = ref(null)
 
   const startHeartbeat = () => {
     // Clear any existing heartbeat interval
