@@ -28,7 +28,7 @@
       </form>
     </template>
     <template #footer>
-      <button class="btn-primary" @click="handleSubmit">Set Password</button>
+      <button class="btn-success" @click="handleSubmit">Set Password</button>
       <button class="btn-secondary" @click="$emit('cancel')">Cancel</button>
     </template>
   </Modal>

@@ -11,7 +11,7 @@
       Are you sure you want to continue?
     </p>
     <template #footer>
-      <button class="btn-primary" @click="$emit('confirm')">Change Username</button>
+      <button class="btn-success" @click="$emit('confirm')">Change Username</button>
       <button class="btn-secondary" @click="$emit('close')">Cancel</button>
     </template>
   </Modal>

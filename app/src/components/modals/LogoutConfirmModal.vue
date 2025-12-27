@@ -7,7 +7,7 @@
       This will clear your saved username and account data.
     </p>
     <template #footer>
-      <button class="btn-primary" @click="$emit('confirm')">Logout</button>
+      <button class="btn-danger" @click="$emit('confirm')">Logout</button>
       <button class="btn-secondary" @click="$emit('close')">Cancel</button>
     </template>
   </Modal>

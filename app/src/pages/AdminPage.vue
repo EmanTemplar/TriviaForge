@@ -135,7 +135,7 @@
       <template #footer>
         <div class="dialog-buttons">
           <button @click="handleDialogCancel" class="btn-secondary">Cancel</button>
-          <button @click="handleDialogConfirm" class="btn-primary">{{ dialogConfirmText }}</button>
+          <button @click="handleDialogConfirm" class="btn-success">{{ dialogConfirmText }}</button>
         </div>
       </template>
     </Modal>
@@ -1362,14 +1362,26 @@ onUnmounted(() => {
   border-color: rgba(0, 123, 255, 0.7);
 }
 
+.btn-success {
+  background: rgba(76, 175, 80, 0.3);
+  border-color: rgba(76, 175, 80, 0.5);
+  color: #81c784;
+}
+
+.btn-success:hover {
+  background: rgba(76, 175, 80, 0.5);
+  border-color: rgba(76, 175, 80, 0.7);
+}
+
 .btn-secondary {
   background: rgba(100, 100, 100, 0.3);
   border-color: rgba(100, 100, 100, 0.5);
-  color: #fff;
+  color: #aaa;
 }
 
 .btn-secondary:hover {
   background: rgba(100, 100, 100, 0.5);
+  border-color: rgba(100, 100, 100, 0.7);
 }
 
 .btn-delete {

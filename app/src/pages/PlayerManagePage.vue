@@ -53,7 +53,7 @@
             />
           </div>
           <div class="btn-group">
-            <button type="submit" class="btn btn-primary">Update Display Name</button>
+            <button type="submit" class="btn btn-success">Update Display Name</button>
             <button type="button" class="btn btn-secondary" @click="cancelUpdate">Cancel</button>
           </div>
         </form>
@@ -89,7 +89,7 @@
             />
           </div>
           <div class="btn-group">
-            <button type="submit" class="btn btn-primary">Register Account</button>
+            <button type="submit" class="btn btn-success">Register Account</button>
           </div>
         </form>
       </div>
@@ -112,7 +112,7 @@
       </template>
       <template #footer>
         <div class="dialog-buttons">
-          <button @click="handleDialogClose" class="btn btn-primary">OK</button>
+          <button @click="handleDialogClose" class="btn btn-success">OK</button>
         </div>
       </template>
     </Modal>
@@ -464,10 +464,22 @@ onUnmounted(() => {
   border-color: rgba(0, 123, 255, 0.7);
 }
 
+.btn-success {
+  background: rgba(76, 175, 80, 0.3);
+  border-color: rgba(76, 175, 80, 0.5);
+  color: #81c784;
+  flex: 1;
+}
+
+.btn-success:hover {
+  background: rgba(76, 175, 80, 0.5);
+  border-color: rgba(76, 175, 80, 0.7);
+}
+
 .btn-secondary {
   background: rgba(100, 100, 100, 0.3);
   border-color: rgba(100, 100, 100, 0.5);
-  color: #fff;
+  color: #aaa;
   flex: 1;
 }
 

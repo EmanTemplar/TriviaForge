@@ -22,7 +22,7 @@
       </form>
     </template>
     <template #footer>
-      <button class="btn-primary" @click="handleSubmit">Login</button>
+      <button class="btn-success" @click="handleSubmit">Login</button>
       <button class="btn-secondary" @click="$emit('cancel')">Cancel</button>
     </template>
   </Modal>
