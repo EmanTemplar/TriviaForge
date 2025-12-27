@@ -4,6 +4,8 @@ import { useAuthStore } from '@/stores/auth.js'
 
 let socket = null
 let heartbeatInterval = null
+let onlineHandler = null
+let offlineHandler = null
 
 export function useSocket() {
   const isConnected = ref(false)
@@ -23,7 +25,8 @@ export function useSocket() {
       if (socket?.connected && currentRoomCode.value) {
         socket.emit('heartbeat', {
           roomCode: currentRoomCode.value,
-          username: currentUsername.value
+          username: currentUsername.value,
+          timestamp: Date.now() // Add timestamp for round-trip latency calculation
         })
       }
     }, 15000) // 15 seconds
@@ -45,13 +48,20 @@ export function useSocket() {
       auth: {
         token: authStore.token
       },
+      // MOBILE-OPTIMIZED RECONNECTION
       reconnection: true,
-      reconnectionDelay: 1000,           // Start with 1 second delay
-      reconnectionDelayMax: 10000,       // Max 10 seconds between attempts (increased from 5s)
-      reconnectionAttempts: Infinity,    // Never give up reconnecting (was 5)
-      timeout: 20000,                    // 20 second connection timeout
+      reconnectionDelay: 500,            // REDUCED: 1000ms → 500ms (faster first retry)
+      reconnectionDelayMax: 5000,        // REDUCED: 10000ms → 5000ms (cap at 5s instead of 10s)
+      reconnectionAttempts: Infinity,    // Never give up reconnecting
+      timeout: 15000,                    // REDUCED: 20000ms → 15000ms (faster failure detection)
+
       transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
-      upgrade: true                      // Allow upgrading from polling to websocket
+      upgrade: true,                     // Allow upgrading from polling to websocket
+      closeOnBeforeunload: false,        // CRITICAL for iOS Safari - prevents disconnect on page hide
+
+      // NEW: Explicit ping/pong configuration
+      pingInterval: 25000,               // Send ping every 25 seconds
+      pingTimeout: 20000                 // Wait 20 seconds for pong response
     })
 
     socket.on('connect', () => {
@@ -81,6 +91,29 @@ export function useSocket() {
       // Heartbeat successful - connection is healthy
     })
 
+    // Network change event listeners for instant reconnection
+    if (!onlineHandler) {
+      onlineHandler = () => {
+        console.log('[CONNECTION] Network online detected')
+        if (socket && !socket.connected) {
+          socket.connect()
+        }
+      }
+    }
+
+    if (!offlineHandler) {
+      offlineHandler = () => {
+        console.log('[CONNECTION] Network offline detected')
+        isConnected.value = false
+      }
+    }
+
+    // Register network listeners (remove old ones first to prevent duplicates)
+    window.removeEventListener('online', onlineHandler)
+    window.removeEventListener('offline', offlineHandler)
+    window.addEventListener('online', onlineHandler)
+    window.addEventListener('offline', offlineHandler)
+
     return socket
   }
 
@@ -102,6 +135,15 @@ export function useSocket() {
 
   const disconnect = () => {
     stopHeartbeat()
+
+    // Clean up network event listeners
+    if (onlineHandler) {
+      window.removeEventListener('online', onlineHandler)
+    }
+    if (offlineHandler) {
+      window.removeEventListener('offline', offlineHandler)
+    }
+
     if (socket?.connected) {
       socket.disconnect()
       socket = null

@@ -18,6 +18,18 @@
 
     <!-- Main Content -->
     <div class="player-container">
+      <!-- Connection Lost Banner -->
+      <div v-if="showConnectionLostBanner" class="connection-lost-banner">
+        <div class="banner-content">
+          <span class="icon">⚠️</span>
+          <div class="text">
+            <strong>Connection Lost</strong>
+            <p>Attempting to reconnect... ({{ reconnectionAttempts }} attempt{{ reconnectionAttempts !== 1 ? 's' : '' }})</p>
+          </div>
+          <button @click="forceReconnect" class="reconnect-btn">Reconnect Now</button>
+        </div>
+      </div>
+
       <!-- Missed Questions Banner -->
       <div v-if="missedQuestionsBanner" class="missed-questions-banner">
         ⚠️ You have missed Questions while Away
@@ -202,6 +214,8 @@ const disconnectTimeout = ref(null)
 const warningClearTimeout = ref(null)
 const missedQuestionsBanner = ref(false)
 const lastJoinRoomAttempt = ref(0) // Track last joinRoom call to prevent duplicates
+const showConnectionLostBanner = ref(false)
+const reconnectionAttempts = ref(0)
 
 // Login form
 const loginUsername = ref('')
@@ -315,6 +329,7 @@ const handleVisibilityChange = () => {
 
     // Clear away timeout
     clearTimeout(awayTimeout.value)
+    clearTimeout(disconnectTimeout.value)
 
     // Check if any questions were missed while away
     const missedQuestions = questionHistory.value.filter(q => q.revealed && q.playerChoice === null && q.missedWhileAway)
@@ -326,7 +341,67 @@ const handleVisibilityChange = () => {
       console.log(`[CONNECTION] Player missed ${missedQuestions.length} question(s) while away`)
     }
 
-    // Handle return from away/disconnected state
+    // iOS Safari-specific: Force immediate reconnection
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      console.log('[CONNECTION] iOS device detected - forcing immediate reconnection')
+
+      if (!socket.isConnected.value) {
+        socket.connect()
+      }
+
+      // Wait for connection, then rejoin room if needed
+      if (currentRoomCode.value && currentUsername.value && currentDisplayName.value) {
+        const rejoinInterval = setInterval(() => {
+          if (socket.isConnected.value) {
+            clearInterval(rejoinInterval)
+
+            // Prevent duplicate joinRoom calls
+            const now = Date.now()
+            if (now - lastJoinRoomAttempt.value < 2000) {
+              console.log('[CONNECTION] Skipping duplicate joinRoom (iOS debounce)')
+              return
+            }
+            lastJoinRoomAttempt.value = now
+
+            console.log('[CONNECTION] iOS - rejoining room after resume')
+            socket.emit('joinRoom', {
+              roomCode: currentRoomCode.value,
+              username: currentUsername.value,
+              displayName: currentDisplayName.value
+            })
+            socket.setRoomContext(currentRoomCode.value, currentUsername.value)
+            updateConnectionState('connected')
+          }
+        }, 100)
+
+        // Safety timeout - clear interval after 3 seconds
+        setTimeout(() => clearInterval(rejoinInterval), 3000)
+      }
+
+      // Re-request wake lock for iOS
+      if (wakeLock.isSupported.value && !wakeLock.isActive.value) {
+        wakeLock.requestWakeLock()
+      }
+
+      return // Skip normal reconnection logic for iOS
+    }
+
+    // Android Chrome: Check connection after resume delay
+    if (/Android.*Chrome/i.test(navigator.userAgent)) {
+      console.log('[CONNECTION] Android Chrome detected - delayed reconnection check')
+      setTimeout(() => {
+        if (!socket.isConnected.value) {
+          socket.connect()
+        }
+      }, 500)
+    }
+
+    // Re-request wake lock (for all devices)
+    if (wakeLock.isSupported.value && !wakeLock.isActive.value) {
+      wakeLock.requestWakeLock()
+    }
+
+    // Handle return from away/disconnected state (standard flow for non-iOS)
     if (connectionState.value === 'disconnected') {
       // Was truly disconnected - need to rejoin room
       if (currentRoomCode.value && currentUsername.value && currentDisplayName.value && socket.isConnected.value) {
@@ -410,6 +485,9 @@ const setupSocketListeners = () => {
     if (isPageVisible.value && connectionState.value !== 'warning') {
       updateConnectionState('connected')
     }
+    // Hide connection lost banner
+    showConnectionLostBanner.value = false
+    reconnectionAttempts.value = 0
     // Request active rooms list once connected
     socket.emit('getActiveRooms')
   })
@@ -420,6 +498,10 @@ const setupSocketListeners = () => {
     console.log('[CONNECTION] Socket disconnected (hard disconnect)')
     updateConnectionState('disconnected')
 
+    // Show connection lost banner
+    showConnectionLostBanner.value = true
+    reconnectionAttempts.value = 0
+
     // Set timeout for 5 minutes to fully remove from room
     clearTimeout(disconnectTimeout.value)
     disconnectTimeout.value = setTimeout(() => {
@@ -428,6 +510,17 @@ const setupSocketListeners = () => {
         handleLeaveRoom()
       }
     }, 5 * 60 * 1000) // 5 minutes
+  })
+
+  socket.on('reconnect_attempt', (attempt) => {
+    console.log(`[CONNECTION] Reconnection attempt #${attempt}`)
+    reconnectionAttempts.value = attempt
+  })
+
+  socket.on('reconnect', () => {
+    console.log('[CONNECTION] Successfully reconnected!')
+    showConnectionLostBanner.value = false
+    reconnectionAttempts.value = 0
   })
 
   socket.on('playerListUpdate', ({ roomCode, players }) => {
@@ -608,6 +701,55 @@ onMounted(() => {
   // Initialize page visibility state
   isPageVisible.value = !document.hidden
   console.log(`[CONNECTION] Initial page visibility: ${isPageVisible.value}`)
+
+  // Auto-rejoin system: Save room state on page unload
+  const handleBeforeUnload = () => {
+    if (inRoom.value && currentRoomCode.value) {
+      localStorage.setItem('trivia_last_room', JSON.stringify({
+        roomCode: currentRoomCode.value,
+        username: currentUsername.value,
+        displayName: currentDisplayName.value,
+        timestamp: Date.now()
+      }))
+      console.log('[CONNECTION] Saved room state for auto-rejoin')
+    }
+  }
+  window.addEventListener('beforeunload', handleBeforeUnload)
+
+  // Auto-rejoin system: Check for saved session on mount
+  const lastRoom = localStorage.getItem('trivia_last_room')
+  if (lastRoom) {
+    try {
+      const { roomCode, username, displayName, timestamp } = JSON.parse(lastRoom)
+      const ageMinutes = (Date.now() - timestamp) / 60000
+
+      if (ageMinutes < 5) {
+        console.log(`[CONNECTION] Found recent session (${ageMinutes.toFixed(1)} min old) - attempting auto-rejoin`)
+        currentRoomCode.value = roomCode
+        currentUsername.value = username
+        currentDisplayName.value = displayName
+
+        // Wait for socket to connect, then rejoin
+        const autoRejoinInterval = setInterval(() => {
+          if (socket.isConnected.value) {
+            clearInterval(autoRejoinInterval)
+            console.log('[CONNECTION] Auto-rejoining room:', roomCode)
+            socket.emit('joinRoom', { roomCode, username, displayName })
+            socket.setRoomContext(roomCode, username)
+          }
+        }, 100)
+
+        // Safety timeout - stop trying after 3 seconds
+        setTimeout(() => clearInterval(autoRejoinInterval), 3000)
+      } else {
+        console.log(`[CONNECTION] Session too old (${ageMinutes.toFixed(1)} min) - clearing`)
+        localStorage.removeItem('trivia_last_room')
+      }
+    } catch (err) {
+      console.error('[CONNECTION] Error parsing saved room state:', err)
+      localStorage.removeItem('trivia_last_room')
+    }
+  }
 
   // Fallback: if no response within 3 seconds, load recent rooms anyway
   setTimeout(() => {
@@ -978,6 +1120,14 @@ const showProgressModal = () => {
   showProgressModalFlag.value = true
 }
 
+const forceReconnect = () => {
+  console.log('[CONNECTION] Manual reconnection triggered')
+  socket.disconnect()
+  setTimeout(() => {
+    socket.connect()
+  }, 100)
+}
+
 const autoLoginRegisteredPlayer = async () => {
   const token = localStorage.getItem('playerAuthToken')
   if (token && savedAccountType.value === 'registered') {
@@ -1022,10 +1172,67 @@ const verifyAuthToken = async () => {
   box-sizing: border-box;
 }
 
+/* Connection Lost Banner */
+.connection-lost-banner {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  background: rgba(244, 67, 54, 0.95);
+  color: white;
+  padding: 1rem;
+  z-index: 9999;
+  animation: slideDown 0.3s ease;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.banner-content .icon {
+  font-size: 1.5rem;
+}
+
+.banner-content .text {
+  flex: 1;
+}
+
+.banner-content .text strong {
+  display: block;
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+
+.banner-content .text p {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.reconnect-btn {
+  margin-left: auto;
+  padding: 0.5rem 1rem;
+  background: white;
+  color: #f44336;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.reconnect-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+}
+
 /* Missed Questions Banner */
 .missed-questions-banner {
   position: fixed;
-  top: 80px; /* Below navbar */
+  top: 120px; /* Below connection lost banner */
   left: 50%;
   transform: translateX(-50%);
   background: linear-gradient(135deg, #ff8c00 0%, #ff6600 100%);

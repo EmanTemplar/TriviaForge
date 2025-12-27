@@ -1087,6 +1087,10 @@ io.on('connection', (socket) => {
     const playerUsername = username;
     const playerDisplayName = displayName;
 
+    // Track user agent for mobile-specific handling and diagnostics
+    const userAgent = socket.handshake.headers['user-agent'] || '';
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(userAgent);
+
     if (!playerUsername || !playerDisplayName) {
       socket.emit('roomError', 'Username and display name are required.');
       return;
@@ -1227,6 +1231,8 @@ io.on('connection', (socket) => {
         connectionState: 'connected',
         choice: currentChoice,
         isSpectator: playerUsername === 'Display' || playerDisplayName === 'Spectator Display',
+        userAgent: userAgent, // Track for diagnostics and mobile-specific handling
+        isMobile: isMobile,
         lastHeartbeat: Date.now() // Track connection health
       };
 
@@ -1261,6 +1267,8 @@ io.on('connection', (socket) => {
         connectionState: 'connected', // 'connected' | 'away' | 'disconnected' | 'warning'
         answers: existingAnswers,
         isSpectator: playerUsername === 'Display' || playerDisplayName === 'Spectator Display', // Flag spectators
+        userAgent: userAgent, // Track for diagnostics and mobile-specific handling
+        isMobile: isMobile,
         lastHeartbeat: Date.now() // Track connection health
       };
       socket.join(roomCode);
@@ -1530,15 +1538,41 @@ io.on('connection', (socket) => {
   });
 
   // Heartbeat mechanism to track connection health
-  socket.on('heartbeat', ({ roomCode }) => {
+  socket.on('heartbeat', ({ roomCode, username, timestamp }) => {
     const room = roomService.liveRooms[roomCode];
     if (!room || !room.players[socket.id]) return;
 
-    // Update last heartbeat timestamp
-    room.players[socket.id].lastHeartbeat = Date.now();
+    const now = Date.now();
+    room.players[socket.id].lastHeartbeat = now;
 
-    // Respond with ack to complete round-trip
-    socket.emit('heartbeat-ack');
+    // Calculate round-trip latency if timestamp provided
+    const latency = timestamp ? now - timestamp : null;
+
+    // Determine connection quality based on latency
+    let connectionQuality = 'unknown';
+    if (latency !== null) {
+      if (latency < 100) {
+        connectionQuality = 'excellent';
+      } else if (latency < 300) {
+        connectionQuality = 'good';
+      } else if (latency < 500) {
+        connectionQuality = 'fair';
+      } else {
+        connectionQuality = 'poor';
+      }
+    }
+
+    // Respond with ack and latency data
+    socket.emit('heartbeat-ack', {
+      timestamp: now,
+      latency: latency,
+      connectionQuality: connectionQuality
+    });
+
+    // Log high latency connections for diagnostics
+    if (latency && latency > 1000) {
+      console.log(`[HEARTBEAT] High latency: ${room.players[socket.id].name} - ${latency}ms`);
+    }
   });
 
   // Handle disconnect
@@ -1571,71 +1605,65 @@ function getActiveRoomsSummary() {
 }
 
 // --------------------
-// Periodic Zombie Connection Cleanup
+// Duplicate-Only Zombie Connection Cleanup
 // --------------------
-// Clean up stale connections that failed to properly disconnect
-// Runs every 30 seconds to detect and remove zombie connections
+// PHILOSOPHY: Preserve ALL player data - only remove duplicate stale sockets
+// - NO time-based removal (60s timeout removed)
+// - ONLY removes duplicate connections (same username, multiple socket IDs)
+// - Keeps ALL player data for presenter review (even if they left mid-quiz)
+// Runs every 30 seconds to detect and remove duplicate stale connections
 const ZOMBIE_CLEANUP_INTERVAL = 30000; // 30 seconds
-const ZOMBIE_TIMEOUT = 60000; // 60 seconds without heartbeat = zombie
 
 setInterval(() => {
-  const now = Date.now();
-  let totalZombiesRemoved = 0;
+  let totalDuplicatesRemoved = 0;
 
   for (const [roomCode, room] of Object.entries(roomService.liveRooms)) {
-    const zombieSockets = [];
+    // Group players by username to detect duplicates
+    const playersByUsername = {};
 
     for (const [socketId, player] of Object.entries(room.players)) {
-      // Skip spectators from zombie cleanup
-      if (player.isSpectator) continue;
+      if (player.isSpectator) continue; // Skip spectators
 
-      // Check if player has a lastHeartbeat (older entries may not)
-      if (!player.lastHeartbeat) {
-        // No heartbeat tracking yet - give them benefit of the doubt for one cleanup cycle
-        player.lastHeartbeat = now;
-        continue;
+      const username = player.username;
+      if (!playersByUsername[username]) {
+        playersByUsername[username] = [];
       }
-
-      // Check if connection is truly dead (no heartbeat in 60 seconds AND marked as disconnected)
-      const timeSinceHeartbeat = now - player.lastHeartbeat;
-      const isZombie = timeSinceHeartbeat > ZOMBIE_TIMEOUT && !player.connected;
-
-      // Also check if socket actually exists in Socket.IO
-      const socket = io.sockets.sockets.get(socketId);
-      const socketDead = !socket || !socket.connected;
-
-      if (isZombie || (socketDead && !player.connected)) {
-        zombieSockets.push({ socketId, username: player.username, name: player.name, reason: isZombie ? 'timeout' : 'socket-dead' });
-      }
+      playersByUsername[username].push({ socketId, player });
     }
 
-    // Process zombie connections for this room
-    // IMPORTANT: Don't delete players who have answered questions - preserve their game data
-    for (const zombie of zombieSockets) {
-      const player = room.players[zombie.socketId];
+    // For each username with duplicates, keep only the active socket
+    for (const [username, entries] of Object.entries(playersByUsername)) {
+      if (entries.length <= 1) continue; // No duplicates - skip
 
-      // Check if player has any answers
-      const hasAnswers = player.answers && Object.keys(player.answers).length > 0;
+      // Find the active socket (connected and valid)
+      const activeEntry = entries.find(({ socketId, player }) => {
+        const socket = io.sockets.sockets.get(socketId);
+        return socket && socket.connected && player.connected;
+      });
 
-      if (hasAnswers) {
-        // Player has game data - keep entry but mark as disconnected
-        player.connected = false;
-        player.connectionState = 'disconnected';
-        if (VERBOSE_LOGGING) {
-          console.log(`[ZOMBIE CLEANUP] Marked ${zombie.name} (${zombie.username}) as disconnected (preserving ${Object.keys(player.answers).length} answers)`);
+      // Remove ALL other sockets (duplicates/stale)
+      for (const { socketId, player } of entries) {
+        // Keep the active connection
+        if (activeEntry && socketId === activeEntry.socketId) {
+          continue; // Keep this one
         }
-      } else {
-        // No game data - safe to remove completely
-        delete room.players[zombie.socketId];
-        totalZombiesRemoved++;
-        if (VERBOSE_LOGGING) {
-          console.log(`[ZOMBIE CLEANUP] Removed stale ${zombie.reason} connection: ${zombie.name} (${zombie.username}) from room ${roomCode} (no answers)`);
+
+        // This is a duplicate/stale socket - remove it
+        const socket = io.sockets.sockets.get(socketId);
+        const socketDead = !socket || !socket.connected;
+
+        if (socketDead || !player.connected) {
+          if (VERBOSE_LOGGING) {
+            console.log(`[ZOMBIE CLEANUP] Removing duplicate/stale socket for ${player.name} (${username}) from room ${roomCode}`);
+          }
+          delete room.players[socketId];
+          totalDuplicatesRemoved++;
         }
       }
     }
 
-    // Notify room if any zombies were removed
-    if (zombieSockets.length > 0) {
+    // Notify room if any duplicates were removed
+    if (totalDuplicatesRemoved > 0) {
       io.to(roomCode).emit('playerListUpdate', {
         roomCode,
         players: Object.values(room.players).filter(p => !p.isSpectator)
@@ -1643,8 +1671,8 @@ setInterval(() => {
     }
   }
 
-  if (totalZombiesRemoved > 0 && VERBOSE_LOGGING) {
-    console.log(`[ZOMBIE CLEANUP] Total zombies removed across all rooms: ${totalZombiesRemoved}`);
+  if (totalDuplicatesRemoved > 0 && VERBOSE_LOGGING) {
+    console.log(`[ZOMBIE CLEANUP] Total duplicate sockets removed across all rooms: ${totalDuplicatesRemoved}`);
   }
 }, ZOMBIE_CLEANUP_INTERVAL);
 
