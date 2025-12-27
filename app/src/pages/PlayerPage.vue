@@ -215,6 +215,7 @@ const warningClearTimeout = ref(null)
 const answerDisplayTimeout = ref(null) // Timeout for auto-clearing revealed answer
 const missedQuestionsBanner = ref(false)
 const lastJoinRoomAttempt = ref(0) // Track last joinRoom call to prevent duplicates
+const joinRoomInProgress = ref(false) // Track if joinRoom is being processed
 const showConnectionLostBanner = ref(false)
 const reconnectionAttempts = ref(0)
 
@@ -355,22 +356,7 @@ const handleVisibilityChange = () => {
         const rejoinInterval = setInterval(() => {
           if (socket.isConnected.value) {
             clearInterval(rejoinInterval)
-
-            // Prevent duplicate joinRoom calls
-            const now = Date.now()
-            if (now - lastJoinRoomAttempt.value < 2000) {
-              console.log('[CONNECTION] Skipping duplicate joinRoom (iOS debounce)')
-              return
-            }
-            lastJoinRoomAttempt.value = now
-
-            console.log('[CONNECTION] iOS - rejoining room after resume')
-            socket.emit('joinRoom', {
-              roomCode: currentRoomCode.value,
-              username: currentUsername.value,
-              displayName: currentDisplayName.value
-            })
-            socket.setRoomContext(currentRoomCode.value, currentUsername.value)
+            emitJoinRoom(currentRoomCode.value, currentUsername.value, currentDisplayName.value, 'iOS visibility change')
             updateConnectionState('connected')
           }
         }, 100)
@@ -406,22 +392,8 @@ const handleVisibilityChange = () => {
     if (connectionState.value === 'disconnected') {
       // Was truly disconnected - need to rejoin room
       if (currentRoomCode.value && currentUsername.value && currentDisplayName.value && socket.isConnected.value) {
-        // Prevent duplicate joinRoom calls within 2 seconds
-        const now = Date.now()
-        if (now - lastJoinRoomAttempt.value < 2000) {
-          console.log('[CONNECTION] Skipping duplicate joinRoom attempt (debounced)')
-          return
-        }
-        lastJoinRoomAttempt.value = now
-
-        console.log('[CONNECTION] Reconnecting after disconnect - rejoining room')
+        emitJoinRoom(currentRoomCode.value, currentUsername.value, currentDisplayName.value, 'visibility change (disconnected)')
         updateConnectionState('connected')
-        socket.emit('joinRoom', {
-          roomCode: currentRoomCode.value,
-          username: currentUsername.value,
-          displayName: currentDisplayName.value
-        })
-        socket.setRoomContext(currentRoomCode.value, currentUsername.value)
       }
     } else if (connectionState.value === 'away') {
       // Was only away - just update state (still in room server-side)
@@ -487,17 +459,7 @@ const setupSocketListeners = () => {
     // CRITICAL: Auto-rejoin room if we were in one before disconnect
     // Socket.IO assigns a new socket.id on reconnect, so we must re-register with the room
     if (currentRoomCode.value && currentUsername.value && currentDisplayName.value) {
-      const now = Date.now()
-      if (now - lastJoinRoomAttempt.value > 2000) {
-        lastJoinRoomAttempt.value = now
-        console.log('[CONNECTION] Auto-rejoining room after reconnect:', currentRoomCode.value)
-        socket.emit('joinRoom', {
-          roomCode: currentRoomCode.value,
-          username: currentUsername.value,
-          displayName: currentDisplayName.value
-        })
-        socket.setRoomContext(currentRoomCode.value, currentUsername.value)
-      }
+      emitJoinRoom(currentRoomCode.value, currentUsername.value, currentDisplayName.value, 'socket reconnect')
     }
 
     // Update connection state to connected (unless page is hidden)
@@ -544,6 +506,14 @@ const setupSocketListeners = () => {
 
   socket.on('playerListUpdate', ({ roomCode, players }) => {
     if (roomCode !== currentRoomCode.value) return
+
+    // CRITICAL: Clear joinRoom in-progress flag - server has confirmed we're in the room
+    // This allows answer submissions to proceed
+    if (joinRoomInProgress.value) {
+      console.log('[CONNECTION] joinRoom completed - ready for interactions')
+      joinRoomInProgress.value = false
+    }
+
     inRoom.value = true
     currentRoomCode.value = roomCode
     currentPlayers.value = players
@@ -765,9 +735,7 @@ onMounted(() => {
         const autoRejoinInterval = setInterval(() => {
           if (socket.isConnected.value) {
             clearInterval(autoRejoinInterval)
-            console.log('[CONNECTION] Auto-rejoining room:', roomCode)
-            socket.emit('joinRoom', { roomCode, username, displayName })
-            socket.setRoomContext(roomCode, username)
+            emitJoinRoom(roomCode, username, displayName, 'localStorage auto-rejoin')
           }
         }, 100)
 
@@ -884,8 +852,7 @@ const quickJoinRoom = async (roomCode) => {
   currentUsername.value = savedUsername.value
   currentDisplayName.value = displayName
   currentRoomCode.value = roomCode
-  socket.emit('joinRoom', { roomCode, username: savedUsername.value, displayName })
-  socket.setRoomContext(roomCode, savedUsername.value)
+  emitJoinRoom(roomCode, savedUsername.value, displayName, 'quick join')
 }
 
 const handleChangeUsername = async () => {
@@ -903,6 +870,16 @@ const confirmChangeUsername = () => {
 
 const selectAnswer = async (idx) => {
   if (answeredCurrentQuestion.value || answerRevealed.value) return
+
+  // CRITICAL: Block answer submission until joinRoom is fully processed by server
+  // This prevents answers from being lost when user reconnects and immediately tries to answer
+  if (joinRoomInProgress.value) {
+    console.log('[ANSWER] Blocked - waiting for room join to complete')
+    statusMessage.value = 'Reconnecting... please wait'
+    statusMessageType.value = 'warning'
+    return
+  }
+
   selectedAnswer.value = idx
   answeredCurrentQuestion.value = true
   answeredQuestions.add(currentQuestion.value.index)
@@ -918,6 +895,27 @@ const selectAnswer = async (idx) => {
   socket.emit('submitAnswer', { roomCode: currentRoomCode.value, choice: idx })
   statusMessage.value = 'Answer submitted! ✓'
   statusMessageType.value = 'success'
+}
+
+// Helper function to emit joinRoom with proper debouncing and flag management
+const emitJoinRoom = (roomCode, username, displayName, source = '') => {
+  // Debounce check
+  const now = Date.now()
+  if (now - lastJoinRoomAttempt.value < 2000) {
+    console.log(`[CONNECTION] Skipping duplicate joinRoom from ${source} (debounced)`)
+    return false
+  }
+  lastJoinRoomAttempt.value = now
+
+  // Set in-progress flag
+  joinRoomInProgress.value = true
+  console.log(`[CONNECTION] Emitting joinRoom from ${source}`)
+
+  // Emit the event
+  socket.emit('joinRoom', { roomCode, username, displayName })
+  socket.setRoomContext(roomCode, username)
+
+  return true
 }
 
 const handleJoinRoom = async () => {
@@ -962,8 +960,7 @@ const handleJoinRoom = async () => {
     currentDisplayName.value = displayName
     currentRoomCode.value = roomCode
     // Don't save room yet - wait for playerListUpdate confirmation
-    socket.emit('joinRoom', { roomCode, username, displayName })
-    socket.setRoomContext(roomCode, username)
+    emitJoinRoom(roomCode, username, displayName, 'manual join')
   } catch (err) {
     uiStore.addNotification('Failed to join room. Please try again.', 'error')
   }
@@ -991,8 +988,7 @@ const handleLoginSubmit = async (password) => {
     currentRoomCode.value = roomCode
     localStorage.setItem('playerDisplayName', displayName)
     saveRecentRoom(roomCode)
-    socket.emit('joinRoom', { roomCode, username: loginUsername.value, displayName })
-    socket.setRoomContext(roomCode, loginUsername.value)
+    emitJoinRoom(roomCode, loginUsername.value, displayName, 'login submit')
   } catch (err) {
     // Check if password reset is required (status 428)
     if (err.response?.status === 428 || err.response?.data?.requiresPasswordReset) {
@@ -1045,8 +1041,7 @@ const handleSetPasswordSubmit = async ({ newPassword, confirmPassword }) => {
     currentRoomCode.value = roomCode
     localStorage.setItem('playerDisplayName', displayName)
     saveRecentRoom(roomCode)
-    socket.emit('joinRoom', { roomCode, username: setPasswordUsername.value, displayName })
-    socket.setRoomContext(roomCode, setPasswordUsername.value)
+    emitJoinRoom(roomCode, setPasswordUsername.value, displayName, 'password setup')
   } catch (err) {
     setPasswordError.value = err.response?.data?.error || 'Failed to set password'
   }
