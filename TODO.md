@@ -153,9 +153,9 @@ This document tracks planned features, improvements, and tasks for future develo
 **Files Modified:**
 - `app/server.js` - Socket.IO handlers refactored to use services
 
-### Phase 4: Vue Component Refactoring ✅ IN PROGRESS (2025-12-26)
+### Phase 4: Vue Component Refactoring ✅ IN PROGRESS (2025-12-27)
 **Branch:** `refactor/architecture-phase1-foundation`
-**Status:** PlayerPage refactoring complete, AdminPage pending
+**Status:** PlayerPage and PresenterPage refactoring complete, AdminPage pending
 **Goal:** Break down monolithic Vue components into smaller, maintainable, reusable components
 
 **Completed:**
@@ -187,10 +187,25 @@ This document tracks planned features, improvements, and tasks for future develo
   - v-model syntax for JoinRoomSection form inputs
   - Build successful, all components importing correctly
 
+- ✅ Complete PresenterPage component extraction (Phase 4d - 2025-12-27)
+  - **Final Result:** PresenterPage 1,815 → 762 lines (-1,053 lines, 58% reduction)
+  - Created 8 new presenter components (1,346 lines total):
+    1. **QRCodeModal.vue** (51 lines) - QR code display modal for room joining
+    2. **LiveStandingsModal.vue** (277 lines) - Real-time standings with stats dashboard
+    3. **AnswerRevealModal.vue** (196 lines) - Answer reveal with player responses
+    4. **PresenterNavbar.vue** (158 lines) - Navigation bar with hamburger menu
+    5. **PresenterSidebar.vue** (210 lines) - Create room, resume session, active rooms widgets
+    6. **QuizDisplay.vue** (228 lines) - Question list with presenter controls
+    7. **ConnectedPlayersList.vue** (260 lines) - Players list with kick/ban actions
+  - All business logic and Socket.IO handlers preserved in parent
+  - Component-based architecture with props-down/events-up pattern
+  - Simplified template structure with clean component composition
+
 **Results:**
 - **PlayerPage.vue:** 2,168 → 1,098 lines (-1,070 lines, 49.4% reduction)
-- **Total components created:** 8 (1 modal + 7 player components)
-- **Total extracted code:** 1,237 lines (ProgressModal + 7 player components)
+- **PresenterPage.vue:** 1,815 → 762 lines (-1,053 lines, 58% reduction)
+- **Total components created:** 16 (5 modals + 7 player + 3 presenter modals + 4 presenter page components)
+- **Total extracted code:** 2,583 lines (1,237 player + 1,346 presenter)
 - **Maintainability:** Each component has single responsibility
 - **Reusability:** Components can be used in other views if needed
 - **Testability:** Isolated components easier to test
@@ -210,9 +225,17 @@ This document tracks planned features, improvements, and tasks for future develo
 - `app/src/components/player/RoomInfoSection.vue` (77 lines)
 - `app/src/components/player/PlayersList.vue` (72 lines)
 - `app/src/components/player/StatusMessage.vue` (47 lines)
+- `app/src/components/presenter/QRCodeModal.vue` (51 lines)
+- `app/src/components/presenter/LiveStandingsModal.vue` (277 lines)
+- `app/src/components/presenter/AnswerRevealModal.vue` (196 lines)
+- `app/src/components/presenter/PresenterNavbar.vue` (158 lines)
+- `app/src/components/presenter/PresenterSidebar.vue` (210 lines)
+- `app/src/components/presenter/QuizDisplay.vue` (228 lines)
+- `app/src/components/presenter/ConnectedPlayersList.vue` (260 lines)
 
 **Files Modified:**
 - `app/src/pages/PlayerPage.vue` - Refactored to use extracted components
+- `app/src/pages/PresenterPage.vue` - Refactored to use extracted components
 
 **Pending:**
 - [ ] Refactor AdminPage.vue (3,345 lines → target ~500 lines)
@@ -227,7 +250,7 @@ This document tracks planned features, improvements, and tasks for future develo
 - **Phase 1:** Foundation layer (constants, errors, validation) ✅ COMPLETE
 - **Phase 2:** Extract routes into separate modules ✅ COMPLETE
 - **Phase 3:** Create service layer (RoomService, SessionService, QuizService) ✅ COMPLETE
-- **Phase 4:** Refactor large Vue components ⏳ IN PROGRESS (PlayerPage complete, AdminPage pending)
+- **Phase 4:** Refactor large Vue components ⏳ IN PROGRESS (PlayerPage ✅, PresenterPage ✅, AdminPage pending)
 - **Phase 5:** Add unit tests for utilities and services - NEXT
 
 ---
@@ -622,9 +645,148 @@ This document tracks planned features, improvements, and tasks for future develo
 
 ---
 
-## High Priority
+## High Priority - Player & Presenter Experience (CRITICAL)
 
-### 1. Preserve Choice Data in Question Editor
+### 1. Solidify Player Connection Stability
+**Status:** 🚨 CRITICAL - Pending
+**Priority:** HIGHEST
+**Description:** Improve Socket.IO connection handling for seamless player experience, especially in large sessions and on mobile devices.
+
+**Issues to Address:**
+1. **Socket.IO Performance with Large Sessions:**
+   - Current performance degrades with many concurrent players
+   - Need to investigate connection pooling, event batching, or alternative real-time solutions
+   - Research comparison with Jackbox.tv games architecture
+   - Consider implementing connection quality indicators
+
+2. **Mobile Reconnection Issues:**
+   - Players must refresh page (sometimes multiple times) when returning from background
+   - Issue occurs when switching apps or phone sleep mode
+   - Need to implement automatic reconnection detection and handling
+   - Add "Connection Lost" banner with auto-retry mechanism
+   - Preserve player state during brief disconnections
+
+3. **Incorrect Answer Notification Bug:**
+   - Players receiving wrong answer feedback ("Correct" vs "Incorrect")
+   - Socket connections may be sending notifications to wrong players
+   - Need to audit answer submission and result broadcasting logic
+   - Add player ID validation to all answer-related socket events
+
+4. **Stay-Awake Status Not Showing on Mobile:**
+   - Wake lock indicator visible on desktop/dev tools but not on mobile browsers
+   - May be browser-specific wake lock API compatibility issue
+   - Test across iOS Safari, Chrome Mobile, Firefox Mobile
+   - Add fallback visual indicator if wake lock fails
+
+**Implementation Priority:**
+1. Fix incorrect answer notifications (CRITICAL BUG)
+2. Mobile reconnection auto-retry (HIGH - UX blocker)
+3. Stay-awake mobile visibility (MEDIUM - minor UX issue)
+4. Large session performance investigation (MEDIUM - scalability)
+
+**Files to Investigate:**
+- `app/server.js` - Socket.IO event handlers, answer result broadcasting
+- `app/src/composables/useSocket.js` - Client-side socket connection handling
+- `app/src/pages/PlayerPage.vue` - Answer submission, notification display, wake lock
+- `app/src/components/player/QuestionDisplay.vue` - Answer selection UI
+
+---
+
+### 2. Player Answer Confirmation Modal
+**Status:** ⏳ HIGH PRIORITY - Pending
+**Description:** Add confirmation modal when players select an answer to prevent accidental misclicks.
+
+**Requirements:**
+- Modal appears after player taps/clicks an answer choice
+- Shows selected answer with "Confirm" and "Cancel" buttons
+- "Confirm" submits answer and locks choice
+- "Cancel" allows re-selection
+- Modal should be mobile-optimized (large touch targets)
+- Optional: Show countdown timer if quiz has time limits
+
+**Implementation:**
+- Create `AnswerConfirmModal.vue` in `app/src/components/modals/`
+- Add `showAnswerConfirm` state to PlayerPage
+- Modify answer selection flow in QuestionDisplay component
+- Style modal for mobile-first design (large buttons)
+- Add keyboard support (Enter = Confirm, Esc = Cancel)
+
+**Files to Modify:**
+- `app/src/components/player/QuestionDisplay.vue` - Trigger confirmation modal
+- `app/src/pages/PlayerPage.vue` - Manage confirmation state
+- Create: `app/src/components/modals/AnswerConfirmModal.vue`
+
+---
+
+### 3. Presenter Connected Players Visual Improvements
+**Status:** ⏳ HIGH PRIORITY - Pending
+**Description:** Enhance connected players sidebar with better zombie disconnect handling and visual organization.
+
+**Issues to Address:**
+1. **Zombie Disconnect Handling:**
+   - Current zombie cleanup causes constant reconnection issues
+   - Was added to fix duplicate player bug (12x duplication in one instance)
+   - Need to modify zombie detection to only trigger on actual duplicates
+   - Logic: Only flag as zombie if same player appears multiple times in same room
+   - Preserve legitimate disconnected players for reconnection grace period
+
+2. **Visual Enhancements:**
+   - Improve player list layout and spacing
+   - Add visual grouping (connected vs disconnected vs away)
+   - Show connection quality indicators (latency, stability)
+   - Add player count summary at top ("12 connected, 2 away, 1 disconnected")
+   - Improve answered status indicator prominence
+
+**Implementation Details:**
+- Modify zombie detection logic in `app/server.js`:
+  - Check for duplicate socketIds for same username in same room
+  - Only trigger zombie cleanup if duplicates detected
+  - Add grace period (30 seconds) before marking as zombie
+
+- Enhance ConnectedPlayersList.vue:
+  - Add player count summary component
+  - Group players by connection status
+  - Add connection quality icons/colors
+  - Improve answered checkmark visibility
+
+**Files to Modify:**
+- `app/server.js` - Zombie detection logic in disconnect handler
+- `app/src/components/presenter/ConnectedPlayersList.vue` - Visual improvements
+- `app/src/services/room.service.js` - Player duplicate detection
+
+---
+
+### 4. All Players Answered Notification (Presenter)
+**Status:** ⏳ MEDIUM PRIORITY - Pending
+**Description:** Add notification to presenter when all connected players have answered the current question, with optional auto-reveal feature.
+
+**Features:**
+- Visual notification banner: "All players have answered! 🎯"
+- Audio alert option (toggle in settings)
+- Progress indicator: "8/10 players answered" during question
+- Auto-reveal option (configurable):
+  - Toggle: "Auto-reveal answer when all players answer"
+  - Default: OFF (manual reveal)
+  - When enabled: Answer reveals automatically after 3-second delay
+
+**Implementation:**
+- Add computed property to track answered count vs total players
+- Emit socket event when last player answers
+- Display banner in PresenterPage
+- Add auto-reveal toggle to quiz settings
+- Store preference in quiz options or session settings
+
+**Files to Modify:**
+- `app/server.js` - Track answered count, emit "allPlayersAnswered" event
+- `app/src/pages/PresenterPage.vue` - Display notification banner
+- `app/src/components/presenter/QuizDisplay.vue` - Show answered progress
+- `app/src/pages/AdminPage.vue` - Add auto-reveal toggle to quiz options
+
+---
+
+## High Priority - Feature Enhancements
+
+### 5. Preserve Choice Data in Question Editor
 **Status:** ✅ Completed (v1.0.2)
 **Description:** When adding or removing answer choices in the question editor, the existing choice data disappears. Need to preserve the original choices when modifying the number of choices to prevent data loss.
 
@@ -972,7 +1134,131 @@ This document tracks planned features, improvements, and tasks for future develo
 
 ---
 
-### 9. GitHub Actions - Docker Auto-Build & Push
+### 9. Automated Presenter Mode with Timers
+**Status:** ⏳ Planned (Long-term Feature)
+**Description:** Fully automated quiz hosting with configurable timers, auto-reveal, and auto-advance to next question.
+
+**Features:**
+1. **Question Timer System:**
+   - Configurable timer per quiz (30s, 60s, 90s, 120s, custom)
+   - Visual countdown display for presenter and players
+   - Timer starts when question is presented
+   - Timer pauses if all players answer early
+   - Warning indicators at 10 seconds remaining
+
+2. **Auto-Reveal Answer:**
+   - Answer reveals automatically when:
+     - Timer expires, OR
+     - All connected players have answered (whichever comes first)
+   - 3-second delay before revealing (grace period)
+   - Option to disable auto-reveal (manual control only)
+
+3. **Auto-Advance to Next Question:**
+   - After answer is revealed, show results for 10 seconds (configurable)
+   - Automatically present next question
+   - Option to pause between questions (presenter can manually advance)
+   - "Auto-mode ON" indicator in presenter UI
+
+4. **Quiz Completion:**
+   - After final question, auto-complete quiz after result display
+   - Save session automatically
+   - Display final standings modal
+   - Option to restart quiz or return to lobby
+
+**Configuration Options (Quiz Settings):**
+- Enable/disable automated mode (default: OFF)
+- Question timer duration (default: 60 seconds)
+- Answer reveal delay (default: 3 seconds)
+- Results display duration (default: 10 seconds)
+- Auto-advance enabled/disabled (default: ON when auto-mode enabled)
+
+**Implementation:**
+- Add timer configuration to quiz options in database
+- Create countdown timer component for presenter and player views
+- Add server-side timer tracking and event emission
+- Implement auto-reveal logic when timer expires or all answered
+- Implement auto-advance logic with configurable delay
+- Add UI controls to toggle auto-mode on/off during session
+
+**Files to Modify:**
+- `app/init/01-tables.sql` - Add timer settings to quiz options
+- `app/server.js` - Server-side timer tracking and auto-reveal/advance logic
+- `app/src/pages/PresenterPage.vue` - Auto-mode toggle, timer display
+- `app/src/pages/PlayerPage.vue` - Countdown timer display
+- `app/src/pages/AdminPage.vue` - Quiz timer configuration UI
+- Create: `app/src/components/common/CountdownTimer.vue`
+
+---
+
+### 10. Solo-Play Mode for Players
+**Status:** ⏳ Planned (Long-term Feature)
+**Description:** Allow players to start and complete quizzes independently without presenter interaction, creating a "self-study" or "practice" mode.
+
+**Features:**
+1. **Quiz Browser for Players:**
+   - Player page shows "Browse Quizzes" section
+   - List all available quizzes from database
+   - Show quiz title, question count, difficulty (if tagged)
+   - "Start Solo Quiz" button for each quiz
+
+2. **Solo Session Creation:**
+   - Player clicks "Start Solo Quiz"
+   - System creates a private room with auto-generated code
+   - Room is marked as "self-ran" (solo mode)
+   - Player automatically joins as participant
+   - Quiz starts immediately (no presenter needed)
+
+3. **Solo Quiz Flow:**
+   - Questions auto-advance after answer selection
+   - Timer-based (use quiz's configured timer, default 60s)
+   - Answer reveals automatically after selection
+   - Immediate feedback (correct/incorrect)
+   - Progress tracking throughout quiz
+   - Can pause and resume later (save progress)
+
+4. **Presenter View Integration:**
+   - Solo sessions appear in Active Rooms list
+   - Marked with "🎓 Solo" indicator
+   - Presenter can view but not control (read-only)
+   - Shows player progress and current question
+   - Option to "Promote to Hosted Session" (take over as presenter)
+
+5. **Solo Results & History:**
+   - Session saved with "solo_mode: true" flag
+   - Results displayed at completion
+   - Player can view past solo attempts
+   - Compare scores across attempts
+   - Export results (optional)
+
+**Database Changes:**
+- Add `is_solo_mode` boolean to `game_sessions` table
+- Add `solo_player_id` foreign key to track solo player
+- Add indexes for solo session queries
+
+**Security Considerations:**
+- Solo rooms are private (cannot be joined by other players)
+- Solo sessions count toward player statistics
+- Rate limit solo session creation (prevent abuse)
+
+**Implementation:**
+- Add quiz browser to PlayerPage (when not in active room)
+- Create solo session endpoint: `POST /api/player/start-solo/:quizId`
+- Modify room creation logic to support solo mode
+- Add auto-advance logic for solo sessions
+- Update PresenterPage to display solo sessions differently
+- Add "Promote to Hosted" feature for presenters
+
+**Files to Modify:**
+- `app/init/01-tables.sql` - Add solo mode columns to game_sessions
+- `app/server.js` - Solo session creation endpoint, auto-advance logic
+- `app/src/pages/PlayerPage.vue` - Quiz browser UI, solo session controls
+- `app/src/pages/PresenterPage.vue` - Solo session indicator, promote feature
+- `app/src/services/room.service.js` - Solo room creation and management
+- `app/src/services/session.service.js` - Solo session persistence
+
+---
+
+### 11. GitHub Actions - Docker Auto-Build & Push
 **Status:** Planned
 **Description:** Set up GitHub Actions workflow to automatically build and push Docker images to Docker Hub on commits/releases.
 
