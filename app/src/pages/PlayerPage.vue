@@ -212,6 +212,7 @@ const visibilitySwitchTimestamps = ref([])
 const awayTimeout = ref(null)
 const disconnectTimeout = ref(null)
 const warningClearTimeout = ref(null)
+const answerDisplayTimeout = ref(null) // Timeout for auto-clearing revealed answer
 const missedQuestionsBanner = ref(false)
 const lastJoinRoomAttempt = ref(0) // Track last joinRoom call to prevent duplicates
 const showConnectionLostBanner = ref(false)
@@ -559,6 +560,12 @@ const setupSocketListeners = () => {
   })
 
   socket.on('questionPresented', ({ questionIndex, question }) => {
+    // CRITICAL: Clear any existing answer display timeout from previous question
+    if (answerDisplayTimeout.value) {
+      clearTimeout(answerDisplayTimeout.value)
+      answerDisplayTimeout.value = null
+    }
+
     questionDisplaying.value = true
     // Check if this question has already been revealed (for late joiners)
     const isAlreadyRevealed = question.revealed === true || question.isRevealed === true
@@ -604,6 +611,12 @@ const setupSocketListeners = () => {
   })
 
   socket.on('questionRevealed', ({ questionIndex, question, results, answerDisplayTime }) => {
+    // CRITICAL: Clear any existing answer display timeout before setting new one
+    if (answerDisplayTimeout.value) {
+      clearTimeout(answerDisplayTimeout.value)
+      answerDisplayTimeout.value = null
+    }
+
     answerRevealed.value = true
     currentQuestion.value.correctChoice = question.correctChoice
 
@@ -623,10 +636,11 @@ const setupSocketListeners = () => {
 
     // Auto-reset after timeout (from server quiz options, default 30 seconds)
     const displayTimeout = (answerDisplayTime || 30) * 1000 // Convert seconds to milliseconds
-    setTimeout(() => {
+    answerDisplayTimeout.value = setTimeout(() => {
       questionDisplaying.value = false
       statusMessage.value = 'Waiting for next question...'
       statusMessageType.value = ''
+      answerDisplayTimeout.value = null // Clear the ref after timeout completes
     }, displayTimeout)
   })
 
@@ -1083,6 +1097,12 @@ const handleLeaveRoom = () => {
   statusMessage.value = 'Ready to join'
   statusMessageType.value = ''
   menuOpen.value = false
+
+  // Clear any pending answer display timeout
+  if (answerDisplayTimeout.value) {
+    clearTimeout(answerDisplayTimeout.value)
+    answerDisplayTimeout.value = null
+  }
 
   // Release wake lock when leaving room
   if (wakeLock.isActive.value) {
