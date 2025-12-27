@@ -6,6 +6,7 @@ let socket = null
 let heartbeatInterval = null
 let onlineHandler = null
 let offlineHandler = null
+let isConnecting = false  // Guard against concurrent socket creation
 
 export function useSocket() {
   const isConnected = ref(false)
@@ -51,6 +52,14 @@ export function useSocket() {
       return socket
     }
 
+    // CRITICAL: Guard against concurrent socket creation
+    // If another call to connect() is already creating a socket, wait for it
+    if (isConnecting) {
+      console.log('[SOCKET] Socket creation already in progress - skipping duplicate call')
+      return null
+    }
+
+    isConnecting = true
     console.log('[SOCKET] Creating new socket instance')
     socket = io(window.location.origin, {
       auth: {
@@ -122,6 +131,10 @@ export function useSocket() {
     window.addEventListener('online', onlineHandler)
     window.addEventListener('offline', offlineHandler)
 
+    // Clear connecting flag - socket is now created
+    isConnecting = false
+    console.log('[SOCKET] Socket creation complete')
+
     return socket
   }
 
@@ -161,6 +174,9 @@ export function useSocket() {
     } else {
       console.log('[SOCKET] disconnect() called but socket was already null')
     }
+
+    // Clear connecting flag to allow new connections
+    isConnecting = false
   }
 
   const emit = (eventName, ...args) => {
