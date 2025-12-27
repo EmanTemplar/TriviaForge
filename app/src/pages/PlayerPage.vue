@@ -738,6 +738,7 @@ onMounted(() => {
 
       if (ageMinutes < 5) {
         console.log(`[CONNECTION] Found recent session (${ageMinutes.toFixed(1)} min old) - attempting auto-rejoin`)
+        roomCodeInput.value = roomCode  // Sync input box with auto-rejoin room
         currentRoomCode.value = roomCode
         currentUsername.value = username
         currentDisplayName.value = displayName
