@@ -205,14 +205,8 @@ export function useSocket() {
     }
   }
 
-  onMounted(() => {
-    connect()
-  })
-
-  onUnmounted(() => {
-    // Don't disconnect on unmount - keep connection alive for app lifetime
-    // disconnect()
-  })
+  // NOTE: Lifecycle hooks removed from composable to prevent multiple registrations
+  // Connection management is now handled by the component using this composable
 
   return {
     socket: () => socket,

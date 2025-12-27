@@ -706,8 +706,9 @@ onMounted(() => {
   // Auto-login registered player
   autoLoginRegisteredPlayer()
 
-  // NOTE: socket.connect() is handled by useSocket's onMounted hook
-  // No need to call it again here - that was causing duplicate socket creation
+  // CRITICAL: Initialize socket connection
+  // useSocket's lifecycle hooks were removed to prevent multiple registrations
+  socket.connect()
 
   // Set up all socket listeners
   setupSocketListeners()
