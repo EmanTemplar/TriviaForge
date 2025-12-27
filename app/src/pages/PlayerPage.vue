@@ -456,11 +456,8 @@ const setupSocketListeners = () => {
     isConnected.value = true
     console.log('[CONNECTION] Socket connected')
 
-    // CRITICAL: Auto-rejoin room if we were in one before disconnect
-    // Socket.IO assigns a new socket.id on reconnect, so we must re-register with the room
-    if (currentRoomCode.value && currentUsername.value && currentDisplayName.value) {
-      emitJoinRoom(currentRoomCode.value, currentUsername.value, currentDisplayName.value, 'socket reconnect')
-    }
+    // NOTE: Auto-rejoin is handled by localStorage mechanism in onMounted
+    // We don't auto-rejoin here to avoid race conditions with multiple joinRoom emissions
 
     // Update connection state to connected (unless page is hidden)
     if (isPageVisible.value && connectionState.value !== 'warning') {
@@ -507,20 +504,20 @@ const setupSocketListeners = () => {
   socket.on('playerListUpdate', ({ roomCode, players }) => {
     console.log(`[CONNECTION] playerListUpdate received - roomCode: ${roomCode}, currentRoomCode: ${currentRoomCode.value}, joinInProgress: ${joinRoomInProgress.value}`)
 
-    if (roomCode !== currentRoomCode.value) {
-      console.log(`[CONNECTION] Ignoring playerListUpdate - room mismatch (${roomCode} vs ${currentRoomCode.value})`)
-      return
-    }
-
-    // CRITICAL: Clear joinRoom in-progress flag - server has confirmed we're in the room
-    // This allows answer submissions to proceed
+    // CRITICAL: Clear joinRoom in-progress flag FIRST - server has confirmed we're in A room
+    // This allows answer submissions to proceed even if there's a brief room code mismatch during rejoin
     if (joinRoomInProgress.value) {
       console.log('[CONNECTION] joinRoom completed - ready for interactions (cleared by playerListUpdate)')
       joinRoomInProgress.value = false
     }
 
+    // If this update is for a different room, update our current room to match
+    if (roomCode !== currentRoomCode.value) {
+      console.log(`[CONNECTION] Room code updated from ${currentRoomCode.value} to ${roomCode}`)
+      currentRoomCode.value = roomCode
+    }
+
     inRoom.value = true
-    currentRoomCode.value = roomCode
     currentPlayers.value = players
     // Exclude spectators from player count
     const nonSpectatorCount = players.filter(p => !p.isSpectator).length
@@ -636,6 +633,11 @@ const setupSocketListeners = () => {
   })
 
   socket.on('roomError', (msg) => {
+    // CRITICAL: Clear joinRoomInProgress flag on error - server rejected the join attempt
+    if (joinRoomInProgress.value) {
+      console.log('[CONNECTION] Clearing joinRoom flag due to room error')
+      joinRoomInProgress.value = false
+    }
     uiStore.addNotification(msg, 'error')
   })
 
@@ -747,12 +749,18 @@ onMounted(() => {
         const autoRejoinInterval = setInterval(() => {
           if (socket.isConnected.value) {
             clearInterval(autoRejoinInterval)
+            console.log(`[CONNECTION] Socket connected - executing auto-rejoin for room ${roomCode}`)
             emitJoinRoom(roomCode, username, displayName, 'localStorage auto-rejoin')
           }
         }, 100)
 
-        // Safety timeout - stop trying after 3 seconds
-        setTimeout(() => clearInterval(autoRejoinInterval), 3000)
+        // Safety timeout - stop trying after 10 seconds (mobile networks can be slow)
+        setTimeout(() => {
+          clearInterval(autoRejoinInterval)
+          if (!socket.isConnected.value) {
+            console.warn('[CONNECTION] Auto-rejoin timeout - socket did not connect within 10 seconds')
+          }
+        }, 10000)
       } else {
         console.log(`[CONNECTION] Session too old (${ageMinutes.toFixed(1)} min) - clearing`)
         localStorage.removeItem('trivia_last_room')
