@@ -789,7 +789,11 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  socket.disconnect()
+  // CRITICAL: Don't disconnect socket on unmount!
+  // Socket is module-scoped and should persist across page refreshes/remounts
+  // Disconnecting here causes duplicate socket creation on mobile refresh
+  // socket.disconnect()
+
   document.removeEventListener('click', closeMenuIfOutside)
   document.removeEventListener('touchstart', closeMenuIfOutside)
   document.removeEventListener('visibilitychange', handleVisibilityChange)

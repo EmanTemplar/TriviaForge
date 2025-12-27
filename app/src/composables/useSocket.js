@@ -40,10 +40,18 @@ export function useSocket() {
   }
 
   const connect = () => {
-    if (socket?.connected) {
+    // If socket exists (even if disconnected), reuse it instead of creating a new one
+    // This prevents multiple socket instances on mobile refresh
+    if (socket) {
+      console.log(`[SOCKET] Reusing existing socket (connected: ${socket.connected})`)
+      if (!socket.connected) {
+        console.log('[SOCKET] Triggering reconnection on existing socket')
+        socket.connect()
+      }
       return socket
     }
 
+    console.log('[SOCKET] Creating new socket instance')
     socket = io(window.location.origin, {
       auth: {
         token: authStore.token
@@ -134,6 +142,7 @@ export function useSocket() {
   }
 
   const disconnect = () => {
+    console.log('[SOCKET] disconnect() called')
     stopHeartbeat()
 
     // Clean up network event listeners
@@ -144,10 +153,13 @@ export function useSocket() {
       window.removeEventListener('offline', offlineHandler)
     }
 
-    if (socket?.connected) {
+    if (socket) {
+      console.log(`[SOCKET] Disconnecting and destroying socket (was connected: ${socket.connected})`)
       socket.disconnect()
       socket = null
       isConnected.value = false
+    } else {
+      console.log('[SOCKET] disconnect() called but socket was already null')
     }
   }
 
