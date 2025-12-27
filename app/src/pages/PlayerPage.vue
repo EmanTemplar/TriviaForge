@@ -705,8 +705,8 @@ onMounted(() => {
   // Auto-login registered player
   autoLoginRegisteredPlayer()
 
-  // Connect socket
-  socket.connect()
+  // NOTE: socket.connect() is handled by useSocket's onMounted hook
+  // No need to call it again here - that was causing duplicate socket creation
 
   // Set up all socket listeners
   setupSocketListeners()
@@ -739,7 +739,7 @@ onMounted(() => {
       const ageMinutes = (Date.now() - timestamp) / 60000
 
       if (ageMinutes < 5) {
-        console.log(`[CONNECTION] Found recent session (${ageMinutes.toFixed(1)} min old) - attempting auto-rejoin`)
+        console.log(`[CONNECTION] Found recent session (${ageMinutes.toFixed(1)} min old) - attempting auto-rejoin to room ${roomCode} as ${username}/${displayName}`)
         roomCodeInput.value = roomCode  // Sync input box with auto-rejoin room
         currentRoomCode.value = roomCode
         currentUsername.value = username

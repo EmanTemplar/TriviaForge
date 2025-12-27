@@ -1079,6 +1079,7 @@ io.on('connection', (socket) => {
   socket.on('joinRoom', async ({ roomCode, username, displayName }) => {
     const room = roomService.liveRooms[roomCode];
     if (!room) {
+      console.log(`[JOIN ERROR] Room not found: ${roomCode} (requested by ${username}/${displayName})`);
       socket.emit('roomError', 'Room not found.');
       return;
     }
