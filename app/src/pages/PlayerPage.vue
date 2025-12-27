@@ -502,7 +502,7 @@ const setupSocketListeners = () => {
   })
 
   socket.on('playerListUpdate', ({ roomCode, players }) => {
-    console.log(`[CONNECTION] playerListUpdate received - roomCode: ${roomCode}, currentRoomCode: ${currentRoomCode.value}, joinInProgress: ${joinRoomInProgress.value}`)
+    console.log(`[CONNECTION] playerListUpdate received - roomCode: ${roomCode}, currentRoomCode: ${currentRoomCode.value}, joinInProgress: ${joinRoomInProgress.value}, inRoom: ${inRoom.value}`)
 
     // CRITICAL: Clear joinRoom in-progress flag FIRST - server has confirmed we're in A room
     // This allows answer submissions to proceed even if there's a brief room code mismatch during rejoin
@@ -517,6 +517,7 @@ const setupSocketListeners = () => {
       currentRoomCode.value = roomCode
     }
 
+    console.log(`[CONNECTION] ✅ Setting inRoom to TRUE (${players.length} players in room)`)
     inRoom.value = true
     currentPlayers.value = players
     // Exclude spectators from player count
@@ -1195,6 +1196,7 @@ const forceReconnect = () => {
   socket.disconnect()
   setTimeout(() => {
     socket.connect()
+    setupSocketListeners() // CRITICAL: Re-register event listeners after reconnect
   }, 100)
 }
 
