@@ -481,6 +481,24 @@ const setupSocketListeners = () => {
 
   socket.on('connect', () => {
     isConnected.value = true
+    console.log('[CONNECTION] Socket connected')
+
+    // CRITICAL: Auto-rejoin room if we were in one before disconnect
+    // Socket.IO assigns a new socket.id on reconnect, so we must re-register with the room
+    if (currentRoomCode.value && currentUsername.value && currentDisplayName.value) {
+      const now = Date.now()
+      if (now - lastJoinRoomAttempt.value > 2000) {
+        lastJoinRoomAttempt.value = now
+        console.log('[CONNECTION] Auto-rejoining room after reconnect:', currentRoomCode.value)
+        socket.emit('joinRoom', {
+          roomCode: currentRoomCode.value,
+          username: currentUsername.value,
+          displayName: currentDisplayName.value
+        })
+        socket.setRoomContext(currentRoomCode.value, currentUsername.value)
+      }
+    }
+
     // Update connection state to connected (unless page is hidden)
     if (isPageVisible.value && connectionState.value !== 'warning') {
       updateConnectionState('connected')
