@@ -505,12 +505,17 @@ const setupSocketListeners = () => {
   })
 
   socket.on('playerListUpdate', ({ roomCode, players }) => {
-    if (roomCode !== currentRoomCode.value) return
+    console.log(`[CONNECTION] playerListUpdate received - roomCode: ${roomCode}, currentRoomCode: ${currentRoomCode.value}, joinInProgress: ${joinRoomInProgress.value}`)
+
+    if (roomCode !== currentRoomCode.value) {
+      console.log(`[CONNECTION] Ignoring playerListUpdate - room mismatch (${roomCode} vs ${currentRoomCode.value})`)
+      return
+    }
 
     // CRITICAL: Clear joinRoom in-progress flag - server has confirmed we're in the room
     // This allows answer submissions to proceed
     if (joinRoomInProgress.value) {
-      console.log('[CONNECTION] joinRoom completed - ready for interactions')
+      console.log('[CONNECTION] joinRoom completed - ready for interactions (cleared by playerListUpdate)')
       joinRoomInProgress.value = false
     }
 
@@ -530,6 +535,12 @@ const setupSocketListeners = () => {
   })
 
   socket.on('questionPresented', ({ questionIndex, question }) => {
+    // SAFETY: Clear joinRoom in-progress flag - receiving a question means we're definitely in the room
+    if (joinRoomInProgress.value) {
+      console.log('[CONNECTION] Clearing joinRoom flag (questionPresented received)')
+      joinRoomInProgress.value = false
+    }
+
     // CRITICAL: Clear any existing answer display timeout from previous question
     if (answerDisplayTimeout.value) {
       clearTimeout(answerDisplayTimeout.value)
@@ -869,17 +880,21 @@ const confirmChangeUsername = () => {
 }
 
 const selectAnswer = async (idx) => {
-  if (answeredCurrentQuestion.value || answerRevealed.value) return
+  if (answeredCurrentQuestion.value || answerRevealed.value) {
+    console.log(`[ANSWER] Blocked - already answered (${answeredCurrentQuestion.value}) or revealed (${answerRevealed.value})`)
+    return
+  }
 
   // CRITICAL: Block answer submission until joinRoom is fully processed by server
   // This prevents answers from being lost when user reconnects and immediately tries to answer
   if (joinRoomInProgress.value) {
-    console.log('[ANSWER] Blocked - waiting for room join to complete')
+    console.warn('[ANSWER] ❌ BLOCKED - joinRoom still in progress. User will see "Reconnecting..." message')
     statusMessage.value = 'Reconnecting... please wait'
     statusMessageType.value = 'warning'
     return
   }
 
+  console.log(`[ANSWER] ✅ Submitting answer ${idx} for question ${currentQuestion.value.index}`)
   selectedAnswer.value = idx
   answeredCurrentQuestion.value = true
   answeredQuestions.add(currentQuestion.value.index)
@@ -909,7 +924,16 @@ const emitJoinRoom = (roomCode, username, displayName, source = '') => {
 
   // Set in-progress flag
   joinRoomInProgress.value = true
-  console.log(`[CONNECTION] Emitting joinRoom from ${source}`)
+  console.log(`[CONNECTION] Emitting joinRoom from ${source} - flag set to true`)
+
+  // SAFETY: Auto-clear flag after 5 seconds as fallback
+  // This prevents the flag from getting stuck if playerListUpdate doesn't fire
+  setTimeout(() => {
+    if (joinRoomInProgress.value) {
+      console.warn('[CONNECTION] joinRoom flag still true after 5s - auto-clearing (safety mechanism)')
+      joinRoomInProgress.value = false
+    }
+  }, 5000)
 
   // Emit the event
   socket.emit('joinRoom', { roomCode, username, displayName })
