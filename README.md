@@ -1,17 +1,18 @@
 # TriviaForge
 
-A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, automated testing, and estimated capacity for 50+ concurrent players.
+A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v3.2.0 - Enhanced connection stability, Wake Lock API, automated testing framework
+**Latest Release**: v4.0.0-alpha - Modular architecture refactoring, dual-ID session tracking, mobile compatibility enhancements
 
 ### Key Highlights
 
 🎯 **Production-Ready**: Tested with simulated sessions of 50+ concurrent players
-⚡ **Robust Connection Stability**: Infinite reconnection attempts with intelligent page visibility detection
-📱 **Mobile-First**: Vue 3 PWA-ready with Wake Lock API to prevent screen sleep
+⚡ **Persistent Player Sessions**: Dual-ID architecture (PlayerID + RoomSessionID) for seamless reconnection and state preservation
+📱 **Mobile-Optimized**: HTTP-compatible UUID generation, CORS/CSRF configured for cross-origin mobile access
+🏗️ **Modular Architecture**: Clean separation of concerns with controllers, services, middleware, and routes (v4.0.0)
 🧪 **Fully Tested**: Comprehensive automated testing suite with 8 scenarios (quick to extreme load)
-🔒 **Secure**: bcrypt password hashing, session-based auth, SQL injection protection
-📊 **Scalable**: PostgreSQL connection pooling optimized for concurrent sessions
+🔒 **Secure**: bcrypt password hashing, session-based auth, CSRF protection, rate limiting, SQL injection prevention
+📊 **Scalable**: PostgreSQL connection pooling optimized for concurrent sessions with in-memory session tracking
 🐳 **Easy Deploy**: Single-command Docker Compose setup with automatic database initialization
 
 <!-- Screenshot Placeholder: Landing Page -->
@@ -50,17 +51,19 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 ![Presenter View](screenshots/presenter-view.png?v=202511)
 
 ### For Players
-- **Mobile-Optimized Interface**: Responsive design that works seamlessly on all devices
+- **Mobile-Optimized Interface**: Responsive design that works seamlessly on all devices (HTTP and HTTPS)
+- **Persistent Player Identity**: UUID-based PlayerID stored in localStorage for seamless reconnection across sessions
 - **Wake Lock Support**: Keeps mobile screens on during games (Chrome 84+, Safari 16.4+) with visual indicator
 - **Enhanced Connection Stability**: Infinite reconnection attempts with intelligent page visibility detection (30-second debounce)
 - **Real-time Feedback**: Instant answer submission and result display
 - **Answer Locking**: Prevents re-answering after submission (even on reconnection)
-- **Smart Reconnection**: Automatically restore progress when rejoining with full state preservation
+- **Smart Reconnection**: Automatically restore progress when rejoining with full state preservation via RoomSessionID
 - **Progress Tracking**: Comprehensive modal showing detailed session statistics and question-by-question history with correct/incorrect/pending status (persists across disconnections)
 - **Account System**: Guest accounts with optional registration for persistent profiles
 - **Recent Rooms**: Quick rejoin to recently played active rooms
 - **Account Management**: Update display names and manage account settings
 - **Session Persistence**: Stay logged in for extended periods without re-authentication
+- **Cross-Origin Support**: Join games from any device on the local network with proper CORS/CSRF handling
 
 <table>
   <tr>
@@ -94,12 +97,14 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 
 ### Backend
 - **Runtime**: Node.js (v20+) with ES Modules
-- **Framework**: Express.js (^4.18.2)
-- **Real-time**: Socket.IO (^4.7.2) with WebSocket transport
+- **Framework**: Express.js (^4.18.2) with modular architecture (v4.0.0)
+- **Architecture**: MVC pattern with controllers, services, middleware, and routes
+- **Real-time**: Socket.IO (^4.7.2) with WebSocket transport and persistent session tracking
 - **Database**: PostgreSQL 15 with connection pooling (pg ^8.11.0)
-- **Authentication**: bcrypt (^5.1.1) for password hashing
+- **Authentication**: bcrypt (^5.1.1) for password hashing, session-based tokens
+- **Security**: CSRF protection (csrf-csrf), rate limiting (express-rate-limit), CORS (cors)
 - **File Processing**: ExcelJS (^4.4.0), XLSX (^0.18.5), Multer (^2.0.2)
-- **Utilities**: UUID (^9.0.0), QRCode (^1.5.1), dotenv (^16.1.4)
+- **Utilities**: crypto (built-in), QRCode (^1.5.1), dotenv (^16.1.4), cookie-parser (^1.4.6)
 
 ### Frontend
 - **Framework**: Vue 3 (^3.3.0) - Composition API
@@ -439,33 +444,77 @@ For comprehensive testing documentation, see:
 ```
 TriviaForge/
 ├── app/
-│   ├── public/           # Frontend files
-│   │   ├── index.html    # Admin panel
-│   │   ├── landing.html  # Landing page
-│   │   ├── presenter.html # Presenter interface
-│   │   ├── player.html   # Player interface
-│   │   ├── player-manage.html # Player account management
-│   │   ├── display.html  # Spectator/display view
-│   │   ├── styles.css    # Shared styles
-│   │   └── *.js          # Client-side scripts
+│   ├── src/              # Backend source (NEW v4.0.0 - Modular Architecture)
+│   │   ├── config/       # Configuration modules
+│   │   │   ├── constants.js # Application constants
+│   │   │   ├── database.js  # PostgreSQL connection pool
+│   │   │   └── environment.js # Environment variable access
+│   │   ├── controllers/  # REST API controllers
+│   │   │   ├── auth.controller.js
+│   │   │   ├── quiz.controller.js
+│   │   │   ├── session.controller.js
+│   │   │   └── user.controller.js
+│   │   ├── middleware/   # Express middleware
+│   │   │   ├── auth.js         # Authentication middleware
+│   │   │   └── errorHandler.js # Global error handler
+│   │   ├── routes/       # REST API routes
+│   │   │   ├── auth.routes.js
+│   │   │   ├── quiz.routes.js
+│   │   │   ├── session.routes.js
+│   │   │   └── user.routes.js
+│   │   ├── services/     # Business logic services
+│   │   │   ├── room.service.js    # Live room state management
+│   │   │   ├── session.service.js # Session persistence
+│   │   │   └── quiz.service.js    # Quiz data access
+│   │   └── utils/        # Utility modules
+│   │       ├── errors.js      # Custom error classes
+│   │       ├── responses.js   # API response helpers
+│   │       └── validators.js  # Input validation
+│   ├── src/              # Frontend source (Vue 3 + Vite)
+│   │   ├── main.js       # Vue app entry point
+│   │   ├── App.vue       # Root component
+│   │   ├── router.js     # Vue Router configuration
+│   │   ├── pages/        # Page components
+│   │   │   ├── LoginPage.vue
+│   │   │   ├── AdminPage.vue
+│   │   │   ├── PresenterPage.vue
+│   │   │   ├── PlayerPage.vue
+│   │   │   ├── PlayerManagePage.vue
+│   │   │   └── DisplayPage.vue
+│   │   ├── components/   # Reusable Vue components
+│   │   │   ├── common/   # Shared components (Modal, Button, etc.)
+│   │   │   ├── modals/   # Modal components
+│   │   │   ├── player/   # Player page components
+│   │   │   └── presenter/ # Presenter page components
+│   │   ├── stores/       # Pinia state stores
+│   │   │   ├── auth.js
+│   │   │   ├── ui.js
+│   │   │   └── game.js
+│   │   ├── composables/  # Vue composables
+│   │   │   ├── useSocket.js # Socket.IO integration (w/ PlayerID)
+│   │   │   └── useApi.js    # Axios wrapper (w/ CSRF)
+│   │   ├── assets/       # Static assets (CSS, images)
+│   │   └── main.css      # Global styles
 │   ├── init/             # Database initialization SQL scripts
 │   │   ├── 01-tables.sql # PostgreSQL schema
-│   │   ├── 02-migrate_timestamps.sql # Timezone migration
-│   │   └── 03-update-admin-password.sql # Admin password update
+│   │   ├── 02-migrate_timestamps.sql
+│   │   ├── 03-update-admin-password.sql
+│   │   └── 04-banned-display-names.sql
 │   ├── testing/          # Automated testing suite
 │   │   ├── README.md     # Testing suite overview
 │   │   ├── TESTING.md    # Complete testing guide
-│   │   ├── test-runner.js # Main test runner
-│   │   └── stress-test.config.js # Test scenario configurations
-│   ├── quizzes/          # Legacy quiz storage (deprecated)
-│   ├── server.js         # Main server application
-│   ├── db-init.js        # Database initialization module
+│   │   ├── test-runner.js
+│   │   └── stress-test.config.js
+│   ├── server.js         # Main server application (Express + Socket.IO)
+│   ├── db-init.js        # Database initialization orchestrator
+│   ├── vite.config.js    # Vite build configuration
+│   ├── index.html        # HTML entry point
 │   ├── Dockerfile        # Docker container definition
 │   └── package.json      # Dependencies
 ├── test.bat              # Windows test runner wrapper
 ├── test.sh               # Linux/Mac test runner wrapper
 ├── docker-compose.yml    # Docker orchestration configuration
-├── .env.example          # Environment variables template (copy to .env)
+├── .env.example          # Environment variables template
 ├── LICENSE               # PolyForm Noncommercial License
 ├── CONTRIBUTING.md       # Contribution guidelines
 ├── TODO.md               # Feature roadmap
@@ -492,7 +541,8 @@ Environment variables can be set in multiple ways (listed by precedence, highest
 | `HOST_IP` | Server IP address for network access | Auto-detected | No |
 | `SERVER_URL` | Full server URL (overrides HOST_IP) | - | **Yes** (for QR codes) |
 | `SESSION_TIMEOUT` | Session expiration time (ms) | `3600000` (1 hour) | No |
-| `NODE_ENV` | Environment mode | `production` | No |
+| `NODE_ENV` | Environment mode (`development` or `production`) | `production` | No |
+| `DEBUG_MODE` | Enable comprehensive debug logging (server-side) | `false` | No |
 | `TZ` | Timezone for timestamps | `America/New_York` | No |
 | `APP_NAME` | Application name | `TriviaForge` | No |
 
@@ -512,14 +562,18 @@ Environment variables can be set in multiple ways (listed by precedence, highest
 - Preserves question formatting and special characters
 
 ### Session Management
+- **Dual-ID Architecture (v4.0.0)**: PlayerID (persistent across sessions) + RoomSessionID (per-room tracking)
 - Automatic session state saving to PostgreSQL database
-- Player answer history preservation with transactions
-- Reconnection support with progress restoration
+- In-memory session tracking with Maps for O(1) lookups
+- Player answer history preservation with comprehensive logging
+- Reconnection support with full state restoration (answers, progress, reconnection count)
 - Timestamp tracking for created and resumed sessions (timezone-aware)
 - Status indicators (In Progress, Interrupted, Completed)
 - Session analytics with participant performance views
+- Debug logging modes: `[SESSION DEBUG]`, `[ROOM SESSION]`, `[JOIN DEBUG]`, `[ANSWER DEBUG]`
 
 ### User Management
+- **Persistent Player Identity (v4.0.0)**: UUID-based PlayerID stored in localStorage for seamless reconnection
 - Guest accounts created automatically on first join
 - Optional registration for persistent accounts
 - Password-protected registered player accounts
@@ -527,6 +581,7 @@ Environment variables can be set in multiple ways (listed by precedence, highest
 - Admin password reset functionality
 - Account type management (guest/registered/admin)
 - Recent rooms tracking with active session filtering
+- Cross-origin support with CORS and CSRF protection for mobile devices
 
 ### Answer Integrity
 - Server-side validation prevents answer manipulation

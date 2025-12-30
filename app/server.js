@@ -6,6 +6,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import QRCode from 'qrcode';
 import os from 'os';
+import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import { doubleCsrf } from 'csrf-csrf';
 import cookieParser from 'cookie-parser';
@@ -815,6 +816,162 @@ const cleanupPlayerSession = (socketId) => {
   }
 };
 
+// --------------------
+// PHASE 3: RoomSessionID Architecture
+// --------------------
+// Track individual player attempts in specific rooms
+const roomSessions = new Map(); // Map<playerID_roomCode, RoomSessionID>
+const roomSessionData = new Map(); // Map<RoomSessionID, { playerID, roomCode, username, socketId, answers, joinedAt, lastActive }>
+const socketToRoomSession = new Map(); // Map<socketId, RoomSessionID> - Reverse mapping
+
+/**
+ * Generate a RoomSessionID for a player in a specific room
+ * @param {string} playerID - Player Session ID
+ * @param {string} roomCode - Room code
+ * @returns {string} - RoomSessionID (UUID format)
+ */
+const generateRoomSessionID = (playerID, roomCode) => {
+  try {
+    // Use crypto.randomUUID() from Node.js 14.17+ crypto module (already imported at top)
+    return crypto.randomUUID();
+  } catch (e) {
+    // Fallback for older Node.js versions or if randomUUID not available
+    return `rsid_${playerID.slice(0, 8)}_${roomCode}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  }
+};
+
+/**
+ * Get or create a RoomSessionID for a player in a room
+ * @param {string} playerID - Player Session ID
+ * @param {string} roomCode - Room code
+ * @param {string} username - Player username
+ * @param {string} socketId - Current socket.id
+ * @returns {string} - RoomSessionID
+ */
+const getOrCreateRoomSession = (playerID, roomCode, username, socketId) => {
+  const sessionKey = `${playerID}_${roomCode}`;
+  let roomSessionID = roomSessions.get(sessionKey);
+
+  if (!roomSessionID) {
+    // New room session - first time player joins this room
+    roomSessionID = generateRoomSessionID(playerID, roomCode);
+    roomSessions.set(sessionKey, roomSessionID);
+
+    roomSessionData.set(roomSessionID, {
+      playerID,
+      roomCode,
+      username,
+      socketId,
+      answers: {},
+      joinedAt: new Date().toISOString(),
+      lastActive: Date.now(),
+      reconnectionCount: 0
+    });
+
+    if (DEBUG_ENABLED) {
+      console.log('[ROOM SESSION] Created new RoomSessionID', {
+        roomSessionID,
+        playerID,
+        roomCode,
+        username,
+        socketId
+      });
+    }
+  } else {
+    // Existing room session - player reconnecting
+    const sessionData = roomSessionData.get(roomSessionID);
+    if (sessionData) {
+      sessionData.socketId = socketId;
+      sessionData.lastActive = Date.now();
+      sessionData.reconnectionCount = (sessionData.reconnectionCount || 0) + 1;
+
+      if (DEBUG_ENABLED) {
+        console.log('[ROOM SESSION] Updated existing RoomSessionID', {
+          roomSessionID,
+          playerID,
+          roomCode,
+          username,
+          oldSocketId: sessionData.socketId,
+          newSocketId: socketId,
+          reconnectionCount: sessionData.reconnectionCount
+        });
+      }
+    }
+  }
+
+  socketToRoomSession.set(socketId, roomSessionID);
+  return roomSessionID;
+};
+
+/**
+ * Update room session with answer data
+ * @param {string} roomSessionID - Room Session ID
+ * @param {number} questionIndex - Question index
+ * @param {number} choiceIndex - Answer choice index
+ */
+const updateRoomSessionAnswer = (roomSessionID, questionIndex, choiceIndex) => {
+  const sessionData = roomSessionData.get(roomSessionID);
+  if (sessionData) {
+    sessionData.answers[questionIndex] = choiceIndex;
+    sessionData.lastActive = Date.now();
+
+    if (DEBUG_ENABLED) {
+      console.log('[ROOM SESSION] Answer recorded', {
+        roomSessionID,
+        questionIndex,
+        choiceIndex,
+        totalAnswers: Object.keys(sessionData.answers).length
+      });
+    }
+  }
+};
+
+/**
+ * Clean up room session on disconnect (but preserve data for reconnection)
+ * @param {string} socketId - Socket.id that disconnected
+ */
+const markRoomSessionDisconnected = (socketId) => {
+  const roomSessionID = socketToRoomSession.get(socketId);
+  if (roomSessionID) {
+    const sessionData = roomSessionData.get(roomSessionID);
+    if (sessionData) {
+      sessionData.lastActive = Date.now();
+      sessionData.disconnectedAt = new Date().toISOString();
+
+      if (DEBUG_ENABLED) {
+        console.log('[ROOM SESSION] Marked as disconnected (data preserved)', {
+          roomSessionID,
+          playerID: sessionData.playerID,
+          roomCode: sessionData.roomCode,
+          answersPreserved: Object.keys(sessionData.answers).length
+        });
+      }
+    }
+    socketToRoomSession.delete(socketId);
+  }
+};
+
+/**
+ * Permanently delete room session (on room deletion or quiz completion)
+ * @param {string} roomSessionID - Room Session ID
+ */
+const deleteRoomSession = (roomSessionID) => {
+  const sessionData = roomSessionData.get(roomSessionID);
+  if (sessionData) {
+    const sessionKey = `${sessionData.playerID}_${sessionData.roomCode}`;
+    roomSessions.delete(sessionKey);
+    roomSessionData.delete(roomSessionID);
+
+    if (DEBUG_ENABLED) {
+      console.log('[ROOM SESSION] Permanently deleted', {
+        roomSessionID,
+        playerID: sessionData.playerID,
+        roomCode: sessionData.roomCode
+      });
+    }
+  }
+};
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
@@ -1384,6 +1541,20 @@ io.on('connection', (socket) => {
       // PHASE 2: Register PlayerID session
       if (playerID) {
         registerPlayerSession(playerID, socket.id, playerUsername, roomCode);
+
+        // PHASE 3: Get or create RoomSessionID for this player in this room
+        const roomSessionID = getOrCreateRoomSession(playerID, roomCode, playerUsername, socket.id);
+        room.players[socket.id].roomSessionID = roomSessionID;
+
+        if (DEBUG_ENABLED) {
+          console.log('[ROOM SESSION] Player rejoined with session', {
+            roomSessionID,
+            playerID,
+            roomCode,
+            username: playerUsername,
+            answersPreserved: Object.keys(playerData.answers || {}).length
+          });
+        }
       }
     } else {
       // Check if this is a resumed session with temp player entry
@@ -1424,6 +1595,19 @@ io.on('connection', (socket) => {
       // PHASE 2: Register PlayerID session for new player
       if (playerID) {
         registerPlayerSession(playerID, socket.id, playerUsername, roomCode);
+
+        // PHASE 3: Create new RoomSessionID for this player in this room
+        const roomSessionID = getOrCreateRoomSession(playerID, roomCode, playerUsername, socket.id);
+        room.players[socket.id].roomSessionID = roomSessionID;
+
+        if (DEBUG_ENABLED) {
+          console.log('[ROOM SESSION] New player joined with new session', {
+            roomSessionID,
+            playerID,
+            roomCode,
+            username: playerUsername
+          });
+        }
       }
     }
 
@@ -1618,10 +1802,17 @@ io.on('connection', (socket) => {
       if (!player.answers) player.answers = {};
       player.answers[room.currentQuestionIndex] = choice;
 
+      // PHASE 3: Update RoomSessionID with answer data
+      if (player.roomSessionID) {
+        updateRoomSessionAnswer(player.roomSessionID, room.currentQuestionIndex, choice);
+      }
+
       if (DEBUG_ENABLED) {
         console.log('[ANSWER DEBUG] Answer recorded successfully', {
           username: player.username,
           displayName: player.name,
+          playerID: player.playerID,
+          roomSessionID: player.roomSessionID,
           questionIndex: room.currentQuestionIndex,
           choice,
           totalAnswers: Object.keys(player.answers).length
@@ -1722,6 +1913,15 @@ io.on('connection', (socket) => {
       }
     }
 
+    // PHASE 3: Clean up all RoomSessions for players in this room
+    if (room.players) {
+      for (const player of Object.values(room.players)) {
+        if (player.roomSessionID) {
+          deleteRoomSession(player.roomSessionID);
+        }
+      }
+    }
+
     delete roomService.liveRooms[roomCode];
     io.to(roomCode).emit('roomClosed', { roomCode });
     io.socketsLeave(roomCode);
@@ -1809,6 +2009,9 @@ io.on('connection', (socket) => {
   socket.on('disconnect', (reason) => {
     // PHASE 2: Clean up PlayerID session tracking
     cleanupPlayerSession(socket.id);
+
+    // PHASE 3: Mark RoomSessionID as disconnected (preserve data for reconnection)
+    markRoomSessionDisconnected(socket.id);
 
     for (const [roomCode, room] of Object.entries(roomService.liveRooms)) {
       // Handle player disconnection
@@ -2295,6 +2498,16 @@ if (DEBUG_ENABLED) {
           autoSaveIntervals.delete(roomCode);
         }
 
+        // PHASE 3: Clean up RoomSessions for specific room
+        const room = roomService.liveRooms[roomCode];
+        if (room && room.players) {
+          for (const player of Object.values(room.players)) {
+            if (player.roomSessionID) {
+              deleteRoomSession(player.roomSessionID);
+            }
+          }
+        }
+
         // Delete from memory
         delete roomService.liveRooms[roomCode];
         results.roomsDeleted = 1;
@@ -2320,6 +2533,17 @@ if (DEBUG_ENABLED) {
           clearInterval(interval);
         });
         autoSaveIntervals.clear();
+
+        // PHASE 3: Clean up all RoomSessions before deleting rooms
+        Object.values(roomService.liveRooms).forEach(room => {
+          if (room.players) {
+            Object.values(room.players).forEach(player => {
+              if (player.roomSessionID) {
+                deleteRoomSession(player.roomSessionID);
+              }
+            });
+          }
+        });
 
         // Clear all rooms
         Object.keys(roomService.liveRooms).forEach(code => {
