@@ -9,6 +9,7 @@ import os from 'os';
 import rateLimit from 'express-rate-limit';
 import { doubleCsrf } from 'csrf-csrf';
 import cookieParser from 'cookie-parser';
+import cors from 'cors';
 import pkg from 'pg';
 const { Pool } = pkg;
 import { initializeDatabase } from './db-init.js';
@@ -66,6 +67,12 @@ const getLocalIP = () => {
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+
+// CORS Configuration - Allow credentials from any origin (mobile access via IP)
+app.use(cors({
+  origin: true, // Reflect request origin (allows any origin)
+  credentials: true // Allow cookies (required for CSRF tokens)
+}));
 
 // Load .env file from root directory (for both Docker and local development)
 // When running locally, looks for .env in parent directory
@@ -162,7 +169,9 @@ const csrfProtection = doubleCsrf({
   cookieName: 'x-csrf-token',
   cookieOptions: {
     httpOnly: true,
-    sameSite: 'strict',
+    // CHANGED: 'lax' allows cross-origin GET requests (mobile access via IP)
+    // 'strict' would block all cross-origin requests, breaking mobile access
+    sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: 3600000 // 1 hour
   },
@@ -735,8 +744,88 @@ async function loadQuizOptions() {
   }
 }
 
+// --------------------
+// PHASE 2: Dual-ID Session Architecture
+// --------------------
+// Global session tracking for persistent player identification
+const playerSessions = new Map(); // Map<playerID, { username, socketId, roomCode }>
+const socketToPlayer = new Map(); // Map<socketId, playerID> - Reverse mapping for O(1) lookups
+
+/**
+ * Check if a PlayerID is already connected (multi-tab detection)
+ * @param {string} playerID - Player Session ID
+ * @param {string} currentSocketId - Current socket.id attempting to connect
+ * @returns {boolean} - True if PlayerID is already connected with a DIFFERENT socketId
+ */
+const isPlayerIDAlreadyConnected = (playerID, currentSocketId) => {
+  const playerSession = playerSessions.get(playerID);
+  if (!playerSession) return false;
+
+  // Check if the existing socketId is different AND still connected
+  if (playerSession.socketId !== currentSocketId) {
+    const existingSocket = io.sockets.sockets.get(playerSession.socketId);
+    return existingSocket && existingSocket.connected;
+  }
+
+  return false;
+};
+
+/**
+ * Register or update a player session
+ * @param {string} playerID - Player Session ID
+ * @param {string} socketId - Current socket.id
+ * @param {string} username - Player username
+ * @param {string} roomCode - Room code player is joining
+ */
+const registerPlayerSession = (playerID, socketId, username, roomCode) => {
+  playerSessions.set(playerID, {
+    username,
+    socketId,
+    roomCode,
+    lastActive: Date.now()
+  });
+  socketToPlayer.set(socketId, playerID);
+
+  if (DEBUG_ENABLED) {
+    console.log('[SESSION DEBUG] Player session registered', {
+      playerID,
+      socketId,
+      username,
+      roomCode
+    });
+  }
+};
+
+/**
+ * Clean up player session on disconnect
+ * @param {string} socketId - Socket.id that disconnected
+ */
+const cleanupPlayerSession = (socketId) => {
+  const playerID = socketToPlayer.get(socketId);
+  if (playerID) {
+    const playerSession = playerSessions.get(playerID);
+    // Only remove if this socketId matches (don't remove if player reconnected with new socket)
+    if (playerSession && playerSession.socketId === socketId) {
+      playerSessions.delete(playerID);
+      if (DEBUG_ENABLED) {
+        console.log('[SESSION DEBUG] Player session cleaned up', { playerID, socketId });
+      }
+    }
+    socketToPlayer.delete(socketId);
+  }
+};
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
+
+  // PHASE 2: Extract PlayerID from socket auth
+  const playerID = socket.handshake.auth?.playerID;
+  if (playerID && DEBUG_ENABLED) {
+    console.log('[SESSION DEBUG] Socket connected with PlayerID:', {
+      socketId: socket.id,
+      playerID
+    });
+  }
 
   // Send active rooms immediately on connection
   socket.emit('activeRoomsUpdate', getActiveRoomsSummary());
@@ -1076,10 +1165,31 @@ io.on('connection', (socket) => {
   });
 
   // Player joins a room
-  socket.on('joinRoom', async ({ roomCode, username, displayName }) => {
+  socket.on('joinRoom', async ({ roomCode, username, displayName, playerID }) => {
+    if (DEBUG_ENABLED) {
+      console.log('[JOIN DEBUG] joinRoom event received', {
+        roomCode,
+        username,
+        displayName,
+        playerID,  // PHASE 2: Log PlayerID
+        socketId: socket.id,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // PHASE 2: Multi-tab detection
+    if (playerID && isPlayerIDAlreadyConnected(playerID, socket.id)) {
+      console.log(`[MULTI-TAB BLOCKED] PlayerID ${playerID} already connected in another tab`);
+      socket.emit('roomError', 'Already connected in another tab. Please close other tabs and try again.');
+      return;
+    }
+
     const room = roomService.liveRooms[roomCode];
     if (!room) {
       console.log(`[JOIN ERROR] Room not found: ${roomCode} (requested by ${username}/${displayName})`);
+      if (DEBUG_ENABLED) {
+        console.log('[JOIN DEBUG] Available rooms:', Object.keys(roomService.liveRooms));
+      }
       socket.emit('roomError', 'Room not found.');
       return;
     }
@@ -1091,6 +1201,16 @@ io.on('connection', (socket) => {
     // Track user agent for mobile-specific handling and diagnostics
     const userAgent = socket.handshake.headers['user-agent'] || '';
     const isMobile = /iPhone|iPad|iPod|Android/i.test(userAgent);
+
+    if (DEBUG_ENABLED) {
+      console.log('[JOIN DEBUG] Client info', {
+        username: playerUsername,
+        displayName: playerDisplayName,
+        socketId: socket.id,
+        isMobile,
+        userAgent: userAgent.substring(0, 50) + '...'
+      });
+    }
 
     if (!playerUsername || !playerDisplayName) {
       socket.emit('roomError', 'Username and display name are required.');
@@ -1160,60 +1280,76 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Find ALL existing entries for this username (not just the first one)
-    // This fixes the zombie connection bug where multiple disconnected entries accumulate
-    const existingPlayers = Object.entries(room.players).filter(([, player]) => player.username === playerUsername);
+    // PHASE 2: Check if PlayerID exists in room (reconnection scenario)
+    let existingPlayerEntry = null;
+    let existingPlayerData = null;
 
-    if (existingPlayers.length > 0) {
-      // Check if ANY entry is still actively connected
-      const activeConnection = existingPlayers.find(([, player]) =>
-        player.connected && player.connectionState === 'connected'
-      );
-
-      if (activeConnection) {
-        const [activeSocketId] = activeConnection;
-
-        // Check if this is the same socket trying to rejoin (shouldn't happen, but handle it)
-        if (activeSocketId === socket.id) {
-          console.log(`[RECONNECT] ${playerUsername} socket ${activeSocketId} is already in room - updating state`);
-          // Just update the existing entry - fall through to state restoration below
-        } else {
-          // Different socket attempting to join - check if old socket is still connected
-          const activeSocket = io.sockets.sockets.get(activeSocketId);
-
-          if (activeSocket && activeSocket.connected) {
-            // Old socket is still connected - this is likely a reconnection race condition
-            // Force-disconnect the old socket and allow the new one to join
-            console.log(`[RECONNECT] ${playerUsername} reconnecting - force-disconnecting old socket ${activeSocketId} to allow new socket ${socket.id}`);
-            activeSocket.disconnect(true); // Force disconnect the old socket
-            delete room.players[activeSocketId]; // Clean up old player entry
-            // Fall through to allow new socket to join
-          } else {
-            // Socket marked as connected but isn't actually - it's a zombie, clean it up
-            if (VERBOSE_LOGGING) {
-              console.log(`[ZOMBIE CLEANUP] ${playerUsername} socket ${activeSocketId} marked connected but not found - cleaning up`);
-            }
-            delete room.players[activeSocketId];
-          }
+    if (playerID) {
+      // NEW: PlayerID-based lookup (O(n) search for playerID in room.players)
+      for (const [socketId, player] of Object.entries(room.players)) {
+        if (player.playerID === playerID) {
+          existingPlayerEntry = [socketId, player];
+          existingPlayerData = player;
+          break;
         }
       }
 
-      // Clean up ALL old disconnected entries (zombie connections) BEFORE adding new one
-      let zombiesRemoved = 0;
-      for (const [oldSocketId] of existingPlayers) {
-        // Skip if we just checked this one above and it's the current socket
-        if (oldSocketId === socket.id) continue;
+      if (DEBUG_ENABLED && existingPlayerEntry) {
+        console.log('[JOIN DEBUG] Found existing player by PlayerID (RECONNECTION)', {
+          playerID,
+          oldSocketId: existingPlayerEntry[0],
+          newSocketId: socket.id,
+          username: playerUsername
+        });
+      }
+    }
 
+    // FALLBACK: If no PlayerID or PlayerID not found, use old username-based lookup
+    // This ensures backward compatibility during transition phase
+    if (!existingPlayerEntry) {
+      // Find ALL existing entries for this username (not just the first one)
+      // This fixes the zombie connection bug where multiple disconnected entries accumulate
+      const existingPlayers = Object.entries(room.players).filter(([, player]) => player.username === playerUsername);
+
+      if (DEBUG_ENABLED) {
+        console.log('[JOIN DEBUG] Checking for existing player entries by username (FALLBACK)', {
+          username: playerUsername,
+          existingEntriesCount: existingPlayers.length,
+          newSocketId: socket.id,
+          existingSocketIds: existingPlayers.map(([socketId]) => socketId)
+        });
+      }
+
+      if (existingPlayers.length > 0) {
+        existingPlayerEntry = existingPlayers[0]; // Use first entry
+        existingPlayerData = existingPlayers[0][1];
+      }
+    }
+
+    // Handle existing player (reconnection)
+    if (existingPlayerEntry) {
+      const [oldSocketId, playerData] = existingPlayerEntry;
+
+      // PHASE 2: Reconnection detected - update socketId, preserve all state
+      if (DEBUG_ENABLED) {
+        console.log('[JOIN DEBUG] Reconnection - updating socketId', {
+          playerID,
+          oldSocketId,
+          newSocketId: socket.id,
+          username: playerUsername
+        });
+      }
+
+      // Check if old socket is still connected (force disconnect to prevent duplicates)
+      if (oldSocketId !== socket.id) {
+        const oldSocket = io.sockets.sockets.get(oldSocketId);
+        if (oldSocket && oldSocket.connected) {
+          console.log(`[RECONNECT] Force-disconnecting old socket ${oldSocketId} for ${playerUsername}`);
+          oldSocket.disconnect(true);
+        }
+        // Delete old player entry
         delete room.players[oldSocketId];
-        zombiesRemoved++;
       }
-
-      if (zombiesRemoved > 0 && !isSpectator && VERBOSE_LOGGING) {
-        console.log(`[ZOMBIE CLEANUP] Removed ${zombiesRemoved} stale connection(s) for ${playerUsername}`);
-      }
-
-      // Get the most recent player data (last entry has the most complete state)
-      const [, playerData] = existingPlayers[existingPlayers.length - 1];
 
       // Determine if they already answered the current question
       let currentChoice = null;
@@ -1221,20 +1357,21 @@ io.on('connection', (socket) => {
         currentChoice = playerData.answers[room.currentQuestionIndex];
       }
 
-      // Create fresh player entry with preserved answers
+      // Create fresh player entry with preserved answers and PlayerID
       room.players[socket.id] = {
         ...playerData,
         id: socket.id,
         username: playerUsername,
         name: playerDisplayName,
         userId: userId,
+        playerID: playerID,  // PHASE 2: Store PlayerID in player object
         connected: true,
         connectionState: 'connected',
         choice: currentChoice,
         isSpectator: playerUsername === 'Display' || playerDisplayName === 'Spectator Display',
-        userAgent: userAgent, // Track for diagnostics and mobile-specific handling
+        userAgent: userAgent,
         isMobile: isMobile,
-        lastHeartbeat: Date.now() // Track connection health
+        lastHeartbeat: Date.now()
       };
 
       socket.join(roomCode);
@@ -1242,6 +1379,11 @@ io.on('connection', (socket) => {
       if (!isSpectator) {
         const answersCount = Object.keys(playerData.answers || {}).length;
         console.log(`${playerDisplayName} (${playerUsername}) reconnected to room ${roomCode} (${answersCount} previous answers preserved)`);
+      }
+
+      // PHASE 2: Register PlayerID session
+      if (playerID) {
+        registerPlayerSession(playerID, socket.id, playerUsername, roomCode);
       }
     } else {
       // Check if this is a resumed session with temp player entry
@@ -1263,6 +1405,7 @@ io.on('connection', (socket) => {
         username: playerUsername, // Account username
         name: playerDisplayName, // Display name shown in games
         userId: userId, // Associate with user account
+        playerID: playerID,  // PHASE 2: Store PlayerID for persistent identification
         choice: null,
         connected: true,
         connectionState: 'connected', // 'connected' | 'away' | 'disconnected' | 'warning'
@@ -1277,14 +1420,39 @@ io.on('connection', (socket) => {
       if (!isSpectator) {
         console.log(`${playerDisplayName} (${playerUsername}) joined room ${roomCode}`);
       }
+
+      // PHASE 2: Register PlayerID session for new player
+      if (playerID) {
+        registerPlayerSession(playerID, socket.id, playerUsername, roomCode);
+      }
     }
 
-    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
+    const playersToEmit = Object.values(room.players).filter(p => !p.isSpectator);
+    if (DEBUG_ENABLED) {
+      console.log('[JOIN DEBUG] Emitting playerListUpdate', {
+        roomCode,
+        playersCount: playersToEmit.length,
+        newPlayerSocketId: socket.id,
+        newPlayerUsername: playerUsername,
+        newPlayerDisplayName: playerDisplayName,
+        allPlayerSocketIds: playersToEmit.map(p => p.id),
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    io.to(roomCode).emit('playerListUpdate', { roomCode, players: playersToEmit });
     io.emit('activeRoomsUpdate', getActiveRoomsSummary());
 
     // Send the player's answer history with detailed information (skip for spectators)
     if (!room.players[socket.id].isSpectator) {
       const playerAnswers = room.players[socket.id].answers || {};
+      if (DEBUG_ENABLED) {
+        console.log('[JOIN DEBUG] Sending answer history', {
+          username: playerUsername,
+          answersCount: Object.keys(playerAnswers).length,
+          timestamp: new Date().toISOString()
+        });
+      }
       const answerHistory = Object.entries(playerAnswers).map(([questionIndex, choice]) => {
         const idx = parseInt(questionIndex);
         const question = room.quizData.questions[idx];
@@ -1386,11 +1554,53 @@ io.on('connection', (socket) => {
 
   // Player submits answer
   socket.on('submitAnswer', ({ roomCode, choice }) => {
+    if (DEBUG_ENABLED) {
+      console.log('[ANSWER DEBUG] submitAnswer received', {
+        roomCode,
+        choice,
+        socketId: socket.id,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     const room = roomService.liveRooms[roomCode];
-    if (!room || room.currentQuestionIndex === null) return;
+    if (!room) {
+      if (DEBUG_ENABLED) {
+        console.log('[ANSWER DEBUG] Room not found', {
+          roomCode,
+          socketId: socket.id,
+          availableRooms: Object.keys(roomService.liveRooms)
+        });
+      }
+      return;
+    }
+
+    if (room.currentQuestionIndex === null) {
+      if (DEBUG_ENABLED) {
+        console.log('[ANSWER DEBUG] No current question', {
+          roomCode,
+          socketId: socket.id
+        });
+      }
+      return;
+    }
 
     if (room.players[socket.id]) {
       const player = room.players[socket.id];
+
+      if (DEBUG_ENABLED) {
+        console.log('[ANSWER DEBUG] Player found in room', {
+          username: player.username,
+          displayName: player.name,
+          socketId: socket.id,
+          playerID: player.playerID,  // PHASE 2: Log PlayerID for debugging
+          questionIndex: room.currentQuestionIndex,
+          hasAnswers: !!player.answers,
+          alreadyAnswered: player.answers?.[room.currentQuestionIndex] !== undefined,
+          connected: player.connected,
+          connectionState: player.connectionState
+        });
+      }
 
       // Check if player already answered this question (prevent re-answering)
       if (player.answers && player.answers[room.currentQuestionIndex] !== undefined) {
@@ -1408,9 +1618,28 @@ io.on('connection', (socket) => {
       if (!player.answers) player.answers = {};
       player.answers[room.currentQuestionIndex] = choice;
 
+      if (DEBUG_ENABLED) {
+        console.log('[ANSWER DEBUG] Answer recorded successfully', {
+          username: player.username,
+          displayName: player.name,
+          questionIndex: room.currentQuestionIndex,
+          choice,
+          totalAnswers: Object.keys(player.answers).length
+        });
+      }
+
       io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
 
       console.log(`${player.name} answered question ${room.currentQuestionIndex} with choice ${choice}`);
+    } else {
+      if (DEBUG_ENABLED) {
+        console.log('[ANSWER DEBUG] Player NOT found in room.players', {
+          socketId: socket.id,
+          roomCode,
+          playersInRoom: Object.keys(room.players),
+          timestamp: new Date().toISOString()
+        });
+      }
     }
   });
 
@@ -1578,6 +1807,9 @@ io.on('connection', (socket) => {
 
   // Handle disconnect
   socket.on('disconnect', (reason) => {
+    // PHASE 2: Clean up PlayerID session tracking
+    cleanupPlayerSession(socket.id);
+
     for (const [roomCode, room] of Object.entries(roomService.liveRooms)) {
       // Handle player disconnection
       if (room.players[socket.id]) {

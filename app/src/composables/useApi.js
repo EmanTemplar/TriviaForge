@@ -1,6 +1,12 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth.js'
 
+// Debug logging (only active in development mode)
+const DEBUG = import.meta.env.DEV
+const debugLog = (...args) => {
+  if (DEBUG) console.log('[API]', ...args)
+}
+
 const apiClient = axios.create({
   baseURL: window.location.origin,
   timeout: 10000,
@@ -24,6 +30,12 @@ const fetchCsrfToken = async () => {
 
 // Add token and CSRF token to all requests
 apiClient.interceptors.request.use((config) => {
+  debugLog('Request interceptor:', {
+    url: config.url,
+    method: config.method,
+    isMobile: /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent)
+  })
+
   const authStore = useAuthStore()
 
   // Add auth token
@@ -34,17 +46,27 @@ apiClient.interceptors.request.use((config) => {
   // Add CSRF token for state-changing methods
   const method = config.method?.toLowerCase()
   if (['post', 'put', 'delete', 'patch'].includes(method)) {
+    debugLog('POST request detected, checking CSRF token')
     // If CSRF token is already cached, use it synchronously
     if (csrfToken) {
+      debugLog('Using cached CSRF token')
       config.headers['x-csrf-token'] = csrfToken
       return config
     }
 
     // Otherwise, fetch it asynchronously
+    debugLog('Fetching CSRF token from server')
     return fetchCsrfToken().then(() => {
       if (csrfToken) {
+        debugLog('CSRF token fetched successfully')
         config.headers['x-csrf-token'] = csrfToken
+      } else {
+        console.error('[API] Failed to fetch CSRF token')
       }
+      return config
+    }).catch((err) => {
+      console.error('[API] Error fetching CSRF token:', err)
+      // Continue with request even if CSRF fetch fails (for non-protected endpoints)
       return config
     })
   }
@@ -52,13 +74,31 @@ apiClient.interceptors.request.use((config) => {
   // For GET/HEAD/OPTIONS, return synchronously
   return config
 }, (error) => {
+  console.error('[API] Request interceptor error:', error)
   return Promise.reject(error)
 })
 
 // Handle response errors
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    debugLog('Response received:', {
+      url: response.config.url,
+      status: response.status,
+      statusText: response.statusText
+    })
+    return response
+  },
   (error) => {
+    if (DEBUG) {
+      console.error('[API] Response error:', {
+        url: error.config?.url,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        message: error.message,
+        data: error.response?.data
+      })
+    }
+
     if (error.response?.status === 401) {
       // Only redirect for admin/presenter auth failures, not player login failures
       // Player login errors should be handled by the component's try-catch

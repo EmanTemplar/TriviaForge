@@ -647,48 +647,120 @@ This document tracks planned features, improvements, and tasks for future develo
 
 ## High Priority - Player & Presenter Experience (CRITICAL)
 
-### 1. Solidify Player Connection Stability
-**Status:** 🚨 CRITICAL - Pending
-**Priority:** HIGHEST
-**Description:** Improve Socket.IO connection handling for seamless player experience, especially in large sessions and on mobile devices.
+### 1. Mobile Reconnection Stability
+**Status:** ✅ RESOLVED (2025-12-29) - Session ID architecture planned for v5.0.0
+**Priority:** HIGHEST → COMPLETE
+**Description:** Improve Socket.IO connection handling for seamless player experience on mobile devices.
 
-**Issues to Address:**
-1. **Socket.IO Performance with Large Sessions:**
+**RESOLVED ISSUES:**
+
+1. **Mobile Page Refresh Auto-Rejoin** ✅
+   - **Problem:** Players had to manually click "Quick Join" after page refresh
+   - **Root Cause:** PlayerPage's `setupSocketListeners()` removed useSocket.js event listeners with `socket.off('connect')`
+   - **Fix:** Removed `.off('connect')` and `.off('disconnect')` calls (PlayerPage.vue:457-458)
+   - **Result:** Auto-rejoin now works seamlessly on page refresh
+   - **Files Modified:** `app/src/pages/PlayerPage.vue`
+
+2. **App Switching Reconnection** ✅
+   - **Problem:** Players appeared connected but answers didn't record after app switching
+   - **Root Cause:** Android creates new socket (fires `connect`, not `reconnect` event). Old code only auto-rejoined in `reconnect` handler.
+   - **Fix:** Added auto-rejoin logic to `connect` event handler (PlayerPage.vue:485-489)
+   - **Result:** Seamless reconnection when switching apps
+   - **Files Modified:** `app/src/pages/PlayerPage.vue`
+
+3. **Mobile Join Failure - crypto.randomUUID() Compatibility** ✅ (2025-12-29)
+   - **Problem:** Mobile devices (Android) unable to join rooms, error: "crypto.randomUUID is not a function"
+   - **Root Cause:** `crypto.randomUUID()` requires HTTPS (secure context), not available on HTTP or older browsers
+   - **Investigation:**
+     - Initially suspected CORS issue - added CORS middleware ✅
+     - Then suspected CSRF cookie issue - changed sameSite from 'strict' to 'lax' ✅
+     - Both fixes necessary but insufficient
+     - Browser cache prevented new debug logs from showing (required app rebuild)
+     - Final error revealed: crypto.randomUUID() not supported on HTTP
+   - **Fix:** Implemented UUID v4 fallback generator (useSocket.js:34-50)
+     - Try `crypto.randomUUID()` first (modern browsers, HTTPS)
+     - Fall back to `Math.random()` based UUID generation (HTTP, all browsers)
+     - Works across all contexts and devices
+   - **Result:** Mobile devices can now join rooms successfully over HTTP
+   - **Files Modified:**
+     - `app/src/composables/useSocket.js` - UUID fallback generator
+     - `app/server.js` - CORS middleware, CSRF cookie policy
+
+4. **Environment-Based Debug Logging** ✅ (2025-12-29)
+   - **Implementation:** Converted all new debug logging to use environment variables
+   - **Pattern:**
+     - Client-side: `const DEBUG = import.meta.env.DEV` + `debugLog()` helper
+     - Server-side: `const DEBUG_ENABLED = process.env.DEBUG_MODE === 'true'` or `NODE_ENV === 'development'`
+   - **Affected Logs:** `[API]`, `[CHECK-USERNAME]`, `[JOIN]` debug logging
+   - **Result:** Clean production logs, easy to enable for troubleshooting
+   - **Files Modified:**
+     - `app/src/composables/useApi.js` - Environment-based debug logging
+     - `app/src/controllers/auth.controller.js` - Environment-based debug logging
+     - `app/src/pages/PlayerPage.vue` - Updated [JOIN] logs to use DEBUG constant
+
+5. **Debug Logging System** ✅ (Initial Implementation)
+   - **Implementation:** Added comprehensive debug logging with `import.meta.env.DEV` flag
+   - **Client Logs:** `[SOCKET DEBUG]` in useSocket.js, `[PLAYER DEBUG]` in PlayerPage.vue
+   - **Server Logs:** `[JOIN DEBUG]`, `[ANSWER DEBUG]` in server.js (controlled by `DEBUG_MODE` env var)
+   - **Result:** Future issues can be diagnosed quickly
+   - **Files Modified:** `app/src/composables/useSocket.js`, `app/src/pages/PlayerPage.vue`, `app/server.js`
+
+**PHASE 1 & 1.5: PlayerID Persistence** ✅ VERIFIED (2025-12-29)
+- **Implementation:** Persistent UUID-based player identification across sessions
+- **Storage:** localStorage with sessionStorage fallback (incognito mode)
+- **Key:** `trivia_player_session_id` - generated once, reused forever
+- **Verification Results:**
+  - ✅ Page refresh auto-rejoin works correctly
+  - ✅ Player state maintained (can answer immediately after reconnect)
+  - ✅ PlayerID persists across browser sessions
+  - ✅ Works on HTTP and HTTPS contexts (with UUID fallback)
+- **Files:** `app/src/composables/useSocket.js` (lines 27-88, 151-158)
+
+**PLANNED IMPROVEMENTS (v5.0.0 - Session ID Architecture):**
+
+1. **Eliminate Race Conditions:**
+   - Replace socket.id-based player tracking with persistent session IDs
+   - Sessions persist across disconnections (no race condition window)
+   - Reduces database queries by 100% on reconnection (0 vs 100 for 100 players)
+   - See DEV-SUMMARY.md "UPCOMING: Session ID Architecture" section for full plan
+
+2. **Enhanced Concurrency Handling:**
+   - Handle 100+ concurrent reconnections without database bottleneck
+   - O(1) socketId updates instead of full joinRoom processing
+   - Multi-tab detection (same session, multiple sockets)
+
+**REMAINING ISSUES TO ADDRESS:**
+
+1. **Socket.IO Performance with Large Sessions:** (Partially addressed by Session ID plan)
    - Current performance degrades with many concurrent players
-   - Need to investigate connection pooling, event batching, or alternative real-time solutions
+   - Session ID architecture will reduce DB load significantly
+   - May still need connection pooling or event batching for 200+ players
    - Research comparison with Jackbox.tv games architecture
-   - Consider implementing connection quality indicators
 
-2. **Mobile Reconnection Issues:**
-   - Players must refresh page (sometimes multiple times) when returning from background
-   - Issue occurs when switching apps or phone sleep mode
-   - Need to implement automatic reconnection detection and handling
-   - Add "Connection Lost" banner with auto-retry mechanism
-   - Preserve player state during brief disconnections
-
-3. **Incorrect Answer Notification Bug:**
+2. **Incorrect Answer Notification Bug:** (Needs investigation)
    - Players receiving wrong answer feedback ("Correct" vs "Incorrect")
    - Socket connections may be sending notifications to wrong players
    - Need to audit answer submission and result broadcasting logic
    - Add player ID validation to all answer-related socket events
 
-4. **Stay-Awake Status Not Showing on Mobile:**
+3. **Stay-Awake Status Not Showing on Mobile:** (MEDIUM priority)
    - Wake lock indicator visible on desktop/dev tools but not on mobile browsers
    - May be browser-specific wake lock API compatibility issue
    - Test across iOS Safari, Chrome Mobile, Firefox Mobile
    - Add fallback visual indicator if wake lock fails
 
 **Implementation Priority:**
-1. Fix incorrect answer notifications (CRITICAL BUG)
-2. Mobile reconnection auto-retry (HIGH - UX blocker)
-3. Stay-awake mobile visibility (MEDIUM - minor UX issue)
-4. Large session performance investigation (MEDIUM - scalability)
+1. ~~Mobile page refresh auto-rejoin~~ ✅ COMPLETE
+2. ~~App switching reconnection~~ ✅ COMPLETE
+3. Session ID architecture (v5.0.0 - see DEV-SUMMARY.md)
+4. Fix incorrect answer notifications (CRITICAL BUG - needs investigation)
+5. Stay-awake mobile visibility (MEDIUM - minor UX issue)
+6. Large session performance investigation (MEDIUM - addressed by Session ID)
 
-**Files to Investigate:**
-- `app/server.js` - Socket.IO event handlers, answer result broadcasting
-- `app/src/composables/useSocket.js` - Client-side socket connection handling
-- `app/src/pages/PlayerPage.vue` - Answer submission, notification display, wake lock
-- `app/src/components/player/QuestionDisplay.vue` - Answer selection UI
+**Files Modified (Mobile Reconnection Fixes):**
+- `app/src/composables/useSocket.js` - Debug logging, module-scoped refs
+- `app/src/pages/PlayerPage.vue` - Auto-rejoin in connect handler, removed listener removal
+- `app/server.js` - Debug logging for join/answer events
 
 ---
 

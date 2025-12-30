@@ -28,6 +28,9 @@ import {
   throwIfInvalid,
 } from '../utils/validators.js';
 
+// Debug logging (controlled by DEBUG_MODE or NODE_ENV)
+const DEBUG_ENABLED = process.env.NODE_ENV === 'development' || process.env.DEBUG_MODE === 'true';
+
 /**
  * Admin login (uses ADMIN_PASSWORD from environment)
  *
@@ -309,7 +312,18 @@ export async function checkUsername(req, res, next) {
   try {
     const { username } = req.body;
 
+    if (DEBUG_ENABLED) {
+      console.log('[CHECK-USERNAME] Request received:', {
+        username,
+        isMobile: /Mobile|Android|iPhone|iPad/i.test(req.headers['user-agent'] || ''),
+        userAgent: req.headers['user-agent'],
+        origin: req.headers.origin,
+        ip: req.ip
+      });
+    }
+
     if (!username) {
+      if (DEBUG_ENABLED) console.error('[CHECK-USERNAME] No username provided');
       throw new BadRequestError('Username required');
     }
 
@@ -318,8 +332,17 @@ export async function checkUsername(req, res, next) {
       [username]
     );
 
+    if (DEBUG_ENABLED) {
+      console.log('[CHECK-USERNAME] Database query result:', {
+        username,
+        exists: result.rows.length > 0,
+        accountType: result.rows[0]?.account_type
+      });
+    }
+
     if (result.rows.length === 0) {
       // Username doesn't exist - can be used as new guest
+      if (DEBUG_ENABLED) console.log('[CHECK-USERNAME] Username available for new guest:', username);
       return res.json({ exists: false, requiresAuth: false });
     }
 
@@ -327,6 +350,7 @@ export async function checkUsername(req, res, next) {
 
     // If account is registered (player type), requires authentication
     if (user.account_type === USER_ROLES.PLAYER) {
+      if (DEBUG_ENABLED) console.log('[CHECK-USERNAME] Registered player found, auth required:', username);
       return res.json({
         exists: true,
         requiresAuth: true,
@@ -335,12 +359,14 @@ export async function checkUsername(req, res, next) {
     }
 
     // Guest account - can be used without auth
+    if (DEBUG_ENABLED) console.log('[CHECK-USERNAME] Guest account found:', username);
     return res.json({
       exists: true,
       requiresAuth: false,
       accountType: USER_ROLES.GUEST,
     });
   } catch (err) {
+    if (DEBUG_ENABLED) console.error('[CHECK-USERNAME] Error:', err);
     next(err);
   }
 }

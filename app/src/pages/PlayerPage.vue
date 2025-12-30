@@ -165,6 +165,12 @@ const wakeLock = useWakeLock()
 const { post } = useApi()
 const uiStore = useUIStore()
 
+// Debug logging (only active in development mode)
+const DEBUG = import.meta.env.DEV
+const debugLog = (...args) => {
+  if (DEBUG) console.log('[PLAYER DEBUG]', ...args)
+}
+
 // UI state
 const menuOpen = ref(false)
 const questionDisplaying = ref(false)
@@ -440,9 +446,18 @@ const handleVisibilityChange = () => {
 
 // Setup socket event listeners - called on mount and after reconnect
 const setupSocketListeners = () => {
-  // Remove any existing listeners to prevent duplicates
-  socket.off('connect')
-  socket.off('disconnect')
+  debugLog('setupSocketListeners called', {
+    inRoom: inRoom.value,
+    currentRoomCode: currentRoomCode.value,
+    currentUsername: currentUsername.value,
+    timestamp: new Date().toISOString()
+  })
+
+  // CRITICAL: Do NOT remove 'connect' and 'disconnect' listeners!
+  // useSocket.js has its own listeners that update module-scoped refs.
+  // Removing them breaks auto-rejoin which checks socket.isConnected.value
+
+  // Remove only PlayerPage-specific listeners to prevent duplicates
   socket.off('activeRoomsUpdate')
   socket.off('roomError')
   socket.off('roomCreated')
@@ -455,9 +470,23 @@ const setupSocketListeners = () => {
   socket.on('connect', () => {
     isConnected.value = true
     console.log('[CONNECTION] Socket connected')
+    debugLog('Socket CONNECT handler fired (PlayerPage)', {
+      inRoom: inRoom.value,
+      currentRoomCode: currentRoomCode.value,
+      currentUsername: currentUsername.value,
+      isPageVisible: isPageVisible.value,
+      connectionState: connectionState.value,
+      timestamp: new Date().toISOString()
+    })
 
-    // NOTE: Auto-rejoin is handled by localStorage mechanism in onMounted
-    // We don't auto-rejoin here to avoid race conditions with multiple joinRoom emissions
+    // CRITICAL: If we were already in a room (inRoom === true), we need to rejoin
+    // because the socket.id changed. This handles app switching on mobile.
+    // The localStorage mechanism in onMounted only runs on initial page load.
+    if (inRoom.value && currentRoomCode.value && currentUsername.value && currentDisplayName.value) {
+      console.log('[CONNECTION] Socket connected while in room - rejoining')
+      debugLog('Auto-rejoining after connect event (app switch scenario)')
+      emitJoinRoom(currentRoomCode.value, currentUsername.value, currentDisplayName.value, 'connect event (app switch)')
+    }
 
     // Update connection state to connected (unless page is hidden)
     if (isPageVisible.value && connectionState.value !== 'warning') {
@@ -467,6 +496,7 @@ const setupSocketListeners = () => {
     showConnectionLostBanner.value = false
     reconnectionAttempts.value = 0
     // Request active rooms list once connected
+    debugLog('Emitting getActiveRooms')
     socket.emit('getActiveRooms')
   })
 
@@ -497,23 +527,51 @@ const setupSocketListeners = () => {
 
   socket.on('reconnect', () => {
     console.log('[CONNECTION] Successfully reconnected!')
+    debugLog('Socket RECONNECT event - checking if we need to rejoin room', {
+      inRoom: inRoom.value,
+      currentRoomCode: currentRoomCode.value,
+      currentUsername: currentUsername.value,
+      currentDisplayName: currentDisplayName.value
+    })
+
     showConnectionLostBanner.value = false
     reconnectionAttempts.value = 0
+
+    // CRITICAL: After reconnect, we have a new socket.id
+    // Server doesn't have this socket.id in room.players, so we must rejoin
+    if (inRoom.value && currentRoomCode.value && currentUsername.value && currentDisplayName.value) {
+      console.log('[CONNECTION] Rejoining room after reconnect')
+      debugLog('Calling emitJoinRoom after reconnect')
+      emitJoinRoom(currentRoomCode.value, currentUsername.value, currentDisplayName.value, 'reconnect event')
+    }
   })
 
   socket.on('playerListUpdate', ({ roomCode, players }) => {
     console.log(`[CONNECTION] playerListUpdate received - roomCode: ${roomCode}, currentRoomCode: ${currentRoomCode.value}, joinInProgress: ${joinRoomInProgress.value}, inRoom: ${inRoom.value}`)
+    debugLog('playerListUpdate received', {
+      roomCode,
+      currentRoomCode: currentRoomCode.value,
+      joinRoomInProgress: joinRoomInProgress.value,
+      inRoom: inRoom.value,
+      playersCount: players?.length,
+      timestamp: new Date().toISOString()
+    })
 
     // CRITICAL: Clear joinRoom in-progress flag FIRST - server has confirmed we're in A room
     // This allows answer submissions to proceed even if there's a brief room code mismatch during rejoin
     if (joinRoomInProgress.value) {
       console.log('[CONNECTION] joinRoom completed - ready for interactions (cleared by playerListUpdate)')
+      debugLog('Clearing joinRoomInProgress flag - join successful')
       joinRoomInProgress.value = false
     }
 
     // If this update is for a different room, update our current room to match
     if (roomCode !== currentRoomCode.value) {
       console.log(`[CONNECTION] Room code updated from ${currentRoomCode.value} to ${roomCode}`)
+      debugLog('Room code mismatch - updating', {
+        from: currentRoomCode.value,
+        to: roomCode
+      })
       currentRoomCode.value = roomCode
     }
 
@@ -693,6 +751,11 @@ const setupSocketListeners = () => {
 
 // Initialize page
 onMounted(() => {
+  debugLog('PlayerPage onMounted', {
+    savedUsername: savedUsername.value,
+    timestamp: new Date().toISOString()
+  })
+
   // Restore saved values
   if (savedUsername.value) {
     usernameInput.value = ''
@@ -708,9 +771,11 @@ onMounted(() => {
 
   // CRITICAL: Initialize socket connection
   // useSocket's lifecycle hooks were removed to prevent multiple registrations
+  debugLog('Calling socket.connect() from onMounted')
   socket.connect()
 
   // Set up all socket listeners
+  debugLog('Calling setupSocketListeners() from onMounted')
   setupSocketListeners()
 
   // Set up Page Visibility API for connection state management
@@ -735,13 +800,33 @@ onMounted(() => {
 
   // Auto-rejoin system: Check for saved session on mount
   const lastRoom = localStorage.getItem('trivia_last_room')
+  debugLog('Checking for saved session', {
+    lastRoomExists: !!lastRoom,
+    timestamp: new Date().toISOString()
+  })
+
   if (lastRoom) {
     try {
       const { roomCode, username, displayName, timestamp } = JSON.parse(lastRoom)
       const ageMinutes = (Date.now() - timestamp) / 60000
 
+      debugLog('Parsed saved session', {
+        roomCode,
+        username,
+        displayName,
+        ageMinutes: ageMinutes.toFixed(1),
+        sessionTimestamp: new Date(timestamp).toISOString()
+      })
+
       if (ageMinutes < 5) {
         console.log(`[CONNECTION] Found recent session (${ageMinutes.toFixed(1)} min old) - attempting auto-rejoin to room ${roomCode} as ${username}/${displayName}`)
+        debugLog('Session is recent - will attempt auto-rejoin', {
+          roomCode,
+          username,
+          displayName,
+          socketConnectedNow: socket.isConnected.value
+        })
+
         roomCodeInput.value = roomCode  // Sync input box with auto-rejoin room
         currentRoomCode.value = roomCode
         currentUsername.value = username
@@ -749,9 +834,14 @@ onMounted(() => {
 
         // Wait for socket to connect, then rejoin
         const autoRejoinInterval = setInterval(() => {
+          debugLog('Auto-rejoin interval tick', {
+            socketConnected: socket.isConnected.value,
+            timestamp: new Date().toISOString()
+          })
           if (socket.isConnected.value) {
             clearInterval(autoRejoinInterval)
             console.log(`[CONNECTION] Socket connected - executing auto-rejoin for room ${roomCode}`)
+            debugLog('Socket connected - triggering auto-rejoin now')
             emitJoinRoom(roomCode, username, displayName, 'localStorage auto-rejoin')
           }
         }, 100)
@@ -761,14 +851,25 @@ onMounted(() => {
           clearInterval(autoRejoinInterval)
           if (!socket.isConnected.value) {
             console.warn('[CONNECTION] Auto-rejoin timeout - socket did not connect within 10 seconds')
+            debugLog('Auto-rejoin TIMEOUT - socket never connected', {
+              socketConnected: socket.isConnected.value,
+              timestamp: new Date().toISOString()
+            })
           }
         }, 10000)
       } else {
         console.log(`[CONNECTION] Session too old (${ageMinutes.toFixed(1)} min) - clearing`)
+        debugLog('Session too old - clearing localStorage', {
+          ageMinutes: ageMinutes.toFixed(1)
+        })
         localStorage.removeItem('trivia_last_room')
       }
     } catch (err) {
       console.error('[CONNECTION] Error parsing saved room state:', err)
+      debugLog('Error parsing saved session', {
+        error: err.message,
+        lastRoom
+      })
       localStorage.removeItem('trivia_last_room')
     }
   }
@@ -929,10 +1030,23 @@ const selectAnswer = async (idx) => {
 
 // Helper function to emit joinRoom with proper debouncing and flag management
 const emitJoinRoom = (roomCode, username, displayName, source = '') => {
+  debugLog('emitJoinRoom called', {
+    roomCode,
+    username,
+    displayName,
+    source,
+    socketConnected: socket.isConnected.value,
+    joinRoomInProgress: joinRoomInProgress.value,
+    timestamp: new Date().toISOString()
+  })
+
   // Debounce check
   const now = Date.now()
   if (now - lastJoinRoomAttempt.value < 2000) {
     console.log(`[CONNECTION] Skipping duplicate joinRoom from ${source} (debounced)`)
+    debugLog('joinRoom DEBOUNCED', {
+      timeSinceLastAttempt: now - lastJoinRoomAttempt.value
+    })
     return false
   }
   lastJoinRoomAttempt.value = now
@@ -940,18 +1054,29 @@ const emitJoinRoom = (roomCode, username, displayName, source = '') => {
   // Set in-progress flag
   joinRoomInProgress.value = true
   console.log(`[CONNECTION] Emitting joinRoom from ${source} - flag set to true`)
+  debugLog('joinRoom emitting to server', {
+    roomCode,
+    username,
+    displayName,
+    source
+  })
 
   // SAFETY: Auto-clear flag after 5 seconds as fallback
   // This prevents the flag from getting stuck if playerListUpdate doesn't fire
   setTimeout(() => {
     if (joinRoomInProgress.value) {
       console.warn('[CONNECTION] joinRoom flag still true after 5s - auto-clearing (safety mechanism)')
+      debugLog('joinRoom safety timeout triggered - flag still true after 5s')
       joinRoomInProgress.value = false
     }
   }, 5000)
 
-  // Emit the event
-  socket.emit('joinRoom', { roomCode, username, displayName })
+  // PHASE 1: Get PlayerID for persistent player identification
+  const playerID = socket.getPlayerID()
+  debugLog('PlayerID for joinRoom:', playerID)
+
+  // Emit the event with PlayerID
+  socket.emit('joinRoom', { roomCode, username, displayName, playerID })
   socket.setRoomContext(roomCode, username)
 
   return true
@@ -961,6 +1086,15 @@ const handleJoinRoom = async () => {
   const username = savedUsername.value || usernameInput.value.trim()
   const displayName = displayNameInput.value.trim()
   const roomCode = roomCodeInput.value.trim()
+
+  if (DEBUG) {
+    console.log('[JOIN] handleJoinRoom called:', {
+      username,
+      displayName,
+      roomCode,
+      isMobile: /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent)
+    })
+  }
 
   if (!username) {
     uiStore.addNotification('Please enter a username.', 'warning')
@@ -978,17 +1112,24 @@ const handleJoinRoom = async () => {
   }
 
   try {
+    if (DEBUG) console.log('[JOIN] Calling check-username API')
     const response = await post('/api/auth/check-username', { username })
+    if (DEBUG) console.log('[JOIN] check-username response:', response.data)
+
     if (response.data.requiresAuth) {
+      if (DEBUG) console.log('[JOIN] Auth required, verifying token')
       const hasToken = await verifyAuthToken()
       if (!hasToken) {
+        if (DEBUG) console.log('[JOIN] No valid token, showing login modal')
         loginUsername.value = username
         loginPassword.value = ''
         loginError.value = ''
         showLoginModal.value = true
         return
       }
+      if (DEBUG) console.log('[JOIN] Token verified, proceeding with join')
     } else {
+      if (DEBUG) console.log('[JOIN] Guest account, no auth required')
       localStorage.setItem('playerUsername', username)
       localStorage.setItem('playerAccountType', 'guest')
       savedUsername.value = username
@@ -999,9 +1140,20 @@ const handleJoinRoom = async () => {
     currentDisplayName.value = displayName
     currentRoomCode.value = roomCode
     // Don't save room yet - wait for playerListUpdate confirmation
+    if (DEBUG) console.log('[JOIN] Emitting joinRoom event')
     emitJoinRoom(roomCode, username, displayName, 'manual join')
   } catch (err) {
-    uiStore.addNotification('Failed to join room. Please try again.', 'error')
+    if (DEBUG) {
+      console.error('[JOIN] Error in handleJoinRoom:', err)
+      console.error('[JOIN] Error details:', {
+        message: err.message,
+        response: err.response,
+        stack: err.stack
+      })
+    }
+    // Show actual error message to user
+    const errorMsg = err.response?.data?.error || err.message || 'Unknown error'
+    uiStore.addNotification(`Join failed: ${errorMsg}`, 'error')
   }
 }
 

@@ -1,13 +1,13 @@
 # TriviaForge
 
-A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with enterprise-grade connection stability, automated testing, and estimated capacity for 50+ concurrent players.
+A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, automated testing, and estimated capacity for 50+ concurrent players.
 
 **Latest Release**: v3.2.0 - Enhanced connection stability, Wake Lock API, automated testing framework
 
 ### Key Highlights
 
 🎯 **Production-Ready**: Tested with simulated sessions of 50+ concurrent players
-⚡ **Enterprise Connection Stability**: Infinite reconnection attempts with intelligent page visibility detection
+⚡ **Robust Connection Stability**: Infinite reconnection attempts with intelligent page visibility detection
 📱 **Mobile-First**: Vue 3 PWA-ready with Wake Lock API to prevent screen sleep
 🧪 **Fully Tested**: Comprehensive automated testing suite with 8 scenarios (quick to extreme load)
 🔒 **Secure**: bcrypt password hashing, session-based auth, SQL injection protection
