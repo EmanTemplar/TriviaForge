@@ -1,34 +1,11 @@
-/* TriviaForge - Vue.js Global Styles */
+/* TriviaForge - Vue.js Global Styles with Theme Support */
 
-/* CSS Variables */
+/* ============================================
+   THEME SYSTEM - Light, Dark, Grey Variants
+   ============================================ */
+
+/* Base Variables (Non-themed) */
 :root {
-  /* Colors */
-  --primary-color: #2563eb;
-  --primary-light: #3b82f6;
-  --primary-dark: #1e40af;
-  --secondary-color: #10b981;
-  --secondary-light: #34d399;
-  --secondary-dark: #059669;
-  --danger-color: #ef4444;
-  --danger-light: #f87171;
-  --danger-dark: #dc2626;
-  --warning-color: #f59e0b;
-  --warning-light: #fbbf24;
-  --warning-dark: #d97706;
-  --info-color: #06b6d4;
-  --info-light: #22d3ee;
-  --info-dark: #0891b2;
-
-  /* Neutral Colors */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f9fafb;
-  --bg-tertiary: #f3f4f6;
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-tertiary: #9ca3af;
-  --border-color: #e5e7eb;
-  --border-dark: #d1d5db;
-
   /* Spacing */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
@@ -56,12 +33,6 @@
   --radius-2xl: 1rem;
   --radius-full: 9999px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-
   /* Z-index */
   --z-dropdown: 1000;
   --z-modal: 1050;
@@ -73,21 +44,489 @@
   --transition-slow: 350ms ease-in-out;
 }
 
-/* Dark Mode (optional for future enhancement) */
+/* ============================================
+   DARK THEME (Default)
+   Dark Blue for Admin/Presenter Pages
+   ============================================ */
+:root,
+[data-theme="dark"] {
+  /* Primary Blue Colors */
+  --primary-color: #2563eb;
+  --primary-light: #3b82f6;
+  --primary-dark: #1e40af;
+
+  /* Secondary Green Colors */
+  --secondary-color: #10b981;
+  --secondary-light: #34d399;
+  --secondary-dark: #059669;
+
+  /* Danger Red Colors */
+  --danger-color: #ef4444;
+  --danger-light: #f87171;
+  --danger-dark: #dc2626;
+
+  /* Warning Orange Colors */
+  --warning-color: #f59e0b;
+  --warning-light: #fbbf24;
+  --warning-dark: #d97706;
+
+  /* Info Cyan Colors */
+  --info-color: #06b6d4;
+  --info-light: #22d3ee;
+  --info-dark: #0891b2;
+
+  /* Background Colors - Dark Blue Theme */
+  --bg-primary: #1e293b;      /* Slate 800 */
+  --bg-secondary: #0f172a;    /* Slate 900 */
+  --bg-tertiary: #334155;     /* Slate 700 */
+  --bg-accent: #1e40af;       /* Blue 800 - for special panels */
+
+  /* Text Colors */
+  --text-primary: #f1f5f9;    /* Slate 100 */
+  --text-secondary: #cbd5e1;  /* Slate 300 */
+  --text-tertiary: #94a3b8;   /* Slate 400 */
+
+  /* Border Colors */
+  --border-color: #475569;    /* Slate 600 */
+  --border-dark: #334155;     /* Slate 700 */
+
+  /* Shadows - Dark theme shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+
+  /* Semi-transparent variants for backgrounds (Dark theme) */
+  --primary-bg-10: rgba(37, 99, 235, 0.1);
+  --primary-bg-20: rgba(37, 99, 235, 0.2);
+  --primary-bg-30: rgba(37, 99, 235, 0.3);
+  --primary-bg-40: rgba(37, 99, 235, 0.4);
+  --primary-bg-50: rgba(37, 99, 235, 0.5);
+  --primary-bg-60: rgba(37, 99, 235, 0.6);
+  --primary-bg-70: rgba(37, 99, 235, 0.7);
+
+  --secondary-bg-10: rgba(16, 185, 129, 0.1);
+  --secondary-bg-20: rgba(16, 185, 129, 0.2);
+  --secondary-bg-30: rgba(16, 185, 129, 0.3);
+  --secondary-bg-40: rgba(16, 185, 129, 0.4);
+  --secondary-bg-50: rgba(16, 185, 129, 0.5);
+  --secondary-bg-60: rgba(16, 185, 129, 0.6);
+
+  --danger-bg-10: rgba(239, 68, 68, 0.1);
+  --danger-bg-20: rgba(239, 68, 68, 0.2);
+  --danger-bg-30: rgba(239, 68, 68, 0.3);
+  --danger-bg-40: rgba(239, 68, 68, 0.4);
+  --danger-bg-50: rgba(239, 68, 68, 0.5);
+  --danger-bg-60: rgba(239, 68, 68, 0.6);
+
+  --warning-bg-10: rgba(245, 158, 11, 0.1);
+  --warning-bg-20: rgba(245, 158, 11, 0.2);
+  --warning-bg-30: rgba(245, 158, 11, 0.3);
+  --warning-bg-40: rgba(245, 158, 11, 0.4);
+  --warning-bg-50: rgba(245, 158, 11, 0.5);
+
+  --info-bg-10: rgba(6, 182, 212, 0.1);
+  --info-bg-20: rgba(6, 182, 212, 0.2);
+  --info-bg-30: rgba(6, 182, 212, 0.3);
+  --info-bg-40: rgba(6, 182, 212, 0.4);
+  --info-bg-50: rgba(6, 182, 212, 0.5);
+  --info-bg-60: rgba(6, 182, 212, 0.6);
+  --info-bg-70: rgba(6, 182, 212, 0.7);
+
+  --bg-secondary-60: rgba(15, 23, 42, 0.6);
+
+  --bg-tertiary-20: rgba(51, 65, 85, 0.2);
+  --bg-tertiary-30: rgba(51, 65, 85, 0.3);
+  --bg-tertiary-40: rgba(51, 65, 85, 0.4);
+  --bg-tertiary-50: rgba(51, 65, 85, 0.5);
+  --bg-tertiary-60: rgba(51, 65, 85, 0.6);
+  --bg-tertiary-70: rgba(51, 65, 85, 0.7);
+
+  --bg-overlay-10: rgba(255, 255, 255, 0.05);
+  --bg-overlay-20: rgba(255, 255, 255, 0.08);
+  --bg-overlay-30: rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================
+   LIGHT THEME
+   High contrast light theme with dark elements
+   ============================================ */
+[data-theme="light"] {
+  /* Primary Colors - Deep dark blue for light theme contrast */
+  --primary-color: #1e3a8a;     /* Deep navy blue */
+  --primary-light: #1e40af;     /* Dark blue */
+  --primary-dark: #172554;      /* Very dark blue */
+
+  /* Secondary Colors - More saturated greens */
+  --secondary-color: #059669;   /* Vivid green */
+  --secondary-light: #10b981;   /* Saturated green */
+  --secondary-dark: #047857;    /* Dark green */
+
+  /* Danger Red Colors - More saturated */
+  --danger-color: #dc2626;      /* Vivid red */
+  --danger-light: #ef4444;      /* Saturated red */
+  --danger-dark: #b91c1c;       /* Dark red */
+
+  /* Warning Orange Colors - More saturated */
+  --warning-color: #ea580c;     /* Vivid orange */
+  --warning-light: #f97316;     /* Saturated orange */
+  --warning-dark: #c2410c;      /* Dark orange */
+
+  /* Info Cyan Colors - Deep dark cyan/blue for light theme */
+  --info-color: #0c4a6e;        /* Deep teal blue */
+  --info-light: #075985;        /* Dark cyan blue */
+  --info-dark: #0369a1;         /* Very dark cyan */
+
+  /* Background Colors - Much lighter for contrast */
+  --bg-primary: #ffffff;        /* Pure white */
+  --bg-secondary: #f8fafc;      /* Very light gray-blue */
+  --bg-tertiary: #e2e8f0;       /* Light gray */
+  --bg-accent: #cbd5e1;         /* Medium gray */
+
+  /* Text Colors - Much darker for readability */
+  --text-primary: #0f172a;      /* Almost black */
+  --text-secondary: #334155;    /* Dark gray */
+  --text-tertiary: #64748b;     /* Medium gray */
+
+  /* Border Colors - Darker range for better visibility and clear group/box definition */
+  --border-color: #64748b;      /* Darker gray border for improved contrast */
+  --border-dark: #475569;       /* Even darker gray border for emphasis */
+
+  /* Shadows - Light theme shadows with enhanced visibility for depth */
+  --shadow-sm: 0 1px 3px 0 rgba(56, 69, 83, 0.12);
+  --shadow-md: 0 4px 8px -1px rgba(56, 69, 83, 0.18);
+  --shadow-lg: 0 10px 20px -3px rgba(56, 69, 83, 0.22);
+  --shadow-xl: 0 20px 30px -5px rgba(56, 69, 83, 0.26);
+
+  /* Semi-transparent variants for backgrounds (Light theme) - Increased opacity for better visibility */
+  --primary-bg-10: rgba(37, 99, 235, 0.12);
+  --primary-bg-20: rgba(37, 99, 235, 0.18);
+  --primary-bg-30: rgba(37, 99, 235, 0.24);
+  --primary-bg-40: rgba(37, 99, 235, 0.30);
+  --primary-bg-50: rgba(37, 99, 235, 0.38);
+  --primary-bg-60: rgba(37, 99, 235, 0.45);
+  --primary-bg-70: rgba(37, 99, 235, 0.52);
+
+  --secondary-bg-10: rgba(5, 150, 105, 0.12);
+  --secondary-bg-20: rgba(5, 150, 105, 0.18);
+  --secondary-bg-30: rgba(5, 150, 105, 0.24);
+  --secondary-bg-40: rgba(5, 150, 105, 0.30);
+  --secondary-bg-50: rgba(5, 150, 105, 0.38);
+  --secondary-bg-60: rgba(5, 150, 105, 0.45);
+
+  --danger-bg-10: rgba(220, 38, 38, 0.12);
+  --danger-bg-20: rgba(220, 38, 38, 0.18);
+  --danger-bg-30: rgba(220, 38, 38, 0.24);
+  --danger-bg-40: rgba(220, 38, 38, 0.30);
+  --danger-bg-50: rgba(220, 38, 38, 0.38);
+  --danger-bg-60: rgba(220, 38, 38, 0.45);
+
+  --warning-bg-10: rgba(217, 119, 6, 0.12);
+  --warning-bg-20: rgba(217, 119, 6, 0.18);
+  --warning-bg-30: rgba(217, 119, 6, 0.24);
+  --warning-bg-40: rgba(217, 119, 6, 0.30);
+  --warning-bg-50: rgba(217, 119, 6, 0.38);
+
+  --info-bg-10: rgba(8, 145, 178, 0.12);
+  --info-bg-20: rgba(8, 145, 178, 0.18);
+  --info-bg-30: rgba(8, 145, 178, 0.24);
+  --info-bg-40: rgba(8, 145, 178, 0.30);
+  --info-bg-50: rgba(8, 145, 178, 0.38);
+  --info-bg-60: rgba(8, 145, 178, 0.45);
+  --info-bg-70: rgba(8, 145, 178, 0.52);
+
+  --bg-secondary-60: rgba(248, 250, 252, 0.95);
+
+  --bg-tertiary-20: rgba(226, 232, 240, 0.5);
+  --bg-tertiary-30: rgba(226, 232, 240, 0.7);
+  --bg-tertiary-40: rgba(226, 232, 240, 0.85);
+  --bg-tertiary-50: rgba(226, 232, 240, 0.95);
+  --bg-tertiary-60: rgba(226, 232, 240, 1);
+  --bg-tertiary-70: rgba(203, 213, 225, 1);
+
+  --bg-overlay-10: rgba(15, 23, 42, 0.06);
+  --bg-overlay-20: rgba(15, 23, 42, 0.09);
+  --bg-overlay-30: rgba(15, 23, 42, 0.12);
+}
+
+/* ============================================
+   GREY THEME
+   For Player and Display Pages
+   ============================================ */
+[data-theme="grey"] {
+  /* Primary Colors - Muted grey-blue */
+  --primary-color: #64748b;     /* Slate 500 */
+  --primary-light: #94a3b8;     /* Slate 400 */
+  --primary-dark: #475569;      /* Slate 600 */
+
+  /* Secondary Colors */
+  --secondary-color: #10b981;   /* Keep green for success */
+  --secondary-light: #34d399;
+  --secondary-dark: #059669;
+
+  /* Danger Red Colors */
+  --danger-color: #ef4444;
+  --danger-light: #f87171;
+  --danger-dark: #dc2626;
+
+  /* Warning Orange Colors */
+  --warning-color: #f59e0b;
+  --warning-light: #fbbf24;
+  --warning-dark: #d97706;
+
+  /* Info Colors */
+  --info-color: #06b6d4;
+  --info-light: #22d3ee;
+  --info-dark: #0891b2;
+
+  /* Background Colors - Grey theme */
+  --bg-primary: #2d3748;        /* Grey 800 */
+  --bg-secondary: #1a202c;      /* Grey 900 */
+  --bg-tertiary: #4a5568;       /* Grey 700 */
+  --bg-accent: #64748b;         /* Slate 500 */
+
+  /* Text Colors */
+  --text-primary: #f7fafc;      /* Grey 50 */
+  --text-secondary: #e2e8f0;    /* Grey 200 */
+  --text-tertiary: #cbd5e1;     /* Grey 300 */
+
+  /* Border Colors */
+  --border-color: #4a5568;      /* Grey 700 */
+  --border-dark: #2d3748;       /* Grey 800 */
+
+  /* Semi-transparent variants for backgrounds (Grey theme) */
+  --primary-bg-10: rgba(37, 99, 235, 0.1);
+  --primary-bg-20: rgba(37, 99, 235, 0.2);
+  --primary-bg-30: rgba(37, 99, 235, 0.3);
+  --primary-bg-40: rgba(37, 99, 235, 0.4);
+  --primary-bg-50: rgba(37, 99, 235, 0.5);
+  --primary-bg-60: rgba(37, 99, 235, 0.6);
+  --primary-bg-70: rgba(37, 99, 235, 0.7);
+
+  --secondary-bg-10: rgba(16, 185, 129, 0.1);
+  --secondary-bg-20: rgba(16, 185, 129, 0.2);
+  --secondary-bg-30: rgba(16, 185, 129, 0.3);
+  --secondary-bg-40: rgba(16, 185, 129, 0.4);
+  --secondary-bg-50: rgba(16, 185, 129, 0.5);
+  --secondary-bg-60: rgba(16, 185, 129, 0.6);
+
+  --danger-bg-10: rgba(239, 68, 68, 0.1);
+  --danger-bg-20: rgba(239, 68, 68, 0.2);
+  --danger-bg-30: rgba(239, 68, 68, 0.3);
+  --danger-bg-40: rgba(239, 68, 68, 0.4);
+  --danger-bg-50: rgba(239, 68, 68, 0.5);
+  --danger-bg-60: rgba(239, 68, 68, 0.6);
+
+  --warning-bg-10: rgba(245, 158, 11, 0.1);
+  --warning-bg-20: rgba(245, 158, 11, 0.2);
+  --warning-bg-30: rgba(245, 158, 11, 0.3);
+  --warning-bg-40: rgba(245, 158, 11, 0.4);
+  --warning-bg-50: rgba(245, 158, 11, 0.5);
+
+  --info-bg-10: rgba(6, 182, 212, 0.1);
+  --info-bg-20: rgba(6, 182, 212, 0.2);
+  --info-bg-30: rgba(6, 182, 212, 0.3);
+  --info-bg-40: rgba(6, 182, 212, 0.4);
+  --info-bg-50: rgba(6, 182, 212, 0.5);
+  --info-bg-60: rgba(6, 182, 212, 0.6);
+  --info-bg-70: rgba(6, 182, 212, 0.7);
+
+  --bg-secondary-60: rgba(26, 32, 44, 0.6);
+
+  --bg-tertiary-20: rgba(74, 85, 104, 0.2);
+  --bg-tertiary-30: rgba(74, 85, 104, 0.3);
+  --bg-tertiary-40: rgba(74, 85, 104, 0.4);
+  --bg-tertiary-50: rgba(74, 85, 104, 0.5);
+  --bg-tertiary-60: rgba(74, 85, 104, 0.6);
+  --bg-tertiary-70: rgba(74, 85, 104, 0.7);
+
+  --bg-overlay-10: rgba(255, 255, 255, 0.05);
+  --bg-overlay-20: rgba(255, 255, 255, 0.08);
+  --bg-overlay-30: rgba(255, 255, 255, 0.1);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+}
+
+/* ============================================
+   SYSTEM THEME - Follows OS preference
+   ============================================ */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg-primary: #1f2937;
-    --bg-secondary: #111827;
-    --bg-tertiary: #374151;
-    --text-primary: #f9fafb;
-    --text-secondary: #d1d5db;
-    --text-tertiary: #9ca3af;
-    --border-color: #4b5563;
-    --border-dark: #374151;
+  [data-theme="system"] {
+    /* Inherit dark theme variables */
+    --primary-color: #2563eb;
+    --primary-light: #3b82f6;
+    --primary-dark: #1e40af;
+    --secondary-color: #10b981;
+    --secondary-light: #34d399;
+    --secondary-dark: #059669;
+    --danger-color: #ef4444;
+    --danger-light: #f87171;
+    --danger-dark: #dc2626;
+    --warning-color: #f59e0b;
+    --warning-light: #fbbf24;
+    --warning-dark: #d97706;
+    --info-color: #06b6d4;
+    --info-light: #22d3ee;
+    --info-dark: #0891b2;
+    --bg-primary: #1e293b;
+    --bg-secondary: #0f172a;
+    --bg-tertiary: #334155;
+    --bg-accent: #1e40af;
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-tertiary: #94a3b8;
+    --border-color: #475569;
+    --border-dark: #334155;
+
+    /* Semi-transparent variants for backgrounds (System theme - dark mode) */
+    --primary-bg-10: rgba(37, 99, 235, 0.1);
+    --primary-bg-20: rgba(37, 99, 235, 0.2);
+    --primary-bg-30: rgba(37, 99, 235, 0.3);
+    --primary-bg-40: rgba(37, 99, 235, 0.4);
+    --primary-bg-50: rgba(37, 99, 235, 0.5);
+    --primary-bg-60: rgba(37, 99, 235, 0.6);
+    --primary-bg-70: rgba(37, 99, 235, 0.7);
+
+    --secondary-bg-10: rgba(16, 185, 129, 0.1);
+    --secondary-bg-20: rgba(16, 185, 129, 0.2);
+    --secondary-bg-30: rgba(16, 185, 129, 0.3);
+    --secondary-bg-40: rgba(16, 185, 129, 0.4);
+    --secondary-bg-50: rgba(16, 185, 129, 0.5);
+    --secondary-bg-60: rgba(16, 185, 129, 0.6);
+
+    --danger-bg-10: rgba(239, 68, 68, 0.1);
+    --danger-bg-20: rgba(239, 68, 68, 0.2);
+    --danger-bg-30: rgba(239, 68, 68, 0.3);
+    --danger-bg-40: rgba(239, 68, 68, 0.4);
+    --danger-bg-50: rgba(239, 68, 68, 0.5);
+    --danger-bg-60: rgba(239, 68, 68, 0.6);
+
+    --warning-bg-10: rgba(245, 158, 11, 0.1);
+    --warning-bg-20: rgba(245, 158, 11, 0.2);
+    --warning-bg-30: rgba(245, 158, 11, 0.3);
+    --warning-bg-40: rgba(245, 158, 11, 0.4);
+    --warning-bg-50: rgba(245, 158, 11, 0.5);
+
+    --info-bg-10: rgba(6, 182, 212, 0.1);
+    --info-bg-20: rgba(6, 182, 212, 0.2);
+    --info-bg-30: rgba(6, 182, 212, 0.3);
+    --info-bg-40: rgba(6, 182, 212, 0.4);
+    --info-bg-50: rgba(6, 182, 212, 0.5);
+    --info-bg-60: rgba(6, 182, 212, 0.6);
+    --info-bg-70: rgba(6, 182, 212, 0.7);
+
+    --bg-secondary-60: rgba(15, 23, 42, 0.6);
+
+    --bg-tertiary-20: rgba(51, 65, 85, 0.2);
+    --bg-tertiary-30: rgba(51, 65, 85, 0.3);
+    --bg-tertiary-40: rgba(51, 65, 85, 0.4);
+    --bg-tertiary-50: rgba(51, 65, 85, 0.5);
+    --bg-tertiary-60: rgba(51, 65, 85, 0.6);
+    --bg-tertiary-70: rgba(51, 65, 85, 0.7);
+
+    --bg-overlay-10: rgba(255, 255, 255, 0.05);
+    --bg-overlay-20: rgba(255, 255, 255, 0.08);
+    --bg-overlay-30: rgba(255, 255, 255, 0.1);
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
   }
 }
 
-/* Reset & Base Styles */
+@media (prefers-color-scheme: light) {
+  [data-theme="system"] {
+    /* Inherit light theme variables */
+    --primary-color: #5881AA;
+    --primary-light: #73A1CA;
+    --primary-dark: #3C5F85;
+    --secondary-color: #10b981;
+    --secondary-light: #34d399;
+    --secondary-dark: #059669;
+    --danger-color: #ef4444;
+    --danger-light: #f87171;
+    --danger-dark: #dc2626;
+    --warning-color: #f59e0b;
+    --warning-light: #fbbf24;
+    --warning-dark: #d97706;
+    --info-color: #73A1CA;
+    --info-light: #DCF1FF;
+    --info-dark: #5881AA;
+    --bg-primary: #f8f9fa;
+    --bg-secondary: #DCF1FF;
+    --bg-tertiary: #e9ecef;
+    --bg-accent: #73A1CA;
+    --text-primary: #384553;
+    --text-secondary: #3C5F85;
+    --text-tertiary: #5881AA;
+    --border-color: #dee2e6;
+    --border-dark: #adb5bd;
+
+    /* Semi-transparent variants for backgrounds (System theme - light mode) */
+    --primary-bg-10: rgba(88, 129, 170, 0.1);
+    --primary-bg-20: rgba(88, 129, 170, 0.2);
+    --primary-bg-30: rgba(88, 129, 170, 0.3);
+    --primary-bg-40: rgba(88, 129, 170, 0.4);
+    --primary-bg-50: rgba(88, 129, 170, 0.5);
+    --primary-bg-60: rgba(88, 129, 170, 0.6);
+    --primary-bg-70: rgba(88, 129, 170, 0.7);
+
+    --secondary-bg-10: rgba(16, 185, 129, 0.1);
+    --secondary-bg-20: rgba(16, 185, 129, 0.2);
+    --secondary-bg-30: rgba(16, 185, 129, 0.3);
+    --secondary-bg-40: rgba(16, 185, 129, 0.4);
+    --secondary-bg-50: rgba(16, 185, 129, 0.5);
+    --secondary-bg-60: rgba(16, 185, 129, 0.6);
+
+    --danger-bg-10: rgba(239, 68, 68, 0.1);
+    --danger-bg-20: rgba(239, 68, 68, 0.2);
+    --danger-bg-30: rgba(239, 68, 68, 0.3);
+    --danger-bg-40: rgba(239, 68, 68, 0.4);
+    --danger-bg-50: rgba(239, 68, 68, 0.5);
+    --danger-bg-60: rgba(239, 68, 68, 0.6);
+
+    --warning-bg-10: rgba(245, 158, 11, 0.1);
+    --warning-bg-20: rgba(245, 158, 11, 0.2);
+    --warning-bg-30: rgba(245, 158, 11, 0.3);
+    --warning-bg-40: rgba(245, 158, 11, 0.4);
+    --warning-bg-50: rgba(245, 158, 11, 0.5);
+
+    --info-bg-10: rgba(115, 161, 202, 0.1);
+    --info-bg-20: rgba(115, 161, 202, 0.2);
+    --info-bg-30: rgba(115, 161, 202, 0.3);
+    --info-bg-40: rgba(115, 161, 202, 0.4);
+    --info-bg-50: rgba(115, 161, 202, 0.5);
+    --info-bg-60: rgba(115, 161, 202, 0.6);
+    --info-bg-70: rgba(115, 161, 202, 0.7);
+
+    --bg-secondary-60: rgba(220, 241, 255, 0.6);
+
+    --bg-tertiary-20: rgba(233, 236, 239, 0.2);
+    --bg-tertiary-30: rgba(233, 236, 239, 0.3);
+    --bg-tertiary-40: rgba(233, 236, 239, 0.4);
+    --bg-tertiary-50: rgba(233, 236, 239, 0.5);
+    --bg-tertiary-60: rgba(233, 236, 239, 0.6);
+    --bg-tertiary-70: rgba(233, 236, 239, 0.7);
+
+    --bg-overlay-10: rgba(0, 0, 0, 0.03);
+    --bg-overlay-20: rgba(0, 0, 0, 0.05);
+    --bg-overlay-30: rgba(0, 0, 0, 0.08);
+
+    --shadow-sm: 0 1px 2px 0 rgba(56, 69, 83, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(56, 69, 83, 0.08);
+    --shadow-lg: 0 10px 15px -3px rgba(56, 69, 83, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(56, 69, 83, 0.12);
+  }
+}
+
+/* ============================================
+   RESET & BASE STYLES
+   ============================================ */
 * {
   margin: 0;
   padding: 0;
@@ -108,6 +547,7 @@ body {
   color: var(--text-primary);
   line-height: 1.5;
   font-size: var(--font-base);
+  transition: background-color var(--transition-base), color var(--transition-base);
 }
 
 /* Typography */
@@ -115,34 +555,19 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   line-height: 1.25;
   margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
 }
 
-h1 {
-  font-size: var(--font-4xl);
-}
-
-h2 {
-  font-size: var(--font-3xl);
-}
-
-h3 {
-  font-size: var(--font-2xl);
-}
-
-h4 {
-  font-size: var(--font-xl);
-}
-
-h5 {
-  font-size: var(--font-lg);
-}
-
-h6 {
-  font-size: var(--font-base);
-}
+h1 { font-size: var(--font-4xl); }
+h2 { font-size: var(--font-3xl); }
+h3 { font-size: var(--font-2xl); }
+h4 { font-size: var(--font-xl); }
+h5 { font-size: var(--font-lg); }
+h6 { font-size: var(--font-base); }
 
 p {
   margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
 }
 
 a {
@@ -156,7 +581,9 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Forms */
+/* ============================================
+   FORMS
+   ============================================ */
 input,
 textarea,
 select {
@@ -172,19 +599,30 @@ select {
 
 /* Enhanced select/dropdown styling for better contrast */
 select {
-  background-color: #ffffff !important;
-  color: #000000 !important;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 select option {
-  background-color: #ffffff !important;
-  color: #000000 !important;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
-select option:checked {
-  background: linear-gradient(#2563eb, #2563eb) !important;
-  background-color: #2563eb !important;
-  color: #ffffff !important;
+/* Light theme select override for better contrast */
+[data-theme="light"] select {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+[data-theme="light"] select option {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+[data-theme="light"] select option:checked {
+  background: linear-gradient(#5881AA, #5881AA);
+  background-color: #5881AA;
+  color: #ffffff;
 }
 
 input:focus,
@@ -192,7 +630,7 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(88, 129, 170, 0.1);
 }
 
 input:disabled,
@@ -201,9 +639,12 @@ select:disabled {
   background-color: var(--bg-tertiary);
   color: var(--text-tertiary);
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
-/* Buttons */
+/* ============================================
+   BUTTONS
+   ============================================ */
 button {
   font-family: inherit;
   font-size: var(--font-base);
@@ -231,6 +672,8 @@ button:disabled {
 
 .btn-primary:hover:not(:disabled) {
   background-color: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-secondary {
@@ -240,6 +683,8 @@ button:disabled {
 
 .btn-secondary:hover:not(:disabled) {
   background-color: var(--secondary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-danger {
@@ -249,6 +694,19 @@ button:disabled {
 
 .btn-danger:hover:not(:disabled) {
   background-color: var(--danger-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-success {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: var(--secondary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-outline {
@@ -272,7 +730,9 @@ button:disabled {
   font-size: var(--font-lg);
 }
 
-/* Container */
+/* ============================================
+   LAYOUT
+   ============================================ */
 .container {
   width: 100%;
   max-width: auto;
@@ -295,17 +755,9 @@ button:disabled {
   justify-content: center;
 }
 
-.gap-sm {
-  gap: var(--spacing-sm);
-}
-
-.gap-md {
-  gap: var(--spacing-md);
-}
-
-.gap-lg {
-  gap: var(--spacing-lg);
-}
+.gap-sm { gap: var(--spacing-sm); }
+.gap-md { gap: var(--spacing-md); }
+.gap-lg { gap: var(--spacing-lg); }
 
 /* Grid Utilities */
 .grid {
@@ -345,7 +797,9 @@ button:disabled {
 .mb-lg { margin-bottom: var(--spacing-lg); }
 .mb-xl { margin-bottom: var(--spacing-xl); }
 
-/* Responsive Design */
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
 @media (max-width: 640px) {
   :root {
     --font-base: 14px;
@@ -381,92 +835,42 @@ button:disabled {
   }
 }
 
-/* Utilities */
-.text-center {
-  text-align: center;
-}
+/* ============================================
+   UTILITIES
+   ============================================ */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
 
-.text-right {
-  text-align: right;
-}
+.font-bold { font-weight: 700; }
+.font-semibold { font-weight: 600; }
+.font-normal { font-weight: 400; }
 
-.text-left {
-  text-align: left;
-}
+.text-muted { color: var(--text-secondary); }
+.text-error { color: var(--danger-color); }
+.text-success { color: var(--secondary-color); }
 
-.font-bold {
-  font-weight: 700;
-}
+.bg-light { background-color: var(--bg-secondary); }
+.bg-lighter { background-color: var(--bg-tertiary); }
 
-.font-semibold {
-  font-weight: 600;
-}
+.rounded { border-radius: var(--radius-lg); }
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded-full { border-radius: var(--radius-full); }
 
-.font-normal {
-  font-weight: 400;
-}
+.shadow { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
 
-.text-muted {
-  color: var(--text-secondary);
-}
+.border { border: 1px solid var(--border-color); }
 
-.text-error {
-  color: var(--danger-color);
-}
+.opacity-50 { opacity: 0.5; }
+.opacity-75 { opacity: 0.75; }
 
-.text-success {
-  color: var(--secondary-color);
-}
+.cursor-pointer { cursor: pointer; }
+.cursor-not-allowed { cursor: not-allowed; }
 
-.bg-light {
-  background-color: var(--bg-secondary);
-}
-
-.bg-lighter {
-  background-color: var(--bg-tertiary);
-}
-
-.rounded {
-  border-radius: var(--radius-lg);
-}
-
-.rounded-sm {
-  border-radius: var(--radius-sm);
-}
-
-.rounded-full {
-  border-radius: var(--radius-full);
-}
-
-.shadow {
-  box-shadow: var(--shadow-md);
-}
-
-.shadow-lg {
-  box-shadow: var(--shadow-lg);
-}
-
-.border {
-  border: 1px solid var(--border-color);
-}
-
-.opacity-50 {
-  opacity: 0.5;
-}
-
-.opacity-75 {
-  opacity: 0.75;
-}
-
-.cursor-pointer {
-  cursor: pointer;
-}
-
-.cursor-not-allowed {
-  cursor: not-allowed;
-}
-
-/* Loading Spinner */
+/* ============================================
+   ANIMATIONS
+   ============================================ */
 .spinner {
   display: inline-block;
   width: 1rem;
@@ -483,10 +887,27 @@ button:disabled {
   }
 }
 
-/* Print Styles */
+/* Fade in animation for theme transitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn var(--transition-base);
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
 @media print {
   body {
     background-color: white;
+    color: black;
   }
 
   .hide-print {

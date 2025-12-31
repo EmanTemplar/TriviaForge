@@ -17,7 +17,7 @@
           </div>
           <ul>
             <li v-for="(choice, choiceIdx) in question.choices" :key="choiceIdx"
-                :style="question.correctChoice === choiceIdx ? { color: '#0f0' } : {}">
+                :class="{ 'correct-choice': question.correctChoice === choiceIdx }">
               {{ choice }}
             </li>
           </ul>
@@ -66,11 +66,12 @@ defineEmits([
 .quiz-display {
   display: flex;
   flex-direction: column;
-  background: rgba(22, 33, 62, 0.5);
-  border: 1px solid rgba(79, 195, 247, 0.2);
+  background: var(--bg-overlay-50);
+  border: 1px solid var(--info-bg-20);
   border-radius: 12px;
   padding: 1.5rem;
   overflow-y: auto;
+  box-shadow: var(--shadow-md);
 }
 
 .quiz-display h2 {
@@ -94,8 +95,8 @@ defineEmits([
 }
 
 .questionCard {
-  background: rgba(79, 195, 247, 0.05);
-  border: 1px solid rgba(79, 195, 247, 0.2);
+  background: var(--info-bg-05);
+  border: 1px solid var(--info-bg-20);
   border-radius: 8px;
   padding: 0.75rem;
   cursor: pointer;
@@ -103,12 +104,12 @@ defineEmits([
 }
 
 .questionCard:hover {
-  background: rgba(79, 195, 247, 0.15);
+  background: var(--info-bg-15);
 }
 
 .questionCard.presented {
-  background: rgba(79, 195, 247, 0.2);
-  border-color: rgba(79, 195, 247, 0.5);
+  background: var(--info-bg-20);
+  border-color: var(--info-light);
 }
 
 .question-header {
@@ -131,11 +132,14 @@ defineEmits([
   font-size: 0.75rem;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-overlay-30);
+  font-weight: bold;
 }
 
 .status-badge.live {
-  color: #ff0;
+  background: var(--warning-bg-30);
+  color: var(--warning-light);
+  border: 1px solid var(--warning-light);
   animation: pulse 1.5s infinite;
 }
 
@@ -149,11 +153,15 @@ defineEmits([
 }
 
 .status-badge.presented {
-  color: #0f0;
+  background: var(--secondary-bg-20);
+  color: var(--secondary-light);
+  border: 1px solid var(--secondary-light);
 }
 
 .status-badge.revealed {
-  color: #f00;
+  background: var(--danger-bg-20);
+  color: var(--danger-light);
+  border: 1px solid var(--danger-light);
 }
 
 .questionCard ul {
@@ -161,7 +169,7 @@ defineEmits([
   margin: 0;
   padding: 0;
   font-size: 0.9rem;
-  color: #aaa;
+  color: var(--text-tertiary);
   word-wrap: break-word;
   overflow-wrap: break-word;
   word-break: break-word;
@@ -169,6 +177,10 @@ defineEmits([
   -moz-hyphens: auto;
   -ms-hyphens: auto;
   hyphens: auto;
+}
+
+.questionCard ul li.correct-choice {
+  color: var(--secondary-light);
 }
 
 .presenter-controls {
@@ -186,10 +198,10 @@ defineEmits([
 .presenter-controls button,
 .btn-complete {
   padding: 0.5rem;
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.4);
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-bg-40);
   border-radius: 8px;
-  color: #4fc3f7;
+  color: var(--info-light);
   cursor: pointer;
   font-weight: 600;
   transition: all 0.2s;
@@ -197,8 +209,8 @@ defineEmits([
 
 .presenter-controls button:hover,
 .btn-complete:hover {
-  background: rgba(79, 195, 247, 0.3);
-  border-color: rgba(79, 195, 247, 0.6);
+  background: var(--info-bg-30);
+  border-color: var(--info-light);
 }
 
 .presenter-controls button:disabled,
@@ -208,17 +220,17 @@ defineEmits([
 }
 
 .btn-complete {
-  background: rgba(0, 123, 255, 0.2);
-  border-color: rgba(0, 123, 255, 0.4);
+  background: var(--info-bg-20);
+  border-color: var(--info-bg-40);
 }
 
 .btn-complete:hover:not(:disabled) {
-  background: rgba(0, 123, 255, 0.3);
+  background: var(--info-bg-30);
 }
 
 .empty-state {
   text-align: center;
-  color: #666;
+  color: var(--text-tertiary);
   padding: 1rem;
 }
 

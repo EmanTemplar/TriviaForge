@@ -62,11 +62,12 @@ const getConnectionSymbol = (player) => {
 .presenter-players {
   display: flex;
   flex-direction: column;
-  background: rgba(22, 33, 62, 0.5);
-  border: 1px solid rgba(79, 195, 247, 0.2);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1.5rem;
   overflow-y: auto;
+  box-shadow: var(--shadow-md);
 }
 
 .presenter-players h2 {
@@ -77,10 +78,10 @@ const getConnectionSymbol = (player) => {
   width: 100%;
   padding: 0.5rem;
   margin-bottom: 1rem;
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.4);
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
   border-radius: 8px;
-  color: #4fc3f7;
+  color: var(--info-light);
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 600;
@@ -88,8 +89,8 @@ const getConnectionSymbol = (player) => {
 }
 
 .btn-standings:hover {
-  background: rgba(79, 195, 247, 0.3);
-  border-color: rgba(79, 195, 247, 0.6);
+  background: var(--info-bg-30);
+  border-color: var(--info-light);
 }
 
 .live-feed {
@@ -102,7 +103,7 @@ const getConnectionSymbol = (player) => {
 
 .player-item {
   padding: 0.5rem;
-  background: rgba(79, 195, 247, 0.05);
+  background: var(--bg-overlay-10);
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -116,26 +117,26 @@ const getConnectionSymbol = (player) => {
 
 /* Connection states */
 .player-status.status-connected {
-  color: #0f0; /* Green */
+  color: var(--secondary-light);
 }
 
 .player-status.status-away {
-  color: #ff8c00; /* Orange */
+  color: var(--warning-light);
 }
 
 .player-status.status-disconnected {
-  color: #f00; /* Red */
+  color: var(--danger-light);
 }
 
 .player-status.status-warning {
-  color: #ffd700; /* Yellow/Gold */
+  color: var(--warning-light);
   animation: pulse-warning 1.5s ease-in-out infinite;
 }
 
 .player-warning-icon {
   font-size: 0.9rem;
   margin-left: 0.25rem;
-  color: #ffd700;
+  color: var(--warning-light);
 }
 
 @keyframes pulse-warning {
@@ -145,7 +146,7 @@ const getConnectionSymbol = (player) => {
 
 .player-answered {
   margin-left: auto;
-  color: #0f0;
+  color: var(--secondary-light);
 }
 
 /* Player menu */
@@ -155,9 +156,9 @@ const getConnectionSymbol = (player) => {
 }
 
 .btn-player-menu {
-  background: rgba(79, 195, 247, 0.1);
-  color: #4fc3f7;
-  border: 1px solid rgba(79, 195, 247, 0.3);
+  background: var(--info-bg-10);
+  color: var(--info-light);
+  border: 1px solid var(--info-light);
   border-radius: 3px;
   padding: 0.2rem 0.5rem;
   font-size: 1.2rem;
@@ -167,18 +168,18 @@ const getConnectionSymbol = (player) => {
 }
 
 .btn-player-menu:hover {
-  background: rgba(79, 195, 247, 0.2);
-  border-color: #4fc3f7;
+  background: var(--info-bg-20);
+  border-color: var(--info-light);
 }
 
 .player-menu {
   position: absolute;
   right: 0;
   top: calc(100% + 4px);
-  background: rgba(30, 30, 30, 0.98);
-  border: 1px solid rgba(79, 195, 247, 0.4);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--info-light);
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-lg);
   min-width: 180px;
   z-index: 1000;
   overflow: hidden;
@@ -192,7 +193,7 @@ const getConnectionSymbol = (player) => {
   padding: 0.75rem 1rem;
   background: transparent;
   border: none;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 0.9rem;
   text-align: left;
   cursor: pointer;
@@ -200,21 +201,21 @@ const getConnectionSymbol = (player) => {
 }
 
 .menu-item:hover {
-  background: rgba(79, 195, 247, 0.15);
+  background: var(--info-bg-20);
 }
 
 .menu-item-kick {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .menu-item-kick:hover {
-  background: rgba(255, 68, 68, 0.15);
-  color: #ff4444;
+  background: var(--danger-bg-20);
+  color: var(--danger-light);
 }
 
 .menu-item-ban:hover {
-  background: rgba(255, 152, 0, 0.15);
-  color: #ff9800;
+  background: var(--warning-bg-20);
+  color: var(--warning-light);
 }
 
 .menu-icon {
@@ -223,7 +224,7 @@ const getConnectionSymbol = (player) => {
 
 .empty-state {
   text-align: center;
-  color: #666;
+  color: var(--text-tertiary);
   padding: 1rem;
 }
 

@@ -86,17 +86,18 @@ const formatSessionDate = (session) => {
 .presenter-sidebar {
   display: flex;
   flex-direction: column;
-  background: rgba(22, 33, 62, 0.5);
-  border: 1px solid rgba(79, 195, 247, 0.2);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1.5rem;
   overflow-y: auto;
+  box-shadow: var(--shadow-md);
 }
 
 .presenter-widget {
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(79, 195, 247, 0.1);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .presenter-widget:last-child {
@@ -108,7 +109,7 @@ const formatSessionDate = (session) => {
 .presenter-widget h2 {
   margin: 0 0 1rem 0;
   font-size: 1rem;
-  color: #c9d1d9;
+  color: var(--text-primary);
 }
 
 .presenter-widget select,
@@ -117,18 +118,18 @@ const formatSessionDate = (session) => {
   width: 100%;
   padding: 0.5rem;
   margin-bottom: 0.5rem;
-  background: rgba(79, 195, 247, 0.1);
-  border: 1px solid rgba(79, 195, 247, 0.3);
+  background: var(--info-bg-10);
+  border: 1px solid var(--info-light);
   border-radius: 8px;
-  color: #c9d1d9;
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .presenter-widget select:hover,
 .presenter-widget button:hover {
-  background: rgba(79, 195, 247, 0.2);
-  border-color: rgba(79, 195, 247, 0.5);
+  background: var(--info-bg-20);
+  border-color: var(--info-light);
 }
 
 .presenter-widget button:disabled {
@@ -148,8 +149,8 @@ const formatSessionDate = (session) => {
 }
 
 .roomCard {
-  background: rgba(79, 195, 247, 0.1);
-  border: 1px solid rgba(79, 195, 247, 0.3);
+  background: var(--info-bg-10);
+  border: 1px solid var(--info-light);
   border-radius: 8px;
   padding: 0.75rem;
   cursor: pointer;
@@ -157,12 +158,12 @@ const formatSessionDate = (session) => {
 }
 
 .roomCard:hover {
-  background: rgba(79, 195, 247, 0.2);
+  background: var(--info-bg-20);
 }
 
 .roomCard.activeRoom {
-  background: rgba(79, 195, 247, 0.3);
-  border-color: rgba(79, 195, 247, 0.8);
+  background: var(--info-bg-30);
+  border-color: var(--info-light);
 }
 
 .roomCard button {
@@ -174,7 +175,7 @@ const formatSessionDate = (session) => {
 
 .empty-state {
   text-align: center;
-  color: #666;
+  color: var(--text-tertiary);
   padding: 1rem;
 }
 

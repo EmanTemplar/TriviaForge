@@ -1,5 +1,8 @@
 <template>
   <div class="display-container">
+    <!-- Theme Toggle (top left) -->
+    <ThemeToggle />
+
     <!-- Main Display Area -->
     <div class="main-display">
       <!-- Waiting State -->
@@ -58,7 +61,7 @@
 
     <!-- Room Code Modal -->
     <Modal :isOpen="showRoomCodeModal" @close="() => {}" title="Enter Room Code">
-      <p style="color: #aaa; margin-bottom: 1.5rem;">
+      <p class="modal-description">
         Enter the room code to spectate the game
       </p>
       <FormInput
@@ -80,12 +83,18 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSocket } from '@/composables/useSocket.js'
 import { useUIStore } from '@/stores/ui.js'
+import { useTheme } from '@/composables/useTheme.js'
 import Modal from '@/components/common/Modal.vue'
 import FormInput from '@/components/common/FormInput.vue'
+import ThemeToggle from '@/components/display/ThemeToggle.vue'
 
 const route = useRoute()
 const socket = useSocket()
 const uiStore = useUIStore()
+
+// Initialize theme for DisplayPage (grey theme default)
+const { initTheme } = useTheme('DISPLAY')
+initTheme()
 
 const roomCode = ref(null)
 const qrCodeUrl = ref(null)
@@ -283,7 +292,7 @@ onUnmounted(() => {
 .display-container {
   display: flex;
   height: 100vh;
-  background: linear-gradient(135deg, #1a1a1a, #2b2b2b);
+  background: var(--bg-primary);
   overflow: hidden;
   position: relative;
   z-index: 100;
@@ -313,12 +322,12 @@ onUnmounted(() => {
 .waiting-title {
   font-size: 4rem;
   margin: 0;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .waiting-text {
   font-size: 1.5rem;
-  color: #aaa;
+  color: var(--text-tertiary);
   margin: 0;
 }
 
@@ -345,7 +354,7 @@ onUnmounted(() => {
   max-width: 100%;
   box-sizing: border-box;
   text-align: center;
-  color: #fff;
+  color: var(--text-primary);
   flex-shrink: 0;
 }
 
@@ -363,8 +372,8 @@ onUnmounted(() => {
 
 .choice-display {
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 3px solid rgba(255, 255, 255, 0.2);
+  background: var(--bg-overlay-10);
+  border: 3px solid var(--border-color);
   border-radius: 15px;
   font-size: clamp(1rem, 2vw, 1.5rem);
   text-align: center;
@@ -380,12 +389,12 @@ onUnmounted(() => {
   min-width: 0;
   overflow: hidden;
   line-height: 1.3;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .choice-display.choice-correct {
-  background: rgba(0, 200, 0, 0.3);
-  border-color: #0f0;
+  background: var(--secondary-bg-30);
+  border-color: var(--secondary-light);
   animation: pulse 1s ease-in-out;
 }
 
@@ -411,12 +420,13 @@ onUnmounted(() => {
   width: 300px;
   min-width: 300px;
   flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--bg-secondary);
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
   overflow-y: auto;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
 }
 
 .sidebar-section {
@@ -426,10 +436,10 @@ onUnmounted(() => {
 
 .sidebar-title {
   margin: 0 0 0.5rem 0;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 2px solid var(--border-color);
   padding-bottom: 0.5rem;
   font-size: var(--font-base);
-  color: #fff;
+  color: var(--text-primary);
   text-align: center;
 }
 
@@ -448,13 +458,13 @@ onUnmounted(() => {
 .room-code {
   font-size: 2rem;
   font-weight: bold;
-  color: #0f0;
+  color: var(--secondary-light);
   margin-bottom: 0.5rem;
   letter-spacing: 2px;
 }
 
 .sidebar-hint {
-  color: #aaa;
+  color: var(--text-tertiary);
   font-size: 0.9rem;
   margin: 0;
 }
@@ -466,7 +476,7 @@ onUnmounted(() => {
 }
 
 .empty-state {
-  color: #aaa;
+  color: var(--text-tertiary);
   text-align: center;
   padding: 2rem 0;
   font-style: italic;
@@ -478,9 +488,9 @@ onUnmounted(() => {
   align-items: center;
   padding: 0.75rem;
   margin-bottom: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-10);
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: var(--font-sm);
 }
 
@@ -496,19 +506,19 @@ onUnmounted(() => {
 
 /* Connection states */
 .player-status.status-connected {
-  color: #0f0; /* Green */
+  color: var(--secondary-light);
 }
 
 .player-status.status-away {
-  color: #ff8c00; /* Orange */
+  color: var(--warning-light);
 }
 
 .player-status.status-disconnected {
-  color: #f00; /* Red */
+  color: var(--danger-light);
 }
 
 .player-status.status-warning {
-  color: #ffd700; /* Yellow/Gold */
+  color: var(--warning-light);
   animation: pulse-warning 1.5s ease-in-out infinite;
 }
 
@@ -520,35 +530,40 @@ onUnmounted(() => {
 .status-display {
   margin-top: 1rem;
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
   border-radius: 8px;
   text-align: center;
   font-size: 0.9rem;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .status-connected {
-  color: #0f0;
+  color: var(--secondary-light);
 }
 
 .status-disconnected {
-  color: #aaa;
+  color: var(--text-tertiary);
+}
+
+.modal-description {
+  color: var(--text-tertiary);
+  margin-bottom: 1.5rem;
 }
 
 /* Modal button styles */
 .btn-primary {
   padding: 0.75rem 1.5rem;
-  background: rgba(0, 123, 255, 0.3);
-  border: 1px solid rgba(0, 123, 255, 0.5);
+  background: var(--info-bg-30);
+  border: 1px solid var(--info-light);
   border-radius: 8px;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-primary:hover {
-  background: rgba(0, 123, 255, 0.5);
+  background: var(--info-bg-50);
 }
 
 @media (max-width: 768px) {
