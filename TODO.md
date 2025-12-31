@@ -201,6 +201,16 @@ This document tracks planned features, improvements, and tasks for future develo
   - Component-based architecture with props-down/events-up pattern
   - Simplified template structure with clean component composition
 
+- ✅ Light Theme Visibility Enhancements (Phase 4e - 2025-12-31)
+  - Enhanced light theme contrast, visibility, and visual hierarchy
+  - **Border improvements:** Darkened border colors (#94a3b8 → #64748b, #64748b → #475569)
+  - **Background enhancements:** Increased semi-transparent background opacity by ~50% across all semantic colors
+  - **Shadow improvements:** Enhanced shadow visibility with 2-3x opacity increase
+  - **Depth additions:** Added box-shadow to 4 prominent section windows (QuizDisplay, PresenterSidebar, ConnectedPlayersList, DisplayPage sidebar)
+  - **Badge redesign:** Status badges now bold with semantic backgrounds and 1px borders (LIVE=orange, Presented=green, Revealed=red)
+  - Files modified: main.css, QuizDisplay.vue, PresenterSidebar.vue, ConnectedPlayersList.vue, DisplayPage.vue
+  - User feedback: "Its looking much better!" → "I think we're in a good spot for now!"
+
 **Results:**
 - **PlayerPage.vue:** 2,168 → 1,098 lines (-1,070 lines, 49.4% reduction)
 - **PresenterPage.vue:** 1,815 → 762 lines (-1,053 lines, 58% reduction)

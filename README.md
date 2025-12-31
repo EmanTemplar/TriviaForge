@@ -114,6 +114,7 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - **HTTP Client**: Axios (^1.6.0)
 - **Real-time Client**: Socket.IO Client (^4.7.0)
 - **Styling**: Modern CSS3 with custom properties and responsive design
+- **Theme System**: 4-theme support (Light, Dark, Grey, System) with enhanced light theme visibility
 
 ### Infrastructure
 - **Containerization**: Docker & Docker Compose
