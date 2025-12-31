@@ -1,7 +1,7 @@
 <template>
   <Modal :isOpen="isOpen" @close="$emit('cancel')" title="Set New Password">
     <template #default>
-      <p style="color: #aaa; margin-bottom: 1.5rem;">
+      <p class="modal-description">
         Your password has been reset by an administrator. Please set a new password to continue.
       </p>
 
@@ -91,3 +91,10 @@ function handleSubmit() {
   }
 }
 </script>
+
+<style scoped>
+.modal-description {
+  color: var(--text-tertiary);
+  margin-bottom: 1.5rem;
+}
+</style>

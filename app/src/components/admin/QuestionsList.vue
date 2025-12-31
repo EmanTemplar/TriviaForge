@@ -109,7 +109,7 @@ const handleDragEnd = () => {
 
 h2 {
   margin: 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1.2rem;
 }
 
@@ -120,17 +120,17 @@ h2 {
 
 .btn-shuffle {
   padding: 0.5rem 0.75rem;
-  background: rgba(79, 195, 247, 0.25);
-  border: 1px solid rgba(79, 195, 247, 0.5);
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
   border-radius: 6px;
-  color: #4fc3f7;
+  color: var(--info-light);
   cursor: pointer;
   transition: all 0.2s;
   font-size: 1rem;
 }
 
 .btn-shuffle:hover {
-  background: rgba(79, 195, 247, 0.4);
+  background: var(--info-bg-40);
 }
 
 .questions-list {
@@ -145,13 +145,13 @@ h2 {
 .empty-state {
   padding: 2rem;
   text-align: center;
-  color: #666;
+  color: var(--text-tertiary);
   font-size: 0.9rem;
 }
 
 .question-item {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--bg-overlay-20);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   cursor: grab;
   transition: all 0.2s;
@@ -161,23 +161,23 @@ h2 {
 }
 
 .question-item:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(79, 195, 247, 0.5);
+  background: var(--bg-overlay-30);
+  border-color: var(--info-light);
 }
 
 .question-item.active {
-  background: rgba(79, 195, 247, 0.2);
-  border-color: rgba(79, 195, 247, 0.6);
+  background: var(--info-bg-20);
+  border-color: var(--info-light);
 }
 
 .question-item.dragging {
   opacity: 0.5;
-  background: rgba(79, 195, 247, 0.1);
+  background: var(--info-bg-10);
 }
 
 .question-item.drag-over {
-  border: 2px dashed rgba(255, 193, 7, 0.8);
-  background: rgba(255, 193, 7, 0.1);
+  border: 2px dashed var(--warning-light);
+  background: var(--warning-bg-10);
 }
 
 .question-content {
@@ -190,13 +190,13 @@ h2 {
 
 .question-text {
   font-weight: bold;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 0.9rem;
   flex-shrink: 0;
 }
 
 .question-preview {
-  color: #ccc;
+  color: var(--text-secondary);
   font-size: 0.9rem;
   overflow: hidden;
   display: -webkit-box;
@@ -211,8 +211,8 @@ h2 {
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem 1rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-tertiary-40);
+  border-top: 1px solid var(--border-color);
 }
 
 .reorder-buttons {
@@ -230,13 +230,13 @@ h2 {
 }
 
 .btn-reorder {
-  background: rgba(79, 195, 247, 0.25);
-  border: 1px solid rgba(79, 195, 247, 0.5);
-  color: #4fc3f7;
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
+  color: var(--info-light);
 }
 
 .btn-reorder:hover:not(:disabled) {
-  background: rgba(79, 195, 247, 0.4);
+  background: var(--info-bg-40);
 }
 
 .btn-reorder:disabled {
@@ -245,18 +245,18 @@ h2 {
 }
 
 .btn-delete {
-  background: rgba(244, 67, 54, 0.25);
-  border: 1px solid rgba(244, 67, 54, 0.5);
-  color: #ff6b6b;
+  background: var(--danger-bg-20);
+  border: 1px solid var(--danger-light);
+  color: var(--danger-light);
 }
 
 .btn-delete:hover {
-  background: rgba(244, 67, 54, 0.4);
+  background: var(--danger-bg-40);
 }
 
 @media (max-width: 1024px) {
   .questions-sidebar {
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--border-color);
   }
 
   .reorder-buttons {

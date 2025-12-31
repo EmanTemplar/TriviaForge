@@ -107,11 +107,16 @@ import AnswerRevealModal from '@/components/presenter/AnswerRevealModal.vue'
 import { useSocket } from '@/composables/useSocket.js'
 import { useApi } from '@/composables/useApi.js'
 import { useAuthStore } from '@/stores/auth.js'
+import { useTheme } from '@/composables/useTheme.js'
 
 const router = useRouter()
 const socket = useSocket()
 const { post, get } = useApi()
 const authStore = useAuthStore()
+
+// Initialize theme for PresenterPage (dark theme default)
+const { initTheme } = useTheme('PRESENTER')
+initTheme()
 
 // UI State
 const menuOpen = ref(false)
@@ -671,8 +676,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #0d1117;
-  color: #c9d1d9;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
@@ -687,7 +692,7 @@ onUnmounted(() => {
 
 .dialog-message {
   margin: 0;
-  color: #aaa;
+  color: var(--text-tertiary);
   font-size: 1rem;
   line-height: 1.5;
   text-align: center;
@@ -710,44 +715,44 @@ onUnmounted(() => {
 }
 
 .btn-primary {
-  background: rgba(0, 123, 255, 0.4);
-  border: 1px solid rgba(0, 123, 255, 0.6);
-  color: #4fc3f7;
+  background: var(--info-bg-40);
+  border: 1px solid var(--info-light);
+  color: var(--info-light);
 }
 
 .btn-primary:hover {
-  background: rgba(0, 123, 255, 0.6);
+  background: var(--info-bg-60);
 }
 
 .btn-success {
-  background: rgba(76, 175, 80, 0.4);
-  border-color: rgba(76, 175, 80, 0.6);
-  color: #81c784;
+  background: var(--secondary-bg-40);
+  border: 1px solid var(--secondary-light);
+  color: var(--secondary-light);
 }
 
 .btn-success:hover {
-  background: rgba(76, 175, 80, 0.6);
+  background: var(--secondary-bg-60);
 }
 
 .btn-danger {
-  background: rgba(244, 67, 54, 0.4);
-  border-color: rgba(244, 67, 54, 0.6);
-  color: #f66;
+  background: var(--danger-bg-40);
+  border: 1px solid var(--danger-light);
+  color: var(--danger-light);
 }
 
 .btn-danger:hover {
-  background: rgba(244, 67, 54, 0.6);
+  background: var(--danger-bg-60);
 }
 
 .btn-secondary {
-  background: rgba(100, 100, 100, 0.3);
-  border: 1px solid rgba(100, 100, 100, 0.5);
-  color: #aaa;
+  background: var(--bg-overlay-30);
+  border: 1px solid var(--border-color);
+  color: var(--text-tertiary);
 }
 
 .btn-secondary:hover {
-  background: rgba(100, 100, 100, 0.5);
-  border-color: rgba(100, 100, 100, 0.7);
+  background: var(--bg-overlay-50);
+  border-color: var(--border-dark);
 }
 
 /* Responsive Design */

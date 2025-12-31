@@ -15,6 +15,8 @@
       <span v-if="wakeLockActive" class="wake-lock-indicator" title="Screen will stay on">🔆</span>
     </div>
 
+    <ThemeSelector />
+
     <div class="hamburger" @click="$emit('toggleMenu')">&#9776;</div>
     <ul class="menu" :class="{ open: menuOpen }">
       <li><RouterLink to="/display">Spectate</RouterLink></li>
@@ -34,7 +36,7 @@
         </div>
       </li>
       <li v-if="loginUsername" class="logout-item">
-        <a href="#" @click.prevent="$emit('logout')" style="color: #f66;">Logout</a>
+        <a href="#" @click.prevent="$emit('logout')" class="logout-link">Logout</a>
       </li>
     </ul>
   </nav>
@@ -42,6 +44,7 @@
 
 <script setup>
 import { RouterLink } from 'vue-router';
+import ThemeSelector from './ThemeSelector.vue';
 
 defineProps({
   inRoom: { type: Boolean, required: true },
@@ -63,8 +66,8 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
   align-items: center;
   justify-content: space-between;
   padding: 1rem;
-  background: rgba(0, 0, 0, 0.3);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-tertiary-30);
+  border-bottom: 1px solid var(--border-color);
   gap: 1rem;
   position: relative;
   z-index: 100;
@@ -84,10 +87,10 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
 
 .progress-btn {
   padding: 0.5rem 1rem;
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.4);
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
   border-radius: 8px;
-  color: #4fc3f7;
+  color: var(--info-light);
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 600;
@@ -95,7 +98,7 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
 }
 
 .progress-btn:hover {
-  background: rgba(79, 195, 247, 0.3);
+  background: var(--info-bg-30);
 }
 
 .nav-room-info {
@@ -106,7 +109,7 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
 }
 
 .nav-room-code {
-  color: #4fc3f7;
+  color: var(--info-light);
   font-weight: bold;
 }
 
@@ -118,22 +121,22 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
 /* Connection states */
 .nav-connection-status.status-connected,
 .status-connected {
-  color: #0f0; /* Green */
+  color: var(--secondary-light); /* Green */
 }
 
 .nav-connection-status.status-away,
 .status-away {
-  color: #ff8c00; /* Orange */
+  color: var(--warning-light); /* Orange */
 }
 
 .nav-connection-status.status-disconnected,
 .status-disconnected {
-  color: #f00; /* Red */
+  color: var(--danger-light); /* Red */
 }
 
 .nav-connection-status.status-warning,
 .status-warning {
-  color: #ffd700; /* Yellow/Gold */
+  color: var(--warning-light); /* Yellow/Warning */
   animation: pulse-warning 1.5s ease-in-out infinite;
 }
 
@@ -171,13 +174,21 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
 }
 
 .menu a {
-  color: #fff;
+  color: var(--text-primary);
   text-decoration: none;
   transition: color 0.2s;
 }
 
 .menu a:hover {
-  color: #4fc3f7;
+  color: var(--info-light);
+}
+
+.logout-link {
+  color: var(--danger-light);
+}
+
+.logout-link:hover {
+  color: var(--danger-color);
 }
 
 /* Hide mobile-only menu items on desktop */
@@ -196,7 +207,7 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
 /* Show separator only on mobile */
 @media (max-width: 1024px) {
   .logout-item {
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--border-color);
     padding-top: 0.5rem;
     margin-top: 0.5rem;
   }
@@ -214,7 +225,7 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
   align-items: center;
   gap: 0.5rem;
   font-size: 0.9rem;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .player-status {
@@ -223,11 +234,11 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
 }
 
 .player-status.online {
-  color: #0f0;
+  color: var(--secondary-light);
 }
 
 .player-status.offline {
-  color: #f00;
+  color: var(--danger-light);
 }
 
 /* Mobile styles */
@@ -243,15 +254,15 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
     left: 0;
     right: 0;
     flex-direction: column;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--info-light);
     padding: 1rem;
     gap: 0.5rem;
     display: none !important;
     z-index: 999;
     max-height: calc(100vh - 60px);
     overflow-y: auto;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 6px var(--bg-overlay-70);
   }
 
   .menu.open {
@@ -263,7 +274,7 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
     white-space: normal;
     flex-direction: column;
     align-items: flex-start;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--bg-overlay-10);
     padding: 0.5rem 0;
   }
 
@@ -280,7 +291,7 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
   }
 
   .menu a:hover {
-    background: rgba(79, 195, 247, 0.1);
+    background: var(--info-bg-10);
   }
 
   .menu-players {
@@ -291,37 +302,37 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
 
   .menu-players .player-item {
     padding: 0.5rem 0.75rem;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-overlay-10);
     border-radius: 6px;
     margin-bottom: 0.25rem;
   }
 
   /* Leave Room button - red outline */
   #menuLeaveRoom a {
-    border: 2px solid rgba(255, 102, 102, 0.5);
-    background: rgba(255, 102, 102, 0.05);
+    border: 2px solid var(--danger-light);
+    background: var(--danger-bg-10);
   }
 
   #menuLeaveRoom a:hover {
-    background: rgba(255, 102, 102, 0.15);
-    border-color: rgba(255, 102, 102, 0.7);
+    background: var(--danger-bg-20);
+    border-color: var(--danger-color);
   }
 
   /* Logout button - red transparent background */
   .logout-item a {
-    background: rgba(255, 102, 102, 0.15);
-    border: 2px solid rgba(255, 102, 102, 0.6);
+    background: var(--danger-bg-20);
+    border: 2px solid var(--danger-light);
   }
 
   .logout-item a:hover {
-    background: rgba(255, 102, 102, 0.25);
-    border-color: rgba(255, 102, 102, 0.8);
+    background: var(--danger-bg-30);
+    border-color: var(--danger-color);
   }
 }
 
 @media (max-width: 768px) {
   .menu {
-    background: rgba(0, 0, 0, 0.95);
+    background: var(--bg-primary);
     backdrop-filter: blur(10px);
   }
 }

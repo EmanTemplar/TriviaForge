@@ -1,9 +1,9 @@
 <template>
   <Modal :isOpen="isOpen" @close="$emit('close')" title="Leave Room">
-    <p style="color: #aaa; margin-bottom: 1.5rem;">
+    <p class="modal-description">
       Are you sure you want to leave this room?
     </p>
-    <p style="color: #aaa; margin-bottom: 1.5rem;">
+    <p class="modal-description">
       You'll lose your connection and can rejoin if the room is still active.
     </p>
     <template #footer>
@@ -32,3 +32,10 @@ defineProps({
 
 defineEmits(['confirm', 'close']);
 </script>
+
+<style scoped>
+.modal-description {
+  color: var(--text-tertiary);
+  margin-bottom: 1.5rem;
+}
+</style>

@@ -272,18 +272,18 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: #0d1117;
-  color: #c9d1d9;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
 .navbar {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: var(--bg-secondary);
   padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+  border-bottom: 1px solid var(--info-border);
   position: relative;
   z-index: 100;
 }
@@ -291,14 +291,14 @@ onUnmounted(() => {
 .logo {
   font-weight: bold;
   font-size: 1.1rem;
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 .hamburger {
   display: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 .menu {
@@ -315,7 +315,7 @@ onUnmounted(() => {
 }
 
 .menu a {
-  color: #c9d1d9;
+  color: var(--text-primary);
   text-decoration: none;
   padding: 0.5rem 1rem;
   border-radius: 8px;
@@ -323,7 +323,7 @@ onUnmounted(() => {
 }
 
 .menu a:hover {
-  background: rgba(79, 195, 247, 0.2);
+  background: var(--info-bg-hover);
 }
 
 .manage-container {
@@ -346,28 +346,28 @@ onUnmounted(() => {
 }
 
 .manage-header p {
-  color: #aaa;
+  color: var(--text-tertiary);
   margin: 0;
   font-size: 1.1rem;
 }
 
 .account-section {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-05);
   padding: 2rem;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
   margin-bottom: 2rem;
 }
 
 .account-section h2 {
   margin: 0 0 1.5rem 0;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1.3rem;
 }
 
 .account-section.register-section {
-  background: rgba(0, 123, 255, 0.05);
-  border-color: rgba(0, 123, 255, 0.2);
+  background: var(--info-bg-subtle);
+  border-color: var(--info-border);
 }
 
 .info-row {
@@ -375,7 +375,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .info-row:last-child {
@@ -383,17 +383,17 @@ onUnmounted(() => {
 }
 
 .info-label {
-  color: #aaa;
+  color: var(--text-tertiary);
   font-weight: 600;
 }
 
 .info-value {
-  color: #4fc3f7;
+  color: var(--info-light);
   font-weight: 500;
 }
 
 .section-description {
-  color: #aaa;
+  color: var(--text-tertiary);
   font-size: 0.9rem;
   margin: 0 0 1rem 0;
 }
@@ -410,7 +410,7 @@ onUnmounted(() => {
 }
 
 .form-group label {
-  color: #aaa;
+  color: var(--text-tertiary);
   font-size: 0.9rem;
   margin-bottom: 0.5rem;
   font-weight: 500;
@@ -418,22 +418,22 @@ onUnmounted(() => {
 
 .form-group input {
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--bg-overlay-05);
+  border: 1px solid var(--border-dark);
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-primary);
   font-family: inherit;
   font-size: 1rem;
 }
 
 .form-group input::placeholder {
-  color: #666;
+  color: var(--text-tertiary);
 }
 
 .form-group input:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(79, 195, 247, 0.5);
+  background: var(--bg-overlay-08);
+  border-color: var(--info-border-focus);
 }
 
 .btn-group {
@@ -453,51 +453,51 @@ onUnmounted(() => {
 }
 
 .btn-primary {
-  background: rgba(0, 123, 255, 0.3);
-  border-color: rgba(0, 123, 255, 0.5);
-  color: #fff;
+  background: var(--info-bg);
+  border-color: var(--info-border);
+  color: var(--text-primary);
   flex: 1;
 }
 
 .btn-primary:hover {
-  background: rgba(0, 123, 255, 0.5);
-  border-color: rgba(0, 123, 255, 0.7);
+  background: var(--info-bg-hover);
+  border-color: var(--info-border-hover);
 }
 
 .btn-success {
-  background: rgba(76, 175, 80, 0.3);
-  border-color: rgba(76, 175, 80, 0.5);
-  color: #81c784;
+  background: var(--secondary-bg);
+  border-color: var(--secondary-border);
+  color: var(--secondary-light);
   flex: 1;
 }
 
 .btn-success:hover {
-  background: rgba(76, 175, 80, 0.5);
-  border-color: rgba(76, 175, 80, 0.7);
+  background: var(--secondary-bg-hover);
+  border-color: var(--secondary-border-hover);
 }
 
 .btn-secondary {
-  background: rgba(100, 100, 100, 0.3);
-  border-color: rgba(100, 100, 100, 0.5);
-  color: #aaa;
+  background: var(--neutral-bg);
+  border-color: var(--neutral-border);
+  color: var(--text-tertiary);
   flex: 1;
 }
 
 .btn-secondary:hover {
-  background: rgba(100, 100, 100, 0.5);
-  border-color: rgba(100, 100, 100, 0.7);
+  background: var(--neutral-bg-hover);
+  border-color: var(--neutral-border-hover);
 }
 
 .stats-placeholder {
   text-align: center;
   padding: 3rem 1rem;
-  color: #666;
+  color: var(--text-tertiary);
   font-style: italic;
 }
 
 .back-link {
   display: inline-block;
-  color: #4fc3f7;
+  color: var(--info-light);
   text-decoration: none;
   margin-top: 2rem;
   font-weight: 500;
@@ -505,12 +505,12 @@ onUnmounted(() => {
 }
 
 .back-link:hover {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .dialog-message {
   margin: 0;
-  color: #aaa;
+  color: var(--text-tertiary);
   text-align: center;
   white-space: pre-wrap;
 }
@@ -531,7 +531,7 @@ onUnmounted(() => {
 
 @media (max-width: 1024px) {
   .menu li:nth-child(n+5) {
-    border-top: 1px solid rgba(255,255,255,0.1);
+    border-top: 1px solid var(--border-color);
     margin-top: 0.5rem;
     padding-top: 0.5rem;
   }
@@ -547,8 +547,8 @@ onUnmounted(() => {
     left: 0;
     right: 0;
     flex-direction: column;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--info-border);
     padding: 1rem;
     gap: 0;
     display: none !important;
@@ -581,8 +581,8 @@ onUnmounted(() => {
     left: 0;
     right: 0;
     flex-direction: column;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--info-border);
     padding: 1rem;
     gap: 0;
     display: none;

@@ -1,13 +1,13 @@
 <template>
   <Modal :isOpen="isOpen" @close="$emit('close')" title="Change Username">
-    <p style="color: #aaa; margin-bottom: 1.5rem;">
+    <p class="modal-description">
       Changing your username will:
     </p>
-    <ul style="color: #aaa; margin-bottom: 1.5rem; padding-left: 1.5rem;">
+    <ul class="modal-list">
       <li>Create a new account or switch to a different account</li>
       <li>Start fresh with no saved progress</li>
     </ul>
-    <p style="color: #f4a261; margin-bottom: 1.5rem; font-weight: 500;">
+    <p class="modal-warning">
       Are you sure you want to continue?
     </p>
     <template #footer>
@@ -36,3 +36,22 @@ defineProps({
 
 defineEmits(['confirm', 'close']);
 </script>
+
+<style scoped>
+.modal-description {
+  color: var(--text-tertiary);
+  margin-bottom: 1.5rem;
+}
+
+.modal-list {
+  color: var(--text-tertiary);
+  margin-bottom: 1.5rem;
+  padding-left: 1.5rem;
+}
+
+.modal-warning {
+  color: var(--warning-light);
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+</style>

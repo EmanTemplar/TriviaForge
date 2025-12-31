@@ -55,7 +55,7 @@ defineEmits(['selectAnswer']);
   margin: 0;
   line-height: 1.3;
   word-wrap: break-word;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .choices-container {
@@ -68,10 +68,10 @@ defineEmits(['selectAnswer']);
 
 .choice-btn {
   padding: 2rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 3px solid rgba(255, 255, 255, 0.2);
+  background: var(--bg-overlay-20);
+  border: 3px solid var(--border-color);
   border-radius: 15px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.3s;
@@ -87,23 +87,23 @@ defineEmits(['selectAnswer']);
 }
 
 .choice-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.4);
+  background: var(--bg-overlay-30);
+  border-color: var(--border-dark);
 }
 
 .choice-btn.selected {
-  background: rgba(79, 195, 247, 0.3);
-  border-color: rgba(79, 195, 247, 0.6);
+  background: var(--info-bg-30);
+  border-color: var(--info-light);
 }
 
 .choice-btn.correct {
-  background: rgba(0, 200, 0, 0.3);
-  border-color: #0f0;
+  background: var(--secondary-bg-30);
+  border-color: var(--secondary-light);
 }
 
 .choice-btn.incorrect {
-  background: rgba(200, 0, 0, 0.3);
-  border-color: #f66;
+  background: var(--danger-bg-30);
+  border-color: var(--danger-light);
 }
 
 .choice-btn:disabled {
@@ -120,13 +120,13 @@ defineEmits(['selectAnswer']);
 }
 
 .answer-feedback.correct {
-  background: rgba(0, 200, 0, 0.2);
-  color: #0f0;
+  background: var(--secondary-bg-20);
+  color: var(--secondary-light);
 }
 
 .answer-feedback.incorrect {
-  background: rgba(200, 0, 0, 0.2);
-  color: #f66;
+  background: var(--danger-bg-20);
+  color: var(--danger-light);
 }
 
 @keyframes fadeIn {

@@ -81,7 +81,8 @@ export async function initializeDatabase(pool) {
       '01-tables.sql',
       '02-migrate_timestamps.sql',
       '03-update-admin-password.sql',
-      '04-banned-display-names.sql'
+      '04-banned-display-names.sql',
+      '05-add-theme-preference.sql'
     ];
 
     // Execute each SQL file in order

@@ -114,11 +114,11 @@
   justify-content: space-between;
   align-items: center;
   padding-bottom: 1rem;
-  border-bottom: 2px solid rgba(79, 195, 247, 0.3);
+  border-bottom: 2px solid var(--info-light);
 }
 
 .about-header h2 {
-  color: #4fc3f7;
+  color: var(--info-light);
   margin: 0;
   font-size: 2rem;
 }
@@ -127,15 +127,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(79, 195, 247, 0.1);
+  background: var(--info-bg-10);
   padding: 0.75rem 1.5rem;
   border-radius: 12px;
-  border: 1px solid rgba(79, 195, 247, 0.3);
+  border: 1px solid var(--info-light);
 }
 
 .version-label {
   font-size: 0.75rem;
-  color: #aaa;
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -143,7 +143,7 @@
 .version-number {
   font-size: 1.25rem;
   font-weight: bold;
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 .about-grid {
@@ -153,14 +153,14 @@
 }
 
 .about-card {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-10);
   padding: 1.5rem;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .about-card h3 {
-  color: #4fc3f7;
+  color: var(--info-light);
   margin: 0 0 1rem 0;
   font-size: 1.2rem;
 }
@@ -169,7 +169,7 @@
 .about-card ol {
   margin: 0;
   padding-left: 1.5rem;
-  color: #ccc;
+  color: var(--text-secondary);
   line-height: 1.8;
 }
 
@@ -178,25 +178,25 @@
 }
 
 .about-card a {
-  color: #4fc3f7;
+  color: var(--info-light);
   text-decoration: none;
   transition: color 0.2s;
 }
 
 .about-card a:hover {
-  color: #81d4fa;
+  color: var(--info-color);
   text-decoration: underline;
 }
 
 .system-info-box {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-10);
   padding: 1.5rem;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .system-info-box h3 {
-  color: #4fc3f7;
+  color: var(--info-light);
   margin: 0 0 1rem 0;
   font-size: 1.2rem;
 }
@@ -215,32 +215,32 @@
 
 .system-label {
   font-size: 0.85rem;
-  color: #aaa;
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .system-value {
   font-size: 1rem;
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
 .about-text-box {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-10);
   padding: 1.5rem;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .about-text-box h3 {
-  color: #4fc3f7;
+  color: var(--info-light);
   margin: 0 0 1rem 0;
   font-size: 1.2rem;
 }
 
 .about-text-box p {
-  color: #ccc;
+  color: var(--text-secondary);
   line-height: 1.8;
   margin-bottom: 1rem;
 }
@@ -250,21 +250,21 @@
 }
 
 .license-box {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--bg-overlay-10);
   padding: 1rem 1.5rem;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-left: 4px solid rgba(79, 195, 247, 0.5);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--info-light);
 }
 
 .license-box p {
   margin: 0;
-  color: #ccc;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
 .license-box strong {
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 @media (max-width: 768px) {

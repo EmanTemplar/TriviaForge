@@ -13,7 +13,7 @@
         <span>{{ username || 'Admin' }}</span>
       </li>
       <li>
-        <a href="#" @click.prevent="$emit('logout')" style="color: #f66;">Logout</a>
+        <a href="#" @click.prevent="$emit('logout')" class="logout-link">Logout</a>
       </li>
     </ul>
   </nav>
@@ -33,12 +33,12 @@ defineEmits(['toggleMenu', 'logout'])
 
 <style scoped>
 .navbar {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: var(--bg-secondary);
   padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+  border-bottom: 1px solid var(--border-color);
   flex-wrap: wrap;
   position: relative;
   z-index: 100;
@@ -47,11 +47,11 @@ defineEmits(['toggleMenu', 'logout'])
 .logo {
   font-weight: bold;
   font-size: 1.2rem;
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 .room-code {
-  color: #aaa;
+  color: var(--text-tertiary);
   font-size: 0.9rem;
   flex: 1;
   text-align: center;
@@ -62,7 +62,7 @@ defineEmits(['toggleMenu', 'logout'])
   display: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 .menu {
@@ -79,7 +79,7 @@ defineEmits(['toggleMenu', 'logout'])
 }
 
 .menu a {
-  color: #c9d1d9;
+  color: var(--text-primary);
   text-decoration: none;
   padding: 0.5rem 1rem;
   border-radius: 8px;
@@ -87,11 +87,15 @@ defineEmits(['toggleMenu', 'logout'])
 }
 
 .menu a:hover {
-  background: rgba(79, 195, 247, 0.2);
+  background: var(--info-bg-20);
+}
+
+.menu a.logout-link {
+  color: var(--danger-light);
 }
 
 .username-item {
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 /* Hide user separator line on desktop */
@@ -103,7 +107,7 @@ defineEmits(['toggleMenu', 'logout'])
 
 @media (max-width: 1024px) {
   .menu li:nth-child(n+5) {
-    border-top: 1px solid rgba(255,255,255,0.1);
+    border-top: 1px solid var(--border-color);
     margin-top: 0.5rem;
     padding-top: 0.5rem;
   }
@@ -119,8 +123,8 @@ defineEmits(['toggleMenu', 'logout'])
     left: 0;
     right: 0;
     flex-direction: column;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
     padding: 1rem;
     gap: 0;
     display: none !important;

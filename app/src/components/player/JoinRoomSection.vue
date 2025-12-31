@@ -67,7 +67,7 @@ defineEmits(['update:usernameInput', 'update:displayNameInput', 'update:roomCode
 
 .join-section h3 {
   margin: 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1.1rem;
 }
 
@@ -87,19 +87,19 @@ defineEmits(['update:usernameInput', 'update:displayNameInput', 'update:roomCode
 .username-value {
   flex: 1;
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-weight: 500;
 }
 
 .change-username-btn {
   padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: #aaa;
+  color: var(--text-tertiary);
   cursor: pointer;
   font-size: 0.85rem;
   white-space: nowrap;
@@ -107,27 +107,27 @@ defineEmits(['update:usernameInput', 'update:displayNameInput', 'update:roomCode
 }
 
 .change-username-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--bg-overlay-20);
+  color: var(--text-primary);
 }
 
 .form-hint {
   font-size: 0.85rem;
-  color: #aaa;
+  color: var(--text-tertiary);
   margin: 0;
 }
 
 .join-section input {
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1rem;
 }
 
 .join-section label {
-  color: #aaa;
+  color: var(--text-tertiary);
   font-size: 0.9rem;
   font-weight: 500;
 }
@@ -143,22 +143,22 @@ defineEmits(['update:usernameInput', 'update:displayNameInput', 'update:roomCode
 }
 
 .btn-primary {
-  background: rgba(0, 123, 255, 0.3);
-  border: 1px solid rgba(0, 123, 255, 0.5);
-  color: #4fc3f7;
+  background: var(--info-bg-30);
+  border: 1px solid var(--info-light);
+  color: var(--info-light);
 }
 
 .btn-primary:hover {
-  background: rgba(0, 123, 255, 0.5);
+  background: var(--info-bg-50);
 }
 
 .btn-secondary {
-  background: rgba(0, 123, 255, 0.2);
-  border: 1px solid rgba(0, 123, 255, 0.3);
-  color: #4fc3f7;
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
+  color: var(--info-light);
 }
 
 .btn-secondary:hover {
-  background: rgba(0, 123, 255, 0.3);
+  background: var(--info-bg-30);
 }
 </style>

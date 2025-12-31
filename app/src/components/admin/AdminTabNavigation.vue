@@ -25,9 +25,9 @@ defineEmits(['switchTab']);
 .tabs-container {
   display: flex;
   gap: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-tertiary-60);
   padding: 0 2rem;
-  border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+  border-bottom: 1px solid var(--info-light);
   overflow-x: auto;
 }
 
@@ -36,7 +36,7 @@ defineEmits(['switchTab']);
   background: transparent;
   border: none;
   border-bottom: 3px solid transparent;
-  color: #aaa;
+  color: var(--text-tertiary);
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
@@ -45,12 +45,12 @@ defineEmits(['switchTab']);
 }
 
 .tab-btn:hover {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .tab-btn.active-tab {
-  color: #fff;
-  border-bottom-color: #007bff;
+  color: var(--text-primary);
+  border-bottom-color: var(--primary-color);
 }
 
 @media (max-width: 768px) {

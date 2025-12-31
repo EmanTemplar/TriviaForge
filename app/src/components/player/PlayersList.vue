@@ -22,9 +22,9 @@ defineProps({
 <style scoped>
 .players-list-container h3 {
   margin: 0 0 1rem 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1.1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.5rem;
 }
 
@@ -39,14 +39,14 @@ defineProps({
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-10);
   border-radius: 8px;
   font-size: 0.9rem;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .player-number {
-  color: #aaa;
+  color: var(--text-tertiary);
 }
 
 .player-status {
@@ -55,11 +55,11 @@ defineProps({
 }
 
 .player-status.online {
-  color: #0f0;
+  color: var(--secondary-light);
 }
 
 .player-status.offline {
-  color: #f00;
+  color: var(--danger-light);
 }
 
 .player-name {
@@ -67,6 +67,6 @@ defineProps({
 }
 
 .player-answer {
-  color: #0f0;
+  color: var(--secondary-light);
 }
 </style>

@@ -75,28 +75,28 @@ const handleFileChange = (event) => {
 
 h2 {
   margin: 0 0 0.5rem 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1.2rem;
 }
 
 .btn-primary {
   padding: 0.75rem;
-  background: rgba(0, 123, 255, 0.4);
-  border: 1px solid rgba(0, 123, 255, 0.6);
+  background: var(--primary-bg-40);
+  border: 1px solid var(--primary-light);
   border-radius: 8px;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-primary:hover {
-  background: rgba(0, 123, 255, 0.6);
+  background: var(--primary-bg-60);
 }
 
 .excel-import-box {
-  background: rgba(79, 195, 247, 0.08);
-  border: 1px solid rgba(79, 195, 247, 0.3);
+  background: var(--info-bg-10);
+  border: 1px solid var(--info-light);
   border-radius: 8px;
   padding: 1rem;
   display: flex;
@@ -106,13 +106,13 @@ h2 {
 
 .excel-import-box h3 {
   margin: 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1rem;
 }
 
 .excel-import-box p {
   margin: 0;
-  color: #aaa;
+  color: var(--text-secondary);
   font-size: 0.85rem;
 }
 
@@ -127,31 +127,31 @@ h2 {
 }
 
 .btn-download {
-  background: rgba(79, 195, 247, 0.25);
-  border: 1px solid rgba(79, 195, 247, 0.5);
-  color: #4fc3f7;
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
+  color: var(--info-light);
 }
 
 .btn-download:hover {
-  background: rgba(79, 195, 247, 0.4);
+  background: var(--info-bg-40);
 }
 
 .btn-upload {
-  background: rgba(76, 175, 80, 0.25);
-  border: 1px solid rgba(76, 175, 80, 0.5);
-  color: #81c784;
+  background: var(--secondary-bg-20);
+  border: 1px solid var(--secondary-light);
+  color: var(--secondary-light);
 }
 
 .btn-upload:hover {
-  background: rgba(76, 175, 80, 0.4);
+  background: var(--secondary-bg-40);
 }
 
 .import-status {
   padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-10);
   border-radius: 4px;
   font-size: 0.85rem;
-  color: #aaa;
+  color: var(--text-secondary);
 }
 
 .quiz-form {
@@ -163,10 +163,10 @@ h2 {
 .quiz-form input,
 .quiz-form textarea {
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 0.9rem;
   resize: vertical;
 }
@@ -187,14 +187,14 @@ h2 {
 .empty-state {
   padding: 1.5rem;
   text-align: center;
-  color: #666;
+  color: var(--text-tertiary);
   font-size: 0.9rem;
 }
 
 .quiz-item {
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--bg-overlay-20);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
@@ -204,27 +204,27 @@ h2 {
 }
 
 .quiz-item:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(79, 195, 247, 0.5);
+  background: var(--bg-overlay-30);
+  border-color: var(--info-light);
 }
 
 .quiz-name {
   font-weight: 500;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 0.95rem;
 }
 
 .quiz-count {
-  color: #aaa;
+  color: var(--text-secondary);
   font-size: 0.8rem;
 }
 
 .btn-delete {
   padding: 0.4rem 0.6rem;
-  background: rgba(244, 67, 54, 0.25);
-  border: 1px solid rgba(244, 67, 54, 0.5);
+  background: var(--danger-bg-20);
+  border: 1px solid var(--danger-light);
   border-radius: 4px;
-  color: #ff6b6b;
+  color: var(--danger-light);
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.8rem;
@@ -232,14 +232,14 @@ h2 {
 }
 
 .btn-delete:hover {
-  background: rgba(244, 67, 54, 0.4);
+  background: var(--danger-bg-40);
 }
 
 @media (max-width: 1024px) {
   .quiz-sidebar {
     width: 100%;
     border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--border-color);
   }
 }
 </style>

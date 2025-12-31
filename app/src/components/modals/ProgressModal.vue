@@ -39,11 +39,11 @@
             <div class="history-content">
               <div class="history-question">Q{{ q.index + 1 }}. {{ q.text }}</div>
               <div class="history-answer">
-                <strong style="color: #4fc3f7;">Your answer:</strong>
+                <strong class="answer-label">Your answer:</strong>
                 {{ q.playerChoice !== null ? `${String.fromCharCode(65 + q.playerChoice)}. ${q.choices[q.playerChoice]}` : 'No answer submitted' }}
               </div>
               <div v-if="q.revealed" class="history-correct">
-                <strong style="color: #0f0;">Correct answer:</strong>
+                <strong class="correct-label">Correct answer:</strong>
                 {{ `${String.fromCharCode(65 + q.correctChoice)}. ${q.choices[q.correctChoice]}` }}
               </div>
             </div>
@@ -58,7 +58,7 @@
         <div v-else class="progress-empty">
           <div class="empty-icon">📝</div>
           <p>No questions answered yet!</p>
-          <p style="font-size: 0.9rem; color: #aaa;">Your progress will appear here once the presenter starts the quiz.</p>
+          <p class="empty-hint">Your progress will appear here once the presenter starts the quiz.</p>
         </div>
       </div>
     </template>
@@ -123,63 +123,63 @@ const getQuestionStatusText = (q) => {
 }
 
 .stat-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   padding: 1rem;
   text-align: center;
 }
 
 .stat-card.correct {
-  background: rgba(0, 200, 0, 0.1);
-  border-color: rgba(0, 200, 0, 0.3);
+  background: var(--secondary-bg-10);
+  border-color: var(--secondary-light);
 }
 
 .stat-card.incorrect {
-  background: rgba(200, 0, 0, 0.1);
-  border-color: rgba(200, 0, 0, 0.3);
+  background: var(--danger-bg-10);
+  border-color: var(--danger-light);
 }
 
 .stat-card.answered {
-  background: rgba(255, 165, 0, 0.1);
-  border-color: rgba(255, 165, 0, 0.3);
+  background: var(--warning-bg-10);
+  border-color: var(--warning-light);
 }
 
 .stat-value {
   font-size: 2rem;
   font-weight: bold;
-  color: #4fc3f7;
+  color: var(--info-light);
   margin-bottom: 0.5rem;
 }
 
 .stat-card.correct .stat-value {
-  color: #0f0;
+  color: var(--secondary-light);
 }
 
 .stat-card.incorrect .stat-value {
-  color: #f66;
+  color: var(--danger-light);
 }
 
 .stat-card.answered .stat-value {
-  color: #ffa500;
+  color: var(--warning-light);
 }
 
 .stat-label {
   font-size: 0.9rem;
-  color: #aaa;
+  color: var(--text-tertiary);
 }
 
 .question-history h4 {
   margin: 0 0 1rem 0;
-  color: #aaa;
+  color: var(--text-tertiary);
   font-size: 1.1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.5rem;
 }
 
 .history-item {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   padding: 1rem;
   display: flex;
@@ -189,24 +189,24 @@ const getQuestionStatusText = (q) => {
 }
 
 .history-item.correct {
-  background: rgba(0, 200, 0, 0.1);
-  border-color: rgba(0, 200, 0, 0.3);
+  background: var(--secondary-bg-10);
+  border-color: var(--secondary-light);
 }
 
 .history-item.incorrect {
-  background: rgba(200, 0, 0, 0.1);
-  border-color: rgba(200, 0, 0, 0.3);
+  background: var(--danger-bg-10);
+  border-color: var(--danger-light);
 }
 
 .history-item.missed-away {
-  background: rgba(150, 150, 150, 0.1);
-  border-color: rgba(150, 150, 150, 0.3);
+  background: var(--bg-overlay-10);
+  border-color: var(--text-tertiary);
   opacity: 0.7;
 }
 
 .history-item.answered {
-  background: rgba(255, 165, 0, 0.1);
-  border-color: rgba(255, 165, 0, 0.3);
+  background: var(--warning-bg-10);
+  border-color: var(--warning-light);
 }
 
 .history-content {
@@ -216,21 +216,29 @@ const getQuestionStatusText = (q) => {
 
 .history-question {
   font-weight: bold;
-  color: #fff;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .history-answer {
   font-size: 0.85rem;
-  color: #aaa;
+  color: var(--text-secondary);
   line-height: 1.4;
   margin-bottom: 0.5rem;
 }
 
+.history-answer .answer-label {
+  color: var(--info-light);
+}
+
 .history-correct {
   font-size: 0.85rem;
-  color: #0f0;
+  color: var(--text-secondary);
   line-height: 1.4;
+}
+
+.history-correct .correct-label {
+  color: var(--secondary-light);
 }
 
 .history-status {
@@ -242,35 +250,40 @@ const getQuestionStatusText = (q) => {
 
 .status-icon {
   font-size: 2rem;
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 .history-item.correct .status-icon {
-  color: #0f0;
+  color: var(--secondary-light);
 }
 
 .history-item.incorrect .status-icon {
-  color: #f66;
+  color: var(--danger-light);
 }
 
 .history-item.missed-away .status-icon {
-  color: #ff8c00;
+  color: var(--warning-light);
 }
 
 .history-item.answered .status-icon {
-  color: #ffa500;
+  color: var(--warning-light);
 }
 
 .status-text {
   font-size: 0.75rem;
-  color: #aaa;
+  color: var(--text-tertiary);
   text-align: center;
 }
 
 .progress-empty {
   text-align: center;
   padding: 3rem 1rem;
-  color: #aaa;
+  color: var(--text-tertiary);
+}
+
+.empty-hint {
+  font-size: 0.9rem;
+  color: var(--text-tertiary);
 }
 
 .empty-icon {

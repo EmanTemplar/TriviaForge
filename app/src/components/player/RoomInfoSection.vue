@@ -27,7 +27,7 @@ defineEmits(['showProgress', 'leaveRoom']);
 
 .room-info h3 {
   margin: 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1.1rem;
 }
 
@@ -36,13 +36,13 @@ defineEmits(['showProgress', 'leaveRoom']);
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-10);
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .room-info strong {
-  color: #aaa;
+  color: var(--text-tertiary);
 }
 
 .btn-info,
@@ -56,22 +56,22 @@ defineEmits(['showProgress', 'leaveRoom']);
 }
 
 .btn-info {
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.4);
-  color: #4fc3f7;
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
+  color: var(--info-light);
 }
 
 .btn-info:hover {
-  background: rgba(79, 195, 247, 0.3);
+  background: var(--info-bg-30);
 }
 
 .btn-danger {
-  background: rgba(200, 0, 0, 0.2);
-  border: 1px solid rgba(200, 0, 0, 0.3);
-  color: #f66;
+  background: var(--danger-bg-20);
+  border: 1px solid var(--danger-light);
+  color: var(--danger-light);
 }
 
 .btn-danger:hover {
-  background: rgba(200, 0, 0, 0.3);
+  background: var(--danger-bg-30);
 }
 </style>

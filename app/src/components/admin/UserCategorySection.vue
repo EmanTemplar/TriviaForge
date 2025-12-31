@@ -63,9 +63,9 @@ defineEmits(['resetPassword', 'downgrade', 'delete']);
 <style scoped>
 .user-category {
   margin-bottom: 2rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-10);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
   overflow: hidden;
 }
 
@@ -74,33 +74,33 @@ defineEmits(['resetPassword', 'downgrade', 'delete']);
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .category-header h3 {
   margin: 0;
   font-size: 1.1rem;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .category-header.admin-header {
-  background: rgba(79, 195, 247, 0.1);
-  border-bottom-color: rgba(79, 195, 247, 0.2);
+  background: var(--info-bg-10);
+  border-bottom-color: var(--info-light);
 }
 
 .category-header.player-header {
-  background: rgba(76, 175, 80, 0.1);
-  border-bottom-color: rgba(76, 175, 80, 0.2);
+  background: var(--secondary-bg-10);
+  border-bottom-color: var(--secondary-light);
 }
 
 .category-header.guest-header {
-  background: rgba(158, 158, 158, 0.1);
-  border-bottom-color: rgba(158, 158, 158, 0.2);
+  background: var(--bg-tertiary-20);
+  border-bottom-color: var(--border-color);
 }
 
 .category-count {
   font-weight: bold;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1rem;
 }
 
@@ -112,7 +112,7 @@ defineEmits(['resetPassword', 'downgrade', 'delete']);
 .empty-state {
   padding: 2rem;
   text-align: center;
-  color: #666;
+  color: var(--text-tertiary);
 }
 
 .user-item {
@@ -120,7 +120,7 @@ defineEmits(['resetPassword', 'downgrade', 'delete']);
   align-items: center;
   gap: 1rem;
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--bg-overlay-10);
   transition: background 0.2s;
 }
 
@@ -129,19 +129,19 @@ defineEmits(['resetPassword', 'downgrade', 'delete']);
 }
 
 .user-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-10);
 }
 
 .user-item.admin-item {
-  background: rgba(79, 195, 247, 0.02);
+  background: var(--info-bg-10);
 }
 
 .user-item.player-item {
-  background: rgba(76, 175, 80, 0.02);
+  background: var(--secondary-bg-10);
 }
 
 .user-item.guest-item {
-  background: rgba(158, 158, 158, 0.02);
+  background: var(--bg-tertiary-20);
 }
 
 .user-info {
@@ -153,7 +153,7 @@ defineEmits(['resetPassword', 'downgrade', 'delete']);
 
 .user-name {
   font-weight: 500;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1rem;
 }
 
@@ -167,31 +167,31 @@ defineEmits(['resetPassword', 'downgrade', 'delete']);
 }
 
 .user-type.type-admin {
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.3);
-  color: #4fc3f7;
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
+  color: var(--info-light);
 }
 
 .user-type.type-player {
-  background: rgba(76, 175, 80, 0.2);
-  border: 1px solid rgba(76, 175, 80, 0.3);
-  color: #81c784;
+  background: var(--secondary-bg-20);
+  border: 1px solid var(--secondary-light);
+  color: var(--secondary-light);
 }
 
 .user-type.type-guest {
-  background: rgba(158, 158, 158, 0.2);
-  border: 1px solid rgba(158, 158, 158, 0.3);
-  color: #bbb;
+  background: var(--bg-tertiary-30);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
 }
 
 .user-stats {
   flex: 1;
-  color: #aaa;
+  color: var(--text-secondary);
   font-size: 0.85rem;
 }
 
 .user-last-login {
-  color: #888;
+  color: var(--text-tertiary);
 }
 
 .user-actions {
@@ -210,33 +210,33 @@ defineEmits(['resetPassword', 'downgrade', 'delete']);
 }
 
 .btn-reset {
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.3);
-  color: #4fc3f7;
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
+  color: var(--info-light);
 }
 
 .btn-reset:hover {
-  background: rgba(79, 195, 247, 0.3);
+  background: var(--info-bg-30);
 }
 
 .btn-downgrade {
-  background: rgba(255, 152, 0, 0.2);
-  border: 1px solid rgba(255, 152, 0, 0.3);
-  color: #ffa726;
+  background: var(--warning-bg-20);
+  border: 1px solid var(--warning-light);
+  color: var(--warning-light);
 }
 
 .btn-downgrade:hover {
-  background: rgba(255, 152, 0, 0.3);
+  background: var(--warning-bg-30);
 }
 
 .btn-delete {
-  background: rgba(200, 0, 0, 0.2);
-  border: 1px solid rgba(200, 0, 0, 0.3);
-  color: #f66;
+  background: var(--danger-bg-20);
+  border: 1px solid var(--danger-light);
+  color: var(--danger-light);
 }
 
 .btn-delete:hover {
-  background: rgba(200, 0, 0, 0.3);
+  background: var(--danger-bg-30);
 }
 
 @media (max-width: 768px) {

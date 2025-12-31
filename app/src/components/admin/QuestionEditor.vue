@@ -140,16 +140,16 @@ const handleChoiceDragEnd = () => {
 
 h2 {
   margin: 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1.2rem;
 }
 
 .btn-new-question {
   padding: 0.5rem 1rem;
-  background: rgba(79, 195, 247, 0.25);
-  border: 1px solid rgba(79, 195, 247, 0.5);
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
   border-radius: 6px;
-  color: #4fc3f7;
+  color: var(--info-light);
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.9rem;
@@ -157,15 +157,15 @@ h2 {
 }
 
 .btn-new-question:hover {
-  background: rgba(79, 195, 247, 0.4);
+  background: var(--info-bg-40);
 }
 
 .question-text-input {
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1rem;
   resize: vertical;
   min-height: 80px;
@@ -179,7 +179,7 @@ h2 {
 
 .choices-header h3 {
   margin: 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1rem;
 }
 
@@ -199,23 +199,23 @@ h2 {
 }
 
 .btn-add {
-  background: rgba(76, 175, 80, 0.25);
-  border: 1px solid rgba(76, 175, 80, 0.5);
-  color: #81c784;
+  background: var(--secondary-bg-20);
+  border: 1px solid var(--secondary-light);
+  color: var(--secondary-light);
 }
 
 .btn-add:hover {
-  background: rgba(76, 175, 80, 0.4);
+  background: var(--secondary-bg-40);
 }
 
 .btn-remove {
-  background: rgba(244, 67, 54, 0.25);
-  border: 1px solid rgba(244, 67, 54, 0.5);
-  color: #ff6b6b;
+  background: var(--danger-bg-20);
+  border: 1px solid var(--danger-light);
+  color: var(--danger-light);
 }
 
 .btn-remove:hover {
-  background: rgba(244, 67, 54, 0.4);
+  background: var(--danger-bg-40);
 }
 
 .choices-container {
@@ -229,20 +229,20 @@ h2 {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--bg-overlay-20);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   transition: all 0.2s;
 }
 
 .choice-input-wrapper.dragging {
   opacity: 0.5;
-  background: rgba(79, 195, 247, 0.15);
+  background: var(--info-bg-20);
 }
 
 .choice-input-wrapper.drag-over {
-  border: 2px dashed rgba(255, 193, 7, 0.8);
-  background: rgba(255, 193, 7, 0.15);
+  border: 2px dashed var(--warning-light);
+  background: var(--warning-bg-20);
   border-radius: 4px;
 }
 
@@ -252,10 +252,10 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(79, 195, 247, 0.25);
-  border: 1px solid rgba(79, 195, 247, 0.5);
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
   border-radius: 6px;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-weight: bold;
   flex-shrink: 0;
 }
@@ -271,10 +271,10 @@ h2 {
 .choice-input-wrapper input {
   flex: 1;
   padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 0.95rem;
 }
 
@@ -285,17 +285,17 @@ h2 {
 }
 
 .correct-choice-wrapper label {
-  color: #aaa;
+  color: var(--text-secondary);
   font-size: 0.9rem;
   font-weight: 500;
 }
 
 .correct-choice-wrapper select {
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 0.95rem;
 }
 
@@ -315,24 +315,24 @@ h2 {
 
 .btn-primary {
   flex: 1;
-  background: rgba(0, 123, 255, 0.4);
-  border: 1px solid rgba(0, 123, 255, 0.6);
-  color: #4fc3f7;
+  background: var(--primary-bg-40);
+  border: 1px solid var(--primary-light);
+  color: var(--info-light);
 }
 
 .btn-primary:hover {
-  background: rgba(0, 123, 255, 0.6);
+  background: var(--primary-bg-60);
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #aaa;
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--bg-overlay-30);
+  color: var(--text-primary);
 }
 
 @media (max-width: 1024px) {

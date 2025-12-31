@@ -47,34 +47,34 @@ const getAccuracy = (result) => {
 
 .session-results h4 {
   margin: 0 0 1rem 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1.1rem;
 }
 
 .results-table {
   width: 100%;
   border-collapse: collapse;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-10);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .results-table thead {
-  background: rgba(79, 195, 247, 0.1);
+  background: var(--info-bg-10);
 }
 
 .results-table th {
   padding: 0.75rem;
   text-align: left;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-weight: 600;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .results-table td {
   padding: 0.75rem;
-  color: #ccc;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--bg-overlay-10);
 }
 
 .results-table tr:last-child td {
@@ -82,7 +82,7 @@ const getAccuracy = (result) => {
 }
 
 .results-table tr:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-10);
 }
 
 .rank-cell {
@@ -94,7 +94,7 @@ const getAccuracy = (result) => {
 }
 
 .rank-number {
-  color: #aaa;
+  color: var(--text-tertiary);
   font-weight: 500;
 }
 

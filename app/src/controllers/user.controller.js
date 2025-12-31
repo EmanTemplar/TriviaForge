@@ -6,11 +6,15 @@
  * - Delete user
  * - Downgrade player to guest
  * - Reset user password
+ * - Get/Update theme preference
  */
 
 import { query } from '../config/database.js';
-import { NotFoundError, BadRequestError, ForbiddenError } from '../utils/errors.js';
+import { NotFoundError, BadRequestError, ForbiddenError, ValidationError } from '../utils/errors.js';
 import { USER_ROLES } from '../config/constants.js';
+
+// Valid theme values
+const VALID_THEMES = ['light', 'dark', 'grey', 'system'];
 
 /**
  * List all users (admin only)
@@ -160,10 +164,74 @@ export async function resetPassword(req, res, next) {
   }
 }
 
+/**
+ * Get current user's theme preference
+ * GET /api/user/theme
+ *
+ * Returns the theme preference for the authenticated user
+ */
+export async function getTheme(req, res, next) {
+  try {
+    const userId = req.user.id;
+
+    // Get user's theme preference from database
+    const result = await query('SELECT theme FROM users WHERE id = $1', [userId]);
+
+    if (result.rows.length === 0) {
+      throw new NotFoundError('User');
+    }
+
+    const theme = result.rows[0].theme || 'dark'; // Default to dark if not set
+
+    res.json({ theme });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Update current user's theme preference
+ * PUT /api/user/theme
+ *
+ * @param {string} req.body.theme - Theme name (light/dark/grey/system)
+ */
+export async function updateTheme(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const { theme } = req.body;
+
+    // Validate theme value
+    if (!theme) {
+      throw new ValidationError('Theme is required');
+    }
+
+    if (!VALID_THEMES.includes(theme)) {
+      throw new ValidationError(
+        `Invalid theme. Must be one of: ${VALID_THEMES.join(', ')}`
+      );
+    }
+
+    // Update user's theme preference
+    await query('UPDATE users SET theme = $1 WHERE id = $2', [theme, userId]);
+
+    console.log(`User ${req.user.username} (ID: ${userId}) updated theme to: ${theme}`);
+
+    res.json({
+      success: true,
+      theme,
+      message: 'Theme preference updated successfully'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // Export all controller functions
 export default {
   listUsers,
   deleteUser,
   downgradeUser,
   resetPassword,
+  getTheme,
+  updateTheme,
 };

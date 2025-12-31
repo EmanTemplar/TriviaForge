@@ -1,7 +1,7 @@
 <template>
   <Modal :isOpen="isOpen" @close="$emit('cancel')" title="Login Required">
     <template #default>
-      <p style="color: #aaa; margin-bottom: 1.5rem;">
+      <p class="modal-description">
         This username belongs to a registered account. Please enter your password to continue.
       </p>
 
@@ -80,3 +80,10 @@ function handleSubmit() {
   }
 }
 </script>
+
+<style scoped>
+.modal-description {
+  color: var(--text-tertiary);
+  margin-bottom: 1.5rem;
+}
+</style>

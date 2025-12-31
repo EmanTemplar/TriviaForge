@@ -63,7 +63,7 @@ const getTimeAgo = (timestamp) => {
 
 .waiting-message {
   font-size: 1.1rem;
-  color: #aaa;
+  color: var(--text-tertiary);
   margin: 0;
 }
 
@@ -74,7 +74,7 @@ const getTimeAgo = (timestamp) => {
 .recent-rooms-section h3 {
   font-size: 1.2rem;
   margin-bottom: 1rem;
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 .recent-rooms-list {
@@ -85,10 +85,10 @@ const getTimeAgo = (timestamp) => {
 
 .recent-room-btn {
   padding: 1rem;
-  background: rgba(79, 195, 247, 0.1);
-  border: 1px solid rgba(79, 195, 247, 0.3);
+  background: var(--info-bg-10);
+  border: 1px solid var(--info-light);
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-primary);
   cursor: pointer;
   display: flex;
   justify-content: space-between;
@@ -97,7 +97,7 @@ const getTimeAgo = (timestamp) => {
 }
 
 .recent-room-btn:hover {
-  background: rgba(79, 195, 247, 0.2);
+  background: var(--info-bg-20);
 }
 
 .recent-room-content {
@@ -107,17 +107,17 @@ const getTimeAgo = (timestamp) => {
 .recent-room-code {
   font-size: 1.1rem;
   font-weight: bold;
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 .recent-room-time {
   font-size: 0.85rem;
-  color: #aaa;
+  color: var(--text-tertiary);
   margin-top: 0.25rem;
 }
 
 .recent-room-arrow {
   font-size: 0.9rem;
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 </style>

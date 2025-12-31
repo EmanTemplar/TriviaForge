@@ -84,12 +84,12 @@ section {
 
 h2 {
   margin: 0 0 0.5rem 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1.8rem;
 }
 
 .section-description {
-  color: #aaa;
+  color: var(--text-secondary);
   margin: 0 0 2rem 0;
   font-size: 0.95rem;
 }
@@ -105,22 +105,22 @@ h2 {
 
 .btn-refresh {
   padding: 0.75rem 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: #aaa;
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
   font-weight: 500;
 }
 
 .btn-refresh:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--bg-overlay-30);
+  color: var(--text-primary);
 }
 
 .user-count {
-  color: #4fc3f7;
+  color: var(--info-light);
   font-weight: 500;
   font-size: 1rem;
 }

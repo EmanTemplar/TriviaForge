@@ -34,7 +34,7 @@ section {
 
 h2 {
   margin: 0 0 1.5rem 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1.8rem;
 }
 
@@ -47,26 +47,26 @@ h2 {
 .empty-state {
   padding: 3rem;
   text-align: center;
-  color: #666;
-  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-tertiary);
+  background: var(--bg-overlay-10);
   border-radius: 8px;
-  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border: 1px dashed var(--border-color);
 }
 
 .session-item {
   display: flex;
   align-items: center;
   gap: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   transition: all 0.2s;
   overflow: hidden;
 }
 
 .session-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(79, 195, 247, 0.3);
+  background: var(--bg-overlay-20);
+  border-color: var(--info-light);
 }
 
 .session-content {
@@ -87,7 +87,7 @@ h2 {
 
 .session-title {
   font-weight: 500;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1rem;
 }
 
@@ -101,47 +101,47 @@ h2 {
 }
 
 .session-status.status-completed {
-  background: rgba(76, 175, 80, 0.2);
-  border: 1px solid rgba(76, 175, 80, 0.3);
-  color: #81c784;
+  background: var(--secondary-bg-20);
+  border: 1px solid var(--secondary-light);
+  color: var(--secondary-light);
 }
 
 .session-status.status-active {
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.3);
-  color: #4fc3f7;
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
+  color: var(--info-light);
 }
 
 .session-status.status-pending {
-  background: rgba(255, 152, 0, 0.2);
-  border: 1px solid rgba(255, 152, 0, 0.3);
-  color: #ffa726;
+  background: var(--warning-bg-20);
+  border: 1px solid var(--warning-light);
+  color: var(--warning-light);
 }
 
 .session-date {
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 0.85rem;
 }
 
 .session-stats {
-  color: #aaa;
+  color: var(--text-secondary);
   font-size: 0.85rem;
 }
 
 .btn-delete-inline {
   padding: 1rem;
-  background: rgba(200, 0, 0, 0.1);
+  background: var(--danger-bg-10);
   border: none;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
-  color: #f66;
+  border-left: 1px solid var(--border-color);
+  color: var(--danger-light);
   cursor: pointer;
   transition: all 0.2s;
   align-self: stretch;
 }
 
 .btn-delete-inline:hover {
-  background: rgba(200, 0, 0, 0.2);
-  color: #ff4444;
+  background: var(--danger-bg-20);
+  color: var(--danger-color);
 }
 
 @media (max-width: 768px) {
@@ -169,7 +169,7 @@ h2 {
 
   .btn-delete-inline {
     border-left: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--border-color);
     padding: 0.75rem;
     text-align: center;
   }

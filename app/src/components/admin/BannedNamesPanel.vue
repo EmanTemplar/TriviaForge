@@ -46,12 +46,12 @@ section {
 
 h2 {
   margin: 0 0 0.5rem 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1.8rem;
 }
 
 .section-description {
-  color: #aaa;
+  color: var(--text-secondary);
   margin: 0 0 2rem 0;
   font-size: 0.95rem;
 }
@@ -66,37 +66,37 @@ h2 {
 
 .btn-primary {
   padding: 0.75rem 1.5rem;
-  background: rgba(0, 123, 255, 0.3);
-  border: 1px solid rgba(0, 123, 255, 0.5);
+  background: var(--primary-bg-30);
+  border: 1px solid var(--primary-light);
   border-radius: 8px;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-primary:hover {
-  background: rgba(0, 123, 255, 0.5);
+  background: var(--primary-bg-50);
 }
 
 .btn-refresh {
   padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: #aaa;
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-refresh:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--bg-overlay-30);
+  color: var(--text-primary);
 }
 
 .banned-count {
   margin-left: auto;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-weight: 500;
 }
 
@@ -109,10 +109,10 @@ h2 {
 .empty-state {
   padding: 2rem;
   text-align: center;
-  color: #666;
-  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-tertiary);
+  background: var(--bg-overlay-10);
   border-radius: 8px;
-  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border: 1px dashed var(--border-color);
 }
 
 .banned-name-item {
@@ -120,15 +120,15 @@ h2 {
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   transition: all 0.2s;
 }
 
 .banned-name-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(79, 195, 247, 0.3);
+  background: var(--bg-overlay-20);
+  border-color: var(--info-light);
 }
 
 .banned-pattern {
@@ -140,7 +140,7 @@ h2 {
 
 .pattern-text {
   font-weight: 500;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1rem;
 }
 
@@ -154,31 +154,31 @@ h2 {
 }
 
 .pattern-type-badge.type-exact {
-  background: rgba(244, 67, 54, 0.2);
-  border: 1px solid rgba(244, 67, 54, 0.3);
-  color: #ef5350;
+  background: var(--danger-bg-20);
+  border: 1px solid var(--danger-light);
+  color: var(--danger-light);
 }
 
 .pattern-type-badge.type-contains {
-  background: rgba(255, 152, 0, 0.2);
-  border: 1px solid rgba(255, 152, 0, 0.3);
-  color: #ffa726;
+  background: var(--warning-bg-20);
+  border: 1px solid var(--warning-light);
+  color: var(--warning-light);
 }
 
 .banned-meta {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  color: #aaa;
+  color: var(--text-secondary);
   font-size: 0.85rem;
 }
 
 .banned-by {
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .banned-date {
-  color: #888;
+  color: var(--text-tertiary);
 }
 
 .banned-actions {
@@ -188,16 +188,16 @@ h2 {
 
 .btn-delete {
   padding: 0.5rem 0.75rem;
-  background: rgba(200, 0, 0, 0.2);
-  border: 1px solid rgba(200, 0, 0, 0.3);
+  background: var(--danger-bg-20);
+  border: 1px solid var(--danger-light);
   border-radius: 6px;
-  color: #f66;
+  color: var(--danger-light);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-delete:hover {
-  background: rgba(200, 0, 0, 0.3);
+  background: var(--danger-bg-30);
 }
 
 @media (max-width: 768px) {

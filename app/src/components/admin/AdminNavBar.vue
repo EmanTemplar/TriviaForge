@@ -11,7 +11,7 @@
         <span>{{ username || 'Admin' }}</span>
       </li>
       <li>
-        <a href="#" @click.prevent="$emit('logout')" style="color: #f66;">Logout</a>
+        <a href="#" @click.prevent="$emit('logout')" class="logout-link">Logout</a>
       </li>
     </ul>
   </nav>
@@ -34,8 +34,8 @@ defineEmits(['toggle-menu', 'logout']);
   align-items: center;
   justify-content: space-between;
   padding: 1rem;
-  background: rgba(0, 0, 0, 0.3);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-tertiary-30);
+  border-bottom: 1px solid var(--border-color);
   position: relative;
   z-index: 100;
 }
@@ -51,7 +51,7 @@ defineEmits(['toggle-menu', 'logout']);
   font-size: 1.5rem;
   cursor: pointer;
   flex-shrink: 0;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .menu {
@@ -68,21 +68,37 @@ defineEmits(['toggle-menu', 'logout']);
 }
 
 .menu a {
-  color: #fff;
+  color: var(--text-primary);
   text-decoration: none;
   transition: color 0.2s;
 }
 
 .menu a:hover {
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 .username-item {
   padding: 0.5rem 1rem;
-  background: rgba(79, 195, 247, 0.1);
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
   border-radius: 8px;
-  color: #4fc3f7;
-  font-weight: 500;
+  color: var(--info-light);
+  font-weight: 600;
+}
+
+.logout-link {
+  color: var(--danger-color);
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  background: var(--danger-bg-10);
+  border-radius: 6px;
+  border: 1px solid var(--danger-light);
+}
+
+.logout-link:hover {
+  background: var(--danger-bg-20);
+  color: var(--danger-dark);
+  border-color: var(--danger-color);
 }
 
 /* Mobile styles */
@@ -98,15 +114,15 @@ defineEmits(['toggle-menu', 'logout']);
     left: 0;
     right: 0;
     flex-direction: column;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--info-light);
     padding: 1rem;
     gap: 0.5rem;
     display: none !important;
     z-index: 999;
     max-height: calc(100vh - 60px);
     overflow-y: auto;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 6px var(--bg-overlay-70);
   }
 
   .menu.open {
@@ -127,13 +143,13 @@ defineEmits(['toggle-menu', 'logout']);
   }
 
   .menu a:hover {
-    background: rgba(79, 195, 247, 0.1);
+    background: var(--info-bg-10);
   }
 }
 
 @media (max-width: 768px) {
   .menu {
-    background: rgba(0, 0, 0, 0.95);
+    background: var(--bg-primary);
     backdrop-filter: blur(10px);
   }
 }

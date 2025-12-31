@@ -1,16 +1,19 @@
 /**
  * TriviaForge - User Routes
  *
- * All user management endpoints (admin only):
- * - List users
- * - Delete user
- * - Downgrade player to guest
- * - Reset user password
+ * User management endpoints:
+ * - Admin endpoints (admin only):
+ *   - List users
+ *   - Delete user
+ *   - Downgrade player to guest
+ *   - Reset user password
+ * - User endpoints (all authenticated users):
+ *   - Get/Update theme preference
  */
 
 import { Router } from 'express';
 import * as userController from '../controllers/user.controller.js';
-import { requireAdmin } from '../middleware/auth.js';
+import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = Router();
@@ -58,5 +61,27 @@ router.post('/:userId/downgrade', requireAdmin, asyncHandler(userController.down
  * Note: Sets password to NULL, user will be prompted to create new password
  */
 router.post('/:userId/reset-password', requireAdmin, asyncHandler(userController.resetPassword));
+
+/**
+ * Get current user's theme preference
+ * GET /api/user/theme
+ *
+ * Returns: { theme: string } - Theme name (light/dark/grey/system)
+ *
+ * Note: Requires authentication (any authenticated user)
+ */
+router.get('/theme', requireAuth, asyncHandler(userController.getTheme));
+
+/**
+ * Update current user's theme preference
+ * PUT /api/user/theme
+ *
+ * Body: { theme: string } - Theme name (light/dark/grey/system)
+ * Returns: { success: true, theme: string }
+ *
+ * Note: Uses doubleCsrfProtection middleware (applied in server.js)
+ * Note: Requires authentication (any authenticated user)
+ */
+router.put('/theme', requireAuth, asyncHandler(userController.updateTheme));
 
 export default router;

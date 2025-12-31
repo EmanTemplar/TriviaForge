@@ -75,9 +75,9 @@ const getResultRowClass = (result) => {
 .correct-answer-box {
   margin-bottom: 1rem;
   padding: 1rem;
-  background: rgba(0, 200, 0, 0.2);
+  background: var(--secondary-bg-20);
   border-radius: 8px;
-  border: 1px solid rgba(0, 200, 0, 0.5);
+  border: 1px solid var(--secondary-light);
 }
 
 .correct-answer-box .label {
@@ -87,7 +87,7 @@ const getResultRowClass = (result) => {
 
 .correct-answer-box .answer {
   font-size: 1.1rem;
-  color: #0f0;
+  color: var(--secondary-light);
 }
 
 .answer-stats {
@@ -105,44 +105,44 @@ const getResultRowClass = (result) => {
 .player-responses .label {
   font-weight: bold;
   margin-bottom: 0.75rem;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .response-table {
   width: 100%;
   border-collapse: collapse;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-overlay-30);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .response-table thead {
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--bg-overlay-50);
 }
 
 .response-table th {
   text-align: left;
   padding: 0.75rem 0.5rem;
-  color: #aaa;
+  color: var(--text-tertiary);
   font-weight: bold;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 2px solid var(--border-color);
 }
 
 .response-table td {
   padding: 0.75rem 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .response-table .correct {
-  background: rgba(0, 200, 0, 0.1);
+  background: var(--secondary-bg-10);
 }
 
 .response-table .incorrect {
-  background: rgba(200, 0, 0, 0.1);
+  background: var(--danger-bg-10);
 }
 
 .response-table .no-answer {
-  background: rgba(100, 100, 100, 0.1);
+  background: var(--bg-overlay-10);
 }
 
 .response-table .player-name {
@@ -150,11 +150,11 @@ const getResultRowClass = (result) => {
 }
 
 .response-table .answer-text {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .response-table .no-answer .answer-text {
-  color: #aaa;
+  color: var(--text-tertiary);
 }
 
 .response-table .result-icon {
@@ -165,15 +165,15 @@ const getResultRowClass = (result) => {
 }
 
 .response-table .correct .result-icon {
-  color: #0f0;
+  color: var(--secondary-light);
 }
 
 .response-table .incorrect .result-icon {
-  color: #f66;
+  color: var(--danger-light);
 }
 
 .response-table .no-answer .result-icon {
-  color: #aaa;
+  color: var(--text-tertiary);
 }
 
 .dialog-buttons {
@@ -184,16 +184,16 @@ const getResultRowClass = (result) => {
 
 .btn-primary {
   padding: 0.75rem 1.5rem;
-  background: rgba(0, 123, 255, 0.4);
-  border: 1px solid rgba(0, 123, 255, 0.6);
+  background: var(--info-bg-40);
+  border: 1px solid var(--info-light);
   border-radius: 8px;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-primary:hover {
-  background: rgba(0, 123, 255, 0.6);
+  background: var(--info-bg-60);
 }
 </style>

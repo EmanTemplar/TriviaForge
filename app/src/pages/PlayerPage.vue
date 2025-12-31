@@ -144,6 +144,7 @@ import { useSocket } from '@/composables/useSocket.js'
 import { useWakeLock } from '@/composables/useWakeLock.js'
 import { useApi } from '@/composables/useApi.js'
 import { useUIStore } from '@/stores/ui.js'
+import { useTheme } from '@/composables/useTheme.js'
 import LoginModal from '@/components/modals/LoginModal.vue'
 import SetPasswordModal from '@/components/modals/SetPasswordModal.vue'
 import LogoutConfirmModal from '@/components/modals/LogoutConfirmModal.vue'
@@ -164,6 +165,10 @@ const socket = useSocket()
 const wakeLock = useWakeLock()
 const { post } = useApi()
 const uiStore = useUIStore()
+
+// Initialize theme for PlayerPage (grey theme default)
+const { initTheme } = useTheme('PLAYER')
+initTheme()
 
 // Debug logging (only active in development mode)
 const DEBUG = import.meta.env.DEV
@@ -1384,8 +1389,8 @@ const verifyAuthToken = async () => {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: linear-gradient(135deg, #1a1a1a, #2b2b2b);
-  color: #fff;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .player-container {
@@ -1403,8 +1408,8 @@ const verifyAuthToken = async () => {
   top: 60px;
   left: 0;
   right: 0;
-  background: rgba(244, 67, 54, 0.95);
-  color: white;
+  background: var(--danger-color);
+  color: var(--text-primary);
   padding: 1rem;
   z-index: 9999;
   animation: slideDown 0.3s ease;
@@ -1441,9 +1446,9 @@ const verifyAuthToken = async () => {
 .reconnect-btn {
   margin-left: auto;
   padding: 0.5rem 1rem;
-  background: white;
-  color: #f44336;
-  border: none;
+  background: var(--bg-primary);
+  color: var(--danger-color);
+  border: 1px solid var(--danger-light);
   border-radius: 4px;
   cursor: pointer;
   font-weight: 600;
@@ -1451,7 +1456,7 @@ const verifyAuthToken = async () => {
 }
 
 .reconnect-btn:hover {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--bg-secondary);
 }
 
 /* Missed Questions Banner */
@@ -1460,13 +1465,13 @@ const verifyAuthToken = async () => {
   top: 120px; /* Below connection lost banner */
   left: 50%;
   transform: translateX(-50%);
-  background: linear-gradient(135deg, #ff8c00 0%, #ff6600 100%);
-  color: white;
+  background: var(--warning-color);
+  color: var(--text-primary);
   padding: 1rem 2rem;
   border-radius: 8px;
   font-size: 1.1rem;
   font-weight: bold;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
   z-index: 1000;
   animation: slideDown 0.3s ease-out;
 }
@@ -1495,10 +1500,10 @@ const verifyAuthToken = async () => {
   width: 300px;
   min-width: 300px;
   flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-secondary);
   padding: 1.5rem;
   border-radius: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
   overflow-y: auto;
   display: flex;
   flex-direction: column;

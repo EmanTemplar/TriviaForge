@@ -109,49 +109,49 @@ const getMedal = (idx) => {
 }
 
 .stat-card {
-  background: rgba(79, 195, 247, 0.2);
-  border: 1px solid rgba(79, 195, 247, 0.3);
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-bg-30);
   border-radius: 10px;
   padding: 1rem;
   text-align: center;
 }
 
 .stat-card.correct {
-  background: rgba(0, 200, 0, 0.2);
-  border-color: rgba(0, 200, 0, 0.3);
+  background: var(--secondary-bg-20);
+  border-color: var(--secondary-bg-30);
 }
 
 .stat-card.incorrect {
-  background: rgba(200, 0, 0, 0.2);
-  border-color: rgba(200, 0, 0, 0.3);
+  background: var(--danger-bg-20);
+  border-color: var(--danger-bg-30);
 }
 
 .stat-card.orange {
-  background: rgba(255, 165, 0, 0.2);
-  border-color: rgba(255, 165, 0, 0.3);
+  background: var(--warning-bg-20);
+  border-color: var(--warning-bg-30);
 }
 
 .stat-value {
   font-size: 2rem;
   font-weight: bold;
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 .stat-card.correct .stat-value {
-  color: #0f0;
+  color: var(--secondary-light);
 }
 
 .stat-card.incorrect .stat-value {
-  color: #f66;
+  color: var(--danger-light);
 }
 
 .stat-card.orange .stat-value {
-  color: #ffa500;
+  color: var(--warning-light);
 }
 
 .stat-label {
   font-size: 0.9rem;
-  color: #aaa;
+  color: var(--text-tertiary);
   margin-top: 0.5rem;
 }
 
@@ -160,36 +160,36 @@ const getMedal = (idx) => {
 }
 
 .standings-wrapper h4 {
-  color: #aaa;
+  color: var(--text-tertiary);
   font-size: 1.1rem;
   margin: 0 0 1rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.5rem;
 }
 
 .standings-table {
   width: 100%;
   border-collapse: collapse;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-overlay-30);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .standings-table thead {
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--bg-overlay-50);
 }
 
 .standings-table th {
   text-align: left;
   padding: 1rem 0.5rem;
-  color: #aaa;
+  color: var(--text-tertiary);
   font-weight: bold;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 2px solid var(--border-color);
 }
 
 .standings-table td {
   padding: 1rem 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .standings-row {
@@ -197,61 +197,61 @@ const getMedal = (idx) => {
 }
 
 .standings-row:hover {
-  background: rgba(79, 195, 247, 0.1);
+  background: var(--info-bg-10);
 }
 
 .standings-row.gold {
-  background: rgba(255, 215, 0, 0.15);
+  background: var(--warning-bg-15);
 }
 
 .standings-row.silver {
-  background: rgba(192, 192, 192, 0.15);
+  background: var(--bg-overlay-15);
 }
 
 .standings-row.bronze {
-  background: rgba(205, 127, 50, 0.15);
+  background: var(--warning-bg-15);
 }
 
 .standings-table .rank {
   text-align: center;
-  color: #aaa;
+  color: var(--text-tertiary);
   font-weight: bold;
   width: 40px;
 }
 
 .standings-table .player-name {
   font-weight: bold;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .standings-table .correct {
   text-align: center;
-  color: #0f0;
+  color: var(--secondary-light);
   font-weight: bold;
 }
 
 .standings-table .incorrect {
   text-align: center;
-  color: #f66;
+  color: var(--danger-light);
   font-weight: bold;
 }
 
 .standings-table .accuracy {
   text-align: center;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-weight: bold;
 }
 
 .standings-table .answered {
   text-align: center;
-  color: #ffa500;
+  color: var(--warning-light);
   font-weight: bold;
 }
 
 .empty-state-standings {
   text-align: center;
   padding: 3rem 1rem;
-  color: #aaa;
+  color: var(--text-tertiary);
 }
 
 .empty-icon {

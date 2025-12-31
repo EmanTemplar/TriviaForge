@@ -76,12 +76,12 @@ const rankedPlayers = computed(() => {
 
 .session-detail-header {
   padding-bottom: 1rem;
-  border-bottom: 2px solid rgba(79, 195, 247, 0.3);
+  border-bottom: 2px solid var(--info-light);
 }
 
 .session-detail-header h3 {
   margin: 0 0 0.75rem 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1.5rem;
 }
 
@@ -89,13 +89,13 @@ const rankedPlayers = computed(() => {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
-  color: #aaa;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
 .session-detail-meta span {
   padding: 0.25rem 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-10);
   border-radius: 4px;
 }
 
@@ -107,30 +107,30 @@ const rankedPlayers = computed(() => {
 }
 
 .session-status.status-completed {
-  background: rgba(76, 175, 80, 0.2) !important;
-  border: 1px solid rgba(76, 175, 80, 0.3);
-  color: #81c784;
+  background: var(--secondary-bg-20) !important;
+  border: 1px solid var(--secondary-light);
+  color: var(--secondary-light);
 }
 
 .session-status.status-active {
-  background: rgba(79, 195, 247, 0.2) !important;
-  border: 1px solid rgba(79, 195, 247, 0.3);
-  color: #4fc3f7;
+  background: var(--info-bg-20) !important;
+  border: 1px solid var(--info-light);
+  color: var(--info-light);
 }
 
 .session-status.status-pending {
-  background: rgba(255, 152, 0, 0.2) !important;
-  border: 1px solid rgba(255, 152, 0, 0.3);
-  color: #ffa726;
+  background: var(--warning-bg-20) !important;
+  border: 1px solid var(--warning-light);
+  color: var(--warning-light);
 }
 
 .empty-state {
   padding: 2rem;
   text-align: center;
-  color: #666;
-  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-tertiary);
+  background: var(--bg-overlay-10);
   border-radius: 8px;
-  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border: 1px dashed var(--border-color);
 }
 
 .btn-danger,
@@ -143,24 +143,24 @@ const rankedPlayers = computed(() => {
 }
 
 .btn-danger {
-  background: rgba(200, 0, 0, 0.3);
-  border: 1px solid rgba(200, 0, 0, 0.5);
-  color: #f66;
+  background: var(--danger-bg-30);
+  border: 1px solid var(--danger-light);
+  color: var(--danger-light);
 }
 
 .btn-danger:hover {
-  background: rgba(200, 0, 0, 0.5);
+  background: var(--danger-bg-50);
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #aaa;
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--bg-overlay-30);
+  color: var(--text-primary);
 }
 
 @media (max-width: 768px) {

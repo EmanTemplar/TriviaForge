@@ -32,17 +32,17 @@ defineEmits(['close'])
   max-width: 300px;
   width: 100%;
   margin-bottom: 1rem;
-  border: 2px solid rgba(79, 195, 247, 0.3);
+  border: 2px solid var(--info-light);
   border-radius: 8px;
 }
 
 .qr-url {
   word-break: break-all;
-  color: #aaa;
+  color: var(--text-tertiary);
   font-size: 0.9rem;
 }
 
 .loading {
-  color: #aaa;
+  color: var(--text-tertiary);
 }
 </style>

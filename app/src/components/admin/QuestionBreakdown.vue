@@ -69,27 +69,27 @@ defineEmits(['toggleQuestion']);
 
 .question-breakdown h4 {
   margin: 0 0 1rem 0;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-size: 1.1rem;
 }
 
 .question-detail {
   margin-bottom: 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 1rem;
 }
 
 .question-header {
   margin-bottom: 0.75rem;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1rem;
   line-height: 1.5;
 }
 
 .question-header strong {
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 .question-choices {
@@ -101,19 +101,19 @@ defineEmits(['toggleQuestion']);
 
 .choice-item {
   padding: 0.5rem 0.75rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
-  color: #ccc;
+  color: var(--text-secondary);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .choice-item.choice-correct {
-  background: rgba(76, 175, 80, 0.1);
-  border-color: rgba(76, 175, 80, 0.3);
-  color: #81c784;
+  background: var(--secondary-bg-10);
+  border-color: var(--secondary-light);
+  color: var(--secondary-light);
 }
 
 .choice-item strong {
@@ -121,7 +121,7 @@ defineEmits(['toggleQuestion']);
 }
 
 .correct-indicator {
-  color: #81c784;
+  color: var(--secondary-light);
   font-weight: bold;
 }
 
@@ -134,22 +134,22 @@ defineEmits(['toggleQuestion']);
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem;
-  background: rgba(79, 195, 247, 0.1);
-  border: 1px solid rgba(79, 195, 247, 0.2);
+  background: var(--info-bg-10);
+  border: 1px solid var(--info-light);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
-  color: #4fc3f7;
+  color: var(--info-light);
   font-weight: 500;
 }
 
 .player-answers-header:hover {
-  background: rgba(79, 195, 247, 0.15);
+  background: var(--info-bg-20);
 }
 
 .toggle-arrow {
   transition: transform 0.2s;
-  color: #4fc3f7;
+  color: var(--info-light);
 }
 
 .toggle-arrow.expanded {
@@ -162,7 +162,7 @@ defineEmits(['toggleQuestion']);
   gap: 0.5rem;
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-overlay-30);
   border-radius: 6px;
 }
 
@@ -176,27 +176,27 @@ defineEmits(['toggleQuestion']);
 }
 
 .player-response.response-correct {
-  background: rgba(76, 175, 80, 0.2);
-  border: 1px solid rgba(76, 175, 80, 0.3);
+  background: var(--secondary-bg-20);
+  border: 1px solid var(--secondary-light);
 }
 
 .player-response.response-incorrect {
-  background: rgba(244, 67, 54, 0.2);
-  border: 1px solid rgba(244, 67, 54, 0.3);
+  background: var(--danger-bg-20);
+  border: 1px solid var(--danger-light);
 }
 
 .player-response.response-unanswered {
-  background: rgba(158, 158, 158, 0.1);
-  border: 1px solid rgba(158, 158, 158, 0.2);
+  background: var(--bg-overlay-20);
+  border: 1px solid var(--border-color);
 }
 
 .player-name {
-  color: #ccc;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
 .player-answer {
-  color: #fff;
+  color: var(--text-primary);
   font-weight: bold;
 }
 
@@ -207,9 +207,9 @@ defineEmits(['toggleQuestion']);
 .not-presented {
   padding: 1rem;
   text-align: center;
-  color: #666;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px dashed rgba(255, 255, 255, 0.1);
+  color: var(--text-tertiary);
+  background: var(--bg-overlay-10);
+  border: 1px dashed var(--border-color);
   border-radius: 6px;
 }
 

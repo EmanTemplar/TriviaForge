@@ -74,6 +74,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
 import { useUIStore } from '@/stores/ui.js'
 import { useApi } from '@/composables/useApi.js'
+import { useTheme } from '@/composables/useTheme.js'
 import Button from '@/components/common/Button.vue'
 import FormInput from '@/components/common/FormInput.vue'
 
@@ -81,6 +82,10 @@ const router = useRouter()
 const authStore = useAuthStore()
 const uiStore = useUIStore()
 const { post } = useApi()
+
+// Initialize theme for LoginPage (dark theme default)
+const { initTheme } = useTheme('LOGIN')
+initTheme()
 
 const username = ref('admin')
 const password = ref('')
@@ -174,32 +179,32 @@ const performLogout = async () => {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #1a1a1a, #2b2b2b);
+  background: var(--bg-primary);
   padding: var(--spacing-md);
   position: relative;
   z-index: 100;
 }
 
 .login-box {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-overlay-10);
   backdrop-filter: blur(10px);
   padding: 3rem;
   border-radius: 20px;
   max-width: 500px;
   width: 100%;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-color);
 }
 
 .login-title {
   margin: 0 0 0.5rem 0;
   font-size: 2.5rem;
   text-align: center;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .login-subtitle {
-  color: #aaa;
+  color: var(--text-tertiary);
   margin-bottom: 2rem;
   text-align: center;
   font-size: var(--font-base);
@@ -218,7 +223,7 @@ const performLogout = async () => {
 }
 
 .success-message {
-  color: #0f0;
+  color: var(--secondary-light);
   text-align: center;
   margin: 0 0 1.5rem 0;
   font-size: var(--font-xl);
@@ -233,7 +238,7 @@ const performLogout = async () => {
 .access-link {
   padding: 1rem;
   border-radius: 10px;
-  color: #fff;
+  color: var(--text-primary);
   text-decoration: none;
   font-weight: bold;
   transition: all 0.2s;
@@ -242,47 +247,47 @@ const performLogout = async () => {
 }
 
 .admin-link {
-  background: rgba(0, 123, 255, 0.3);
-  border: 2px solid rgba(0, 123, 255, 0.5);
+  background: var(--info-bg-30);
+  border: 2px solid var(--info-light);
 }
 
 .admin-link:hover {
-  background: rgba(0, 123, 255, 0.5);
+  background: var(--info-bg-50);
   transform: translateY(-2px);
 }
 
 .presenter-link {
-  background: rgba(0, 200, 0, 0.3);
-  border: 2px solid rgba(0, 200, 0, 0.5);
+  background: var(--secondary-bg-30);
+  border: 2px solid var(--secondary-light);
 }
 
 .presenter-link:hover {
-  background: rgba(0, 200, 0, 0.5);
+  background: var(--secondary-bg-50);
   transform: translateY(-2px);
 }
 
 .display-link {
-  background: rgba(255, 165, 0, 0.3);
-  border: 2px solid rgba(255, 165, 0, 0.5);
+  background: var(--warning-bg-30);
+  border: 2px solid var(--warning-light);
 }
 
 .display-link:hover {
-  background: rgba(255, 165, 0, 0.5);
+  background: var(--warning-bg-50);
   transform: translateY(-2px);
 }
 
 .divider {
   margin: 2rem 0;
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border-color);
 }
 
 .player-link {
   display: inline-block;
   padding: 0.75rem 1.5rem;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-overlay-10);
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-primary);
   text-decoration: none;
   transition: all 0.2s;
   text-align: center;
@@ -290,7 +295,7 @@ const performLogout = async () => {
 }
 
 .player-link:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--bg-overlay-20);
   transform: translateY(-2px);
 }
 
