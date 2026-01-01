@@ -128,6 +128,7 @@ onUnmounted(() => {
   line-height: 1.4;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  word-break: break-word; /* Breaks long unbroken words (URLs, technical terms) */
 }
 
 .confirmation-prompt {
