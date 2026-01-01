@@ -111,6 +111,12 @@ defineEmits(['selectAnswer']);
   cursor: not-allowed;
 }
 
+/* Prevent letter (A. B. C. D.) from wrapping */
+.choice-btn strong {
+  white-space: nowrap;
+  display: inline-block;
+}
+
 .answer-feedback {
   padding: 1.5rem;
   border-radius: 10px;
