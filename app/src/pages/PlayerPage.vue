@@ -134,6 +134,15 @@
       @confirm="confirmChangeUsername"
       @close="showChangeUsernameModal = false"
     />
+
+    <!-- Answer Confirmation Modal -->
+    <AnswerConfirmModal
+      :isOpen="showAnswerConfirmModal"
+      :selectedIndex="pendingAnswerIndex"
+      :choices="currentQuestion?.choices || []"
+      @confirm="confirmAnswer"
+      @cancel="cancelAnswer"
+    />
   </div>
 </template>
 
@@ -152,6 +161,7 @@ import LogoutConfirmModal from '@/components/modals/LogoutConfirmModal.vue'
 import LeaveRoomConfirmModal from '@/components/modals/LeaveRoomConfirmModal.vue'
 import ChangeUsernameConfirmModal from '@/components/modals/ChangeUsernameConfirmModal.vue'
 import ProgressModal from '@/components/modals/ProgressModal.vue'
+import AnswerConfirmModal from '@/components/modals/AnswerConfirmModal.vue'
 import PlayerNavbar from '@/components/player/PlayerNavbar.vue'
 import QuestionDisplay from '@/components/player/QuestionDisplay.vue'
 import WaitingDisplay from '@/components/player/WaitingDisplay.vue'
@@ -191,6 +201,8 @@ const showProgressModalFlag = ref(false)
 const showLogoutConfirmModal = ref(false)
 const showLeaveRoomConfirmModal = ref(false)
 const showChangeUsernameModal = ref(false)
+const showAnswerConfirmModal = ref(false)
+const pendingAnswerIndex = ref(null)
 
 // Room/Player state
 const currentRoomCode = ref(null)
@@ -1016,8 +1028,18 @@ const selectAnswer = async (idx) => {
     return
   }
 
-  console.log(`[ANSWER] ✅ Submitting answer ${idx} for question ${currentQuestion.value.index}`)
-  selectedAnswer.value = idx
+  console.log(`[ANSWER] Player selected answer ${idx}, showing confirmation modal`)
+  // Store the selected answer and show confirmation modal
+  pendingAnswerIndex.value = idx
+  selectedAnswer.value = idx // Show visual selection
+  showAnswerConfirmModal.value = true
+}
+
+const confirmAnswer = () => {
+  const idx = pendingAnswerIndex.value
+  if (idx === null) return
+
+  console.log(`[ANSWER] ✅ Submitting confirmed answer ${idx} for question ${currentQuestion.value.index}`)
   answeredCurrentQuestion.value = true
   answeredQuestions.add(currentQuestion.value.index)
 
@@ -1032,6 +1054,18 @@ const selectAnswer = async (idx) => {
   socket.emit('submitAnswer', { roomCode: currentRoomCode.value, choice: idx })
   statusMessage.value = 'Answer submitted! ✓'
   statusMessageType.value = 'success'
+
+  // Close modal and clear pending answer
+  showAnswerConfirmModal.value = false
+  pendingAnswerIndex.value = null
+}
+
+const cancelAnswer = () => {
+  console.log('[ANSWER] Player cancelled answer selection')
+  // Clear selection and close modal
+  selectedAnswer.value = null
+  pendingAnswerIndex.value = null
+  showAnswerConfirmModal.value = false
 }
 
 // Helper function to emit joinRoom with proper debouncing and flag management
