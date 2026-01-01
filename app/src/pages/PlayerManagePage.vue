@@ -41,20 +41,16 @@
           Your display name is what other players see during games.
         </p>
         <form @submit.prevent="updateDisplayName" class="form">
-          <div class="form-group">
-            <label for="newDisplayName">New Display Name</label>
-            <input
-              v-model="newDisplayName"
-              type="text"
-              id="newDisplayName"
-              placeholder="Enter new display name"
-              maxlength="50"
-              required
-            />
-          </div>
+          <FormInput
+            v-model="newDisplayName"
+            label="New Display Name"
+            type="text"
+            placeholder="Enter new display name"
+            required
+          />
           <div class="btn-group">
-            <button type="submit" class="btn btn-success">Update Display Name</button>
-            <button type="button" class="btn btn-secondary" @click="cancelUpdate">Cancel</button>
+            <Button type="submit" variant="success" full-width>Update Display Name</Button>
+            <Button type="button" variant="secondary" full-width @click="cancelUpdate">Cancel</Button>
           </div>
         </form>
       </div>
@@ -66,30 +62,22 @@
           Register to save your account permanently and access it from any device.
         </p>
         <form @submit.prevent="registerAccount" class="form">
-          <div class="form-group">
-            <label for="registerPassword">Password</label>
-            <input
-              v-model="registerPassword"
-              type="password"
-              id="registerPassword"
-              placeholder="Choose a password"
-              minlength="6"
-              required
-            />
-          </div>
-          <div class="form-group">
-            <label for="confirmPassword">Confirm Password</label>
-            <input
-              v-model="confirmPassword"
-              type="password"
-              id="confirmPassword"
-              placeholder="Confirm your password"
-              minlength="6"
-              required
-            />
-          </div>
+          <FormInput
+            v-model="registerPassword"
+            label="Password"
+            type="password"
+            placeholder="Choose a password"
+            required
+          />
+          <FormInput
+            v-model="confirmPassword"
+            label="Confirm Password"
+            type="password"
+            placeholder="Confirm your password"
+            required
+          />
           <div class="btn-group">
-            <button type="submit" class="btn btn-success">Register Account</button>
+            <Button type="submit" variant="success" full-width>Register Account</Button>
           </div>
         </form>
       </div>
@@ -112,7 +100,7 @@
       </template>
       <template #footer>
         <div class="dialog-buttons">
-          <button @click="handleDialogClose" class="btn btn-success">OK</button>
+          <Button @click="handleDialogClose" variant="success">OK</Button>
         </div>
       </template>
     </Modal>
@@ -123,6 +111,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Modal from '@/components/common/Modal.vue'
+import Button from '@/components/common/Button.vue'
+import FormInput from '@/components/common/FormInput.vue'
 import { useApi } from '@/composables/useApi.js'
 
 const router = useRouter()
@@ -277,54 +267,7 @@ onUnmounted(() => {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
-.navbar {
-  background: var(--bg-secondary);
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--info-border);
-  position: relative;
-  z-index: 100;
-}
-
-.logo {
-  font-weight: bold;
-  font-size: 1.1rem;
-  color: var(--info-light);
-}
-
-.hamburger {
-  display: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--info-light);
-}
-
-.menu {
-  display: flex;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  gap: 1rem;
-  align-items: center;
-}
-
-.menu li {
-  white-space: nowrap;
-}
-
-.menu a {
-  color: var(--text-primary);
-  text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-
-.menu a:hover {
-  background: var(--info-bg-hover);
-}
+/* Navbar styles now in shared/navbars.css */
 
 .manage-container {
   flex: 1;
@@ -404,37 +347,7 @@ onUnmounted(() => {
   gap: 1rem;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-group label {
-  color: var(--text-tertiary);
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-}
-
-.form-group input {
-  padding: 0.75rem;
-  background: var(--bg-overlay-05);
-  border: 1px solid var(--border-dark);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 1rem;
-}
-
-.form-group input::placeholder {
-  color: var(--text-tertiary);
-}
-
-.form-group input:focus {
-  outline: none;
-  background: var(--bg-overlay-08);
-  border-color: var(--info-border-focus);
-}
+/* Form input styles now in FormInput component */
 
 .btn-group {
   display: flex;
@@ -442,51 +355,7 @@ onUnmounted(() => {
   margin-top: 1rem;
 }
 
-.btn {
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  border: 1px solid transparent;
-  transition: all 0.2s;
-  font-size: 1rem;
-}
-
-.btn-primary {
-  background: var(--info-bg);
-  border-color: var(--info-border);
-  color: var(--text-primary);
-  flex: 1;
-}
-
-.btn-primary:hover {
-  background: var(--info-bg-hover);
-  border-color: var(--info-border-hover);
-}
-
-.btn-success {
-  background: var(--secondary-bg);
-  border-color: var(--secondary-border);
-  color: var(--secondary-light);
-  flex: 1;
-}
-
-.btn-success:hover {
-  background: var(--secondary-bg-hover);
-  border-color: var(--secondary-border-hover);
-}
-
-.btn-secondary {
-  background: var(--neutral-bg);
-  border-color: var(--neutral-border);
-  color: var(--text-tertiary);
-  flex: 1;
-}
-
-.btn-secondary:hover {
-  background: var(--neutral-bg-hover);
-  border-color: var(--neutral-border-hover);
-}
+/* Button styles now in Button component */
 
 .stats-placeholder {
   text-align: center;
@@ -508,109 +377,11 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-.dialog-message {
-  margin: 0;
-  color: var(--text-tertiary);
-  text-align: center;
-  white-space: pre-wrap;
-}
+/* Dialog styles now in shared/modals.css */
 
-.dialog-buttons {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-}
-
-/* Responsive Design */
-/* Hide user separator line on desktop */
-.menu li:nth-child(n+5) {
-  border-top: none;
-  margin-top: 0;
-  padding-top: 0;
-}
-
-@media (max-width: 1024px) {
-  .menu li:nth-child(n+5) {
-    border-top: 1px solid var(--border-color);
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-  }
-
-  .hamburger {
-    display: block !important;
-    z-index: 101;
-  }
-
-  .menu {
-    position: absolute;
-    top: 60px;
-    left: 0;
-    right: 0;
-    flex-direction: column;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--info-border);
-    padding: 1rem;
-    gap: 0;
-    display: none !important;
-    z-index: 99;
-  }
-
-  .menu.open {
-    display: flex !important;
-  }
-
-  .menu li {
-    width: 100%;
-    white-space: normal;
-  }
-
-  .menu a {
-    display: block;
-    padding: 0.75rem;
-  }
-}
-
-@media (max-width: 900px) {
-  .hamburger {
-    display: block;
-  }
-
-  .menu {
-    position: absolute;
-    top: 60px;
-    left: 0;
-    right: 0;
-    flex-direction: column;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--info-border);
-    padding: 1rem;
-    gap: 0;
-    display: none;
-  }
-
-  .menu.open {
-    display: flex;
-  }
-
-  .menu li {
-    width: 100%;
-    white-space: normal;
-  }
-
-  .menu a {
-    display: block;
-    padding: 0.75rem;
-  }
-}
+/* Responsive navbar styles now in shared/navbars.css */
 
 @media (max-width: 600px) {
-  .navbar {
-    padding: 0.75rem;
-  }
-
-  .logo {
-    font-size: 0.95rem;
-  }
 
   .manage-container {
     padding: 1rem;

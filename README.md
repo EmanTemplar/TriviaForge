@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v4.0.0-alpha - Modular architecture refactoring, dual-ID session tracking, mobile compatibility enhancements
+**Latest Release**: v4.2.1 - Style Refactoring Release: Component-first CSS architecture, theme-aware colors, centralized version management
 
 ### Key Highlights
 
@@ -627,6 +627,15 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 ## Roadmap
 
 ### Completed Features
+
+**v4.2.1 (Jan 2026) - Style Refactoring Release**
+- [x] Component-first CSS architecture (Button, FormInput, Card enhancements)
+- [x] Eliminated 560+ lines of duplicate CSS across 6 pages (12.5% reduction)
+- [x] Theme-aware color system (zero hardcoded colors, perfect theme switching)
+- [x] Centralized version management (single source of truth)
+- [x] Extracted 4 shared CSS pattern files (navbars, scrollbars, badges, modals)
+- [x] Migrated all 6 pages to use enhanced components
+- [x] Perfect contrast across all 4 themes (dark, light, grey, system)
 
 **v3.2.0 (Dec 2025) - Performance & Testing**
 - [x] Enhanced connection stability (infinite reconnection attempts, 30s page visibility debounce)

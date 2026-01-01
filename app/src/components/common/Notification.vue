@@ -64,7 +64,7 @@ const removeNotification = (id) => {
   padding: var(--spacing-md) var(--spacing-lg);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  background-color: white;
+  background-color: var(--bg-secondary);
   color: var(--text-primary);
   animation: slideInRight 0.3s ease-out;
   min-height: 56px;

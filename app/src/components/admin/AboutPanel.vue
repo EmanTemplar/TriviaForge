@@ -4,7 +4,7 @@
       <h2>About TriviaForge</h2>
       <div class="version-box">
         <div class="version-label">Version</div>
-        <div class="version-number">3.3.1</div>
+        <div class="version-number">{{ VERSION }}</div>
       </div>
     </div>
 
@@ -83,7 +83,7 @@
         With features like session resumption, user authentication, player connection monitoring, and mobile-optimized interfaces, TriviaForge provides a seamless experience for presenters and players. Whether you're running classroom quizzes, corporate events, or casual game nights, TriviaForge adapts to your needs.
       </p>
       <p>
-        Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. Version 3.3.1 includes critical Phase 1 security improvements (CSRF protection, rate limiting, secure Excel import with ExcelJS) plus UI/UX bug fixes: answer timeout loading from Admin Options, long word wrapping and hyphenation across all views, mobile scrolling for players, background gradient fixes, and viewport-constrained display scaling.
+        Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. Version {{ VERSION }} ({{ VERSION_NAME }}) includes major CSS architecture improvements: component-first refactoring with enhanced Button, FormInput, and Card components, elimination of 500+ lines of duplicate CSS, fully theme-aware styling system (no hardcoded colors), and creation of shared CSS patterns for maintainability.
       </p>
     </div>
 
@@ -97,7 +97,7 @@
 </template>
 
 <script setup>
-// No props or emits needed - static content component
+import { VERSION, VERSION_NAME } from '@/config/version.js'
 </script>
 
 <style scoped>

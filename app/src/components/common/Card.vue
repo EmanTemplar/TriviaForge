@@ -1,5 +1,12 @@
 <template>
-  <div :class="['card', `card-${variant}`, { 'card-clickable': clickable }]" @click="handleClick">
+  <div
+    :class="[
+      'card',
+      `card-${variant}`,
+      { 'card-clickable': clickable, 'card-hoverable': hoverable }
+    ]"
+    @click="handleClick"
+  >
     <div v-if="title" class="card-header">
       <h3 class="card-title">{{ title }}</h3>
       <slot name="header-action" />
@@ -25,9 +32,25 @@ defineProps({
     type: String,
     default: 'default',
     validator: (value) =>
-      ['default', 'highlighted', 'warning', 'success', 'danger'].includes(value)
+      [
+        'default',
+        'highlighted',
+        'warning',
+        'success',
+        'danger',
+        'list-item',
+        'list-item-warning',
+        'quiz-item',
+        'session-item',
+        'user-item',
+        'banned-name-item'
+      ].includes(value)
   },
   clickable: {
+    type: Boolean,
+    default: false
+  },
+  hoverable: {
     type: Boolean,
     default: false
   }
@@ -79,6 +102,39 @@ const handleClick = () => {
   border-left: 4px solid var(--danger-color);
 }
 
+/* List item variants */
+.card-list-item,
+.card-quiz-item,
+.card-session-item,
+.card-user-item {
+  padding: 1rem;
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.card-list-item:hover,
+.card-quiz-item:hover,
+.card-session-item:hover,
+.card-user-item:hover {
+  background: var(--info-bg-30);
+}
+
+.card-list-item-warning,
+.card-banned-name-item {
+  padding: 1rem;
+  background: var(--warning-bg-20);
+  border: 1px solid var(--warning-light);
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.card-list-item-warning:hover,
+.card-banned-name-item:hover {
+  background: var(--warning-bg-30);
+}
+
 .card-clickable {
   cursor: pointer;
 }
@@ -86,6 +142,10 @@ const handleClick = () => {
 .card-clickable:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
+}
+
+.card-hoverable:hover {
+  transform: translateX(4px);
 }
 
 .card-header {

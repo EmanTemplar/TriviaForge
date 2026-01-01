@@ -26,7 +26,7 @@
             <strong>Connection Lost</strong>
             <p>Attempting to reconnect... ({{ reconnectionAttempts }} attempt{{ reconnectionAttempts !== 1 ? 's' : '' }})</p>
           </div>
-          <button @click="forceReconnect" class="reconnect-btn">Reconnect Now</button>
+          <Button @click="forceReconnect" variant="danger" size="small" class="reconnect-btn">Reconnect Now</Button>
         </div>
       </div>
 
@@ -145,6 +145,7 @@ import { useWakeLock } from '@/composables/useWakeLock.js'
 import { useApi } from '@/composables/useApi.js'
 import { useUIStore } from '@/stores/ui.js'
 import { useTheme } from '@/composables/useTheme.js'
+import Button from '@/components/common/Button.vue'
 import LoginModal from '@/components/modals/LoginModal.vue'
 import SetPasswordModal from '@/components/modals/SetPasswordModal.vue'
 import LogoutConfirmModal from '@/components/modals/LogoutConfirmModal.vue'
@@ -1443,20 +1444,9 @@ const verifyAuthToken = async () => {
   opacity: 0.9;
 }
 
+/* Button styles now in Button component */
 .reconnect-btn {
-  margin-left: auto;
-  padding: 0.5rem 1rem;
-  background: var(--bg-primary);
-  color: var(--danger-color);
-  border: 1px solid var(--danger-light);
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.2s;
-}
-
-.reconnect-btn:hover {
-  background: var(--bg-secondary);
+  margin-left: auto; /* Keep for flexbox positioning */
 }
 
 /* Missed Questions Banner */

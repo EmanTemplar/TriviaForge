@@ -72,7 +72,7 @@
         @keypress.enter="joinRoom"
       />
       <template #footer>
-        <button class="btn-primary" @click="joinRoom">Join Room</button>
+        <Button variant="primary" @click="joinRoom">Join Room</Button>
       </template>
     </Modal>
   </div>
@@ -85,6 +85,7 @@ import { useSocket } from '@/composables/useSocket.js'
 import { useUIStore } from '@/stores/ui.js'
 import { useTheme } from '@/composables/useTheme.js'
 import Modal from '@/components/common/Modal.vue'
+import Button from '@/components/common/Button.vue'
 import FormInput from '@/components/common/FormInput.vue'
 import ThemeToggle from '@/components/display/ThemeToggle.vue'
 
@@ -504,28 +505,7 @@ onUnmounted(() => {
   margin-left: 0.5rem;
 }
 
-/* Connection states */
-.player-status.status-connected {
-  color: var(--secondary-light);
-}
-
-.player-status.status-away {
-  color: var(--warning-light);
-}
-
-.player-status.status-disconnected {
-  color: var(--danger-light);
-}
-
-.player-status.status-warning {
-  color: var(--warning-light);
-  animation: pulse-warning 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-warning {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
+/* Connection status styles now in shared/badges.css */
 
 .status-display {
   margin-top: 1rem;
@@ -537,34 +517,12 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-.status-connected {
-  color: var(--secondary-light);
-}
-
-.status-disconnected {
-  color: var(--text-tertiary);
-}
-
 .modal-description {
   color: var(--text-tertiary);
   margin-bottom: 1.5rem;
 }
 
-/* Modal button styles */
-.btn-primary {
-  padding: 0.75rem 1.5rem;
-  background: var(--info-bg-30);
-  border: 1px solid var(--info-light);
-  border-radius: 8px;
-  color: var(--info-light);
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary:hover {
-  background: var(--info-bg-50);
-}
+/* Button styles now in Button component */
 
 @media (max-width: 768px) {
   .choices-display {

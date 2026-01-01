@@ -83,10 +83,10 @@
       </template>
       <template #footer>
         <div class="dialog-buttons">
-          <button v-if="dialogType === 'confirm'" @click="handleDialogCancel" class="btn-secondary">Cancel</button>
-          <button @click="handleDialogConfirm" class="btn-success">
+          <Button v-if="dialogType === 'confirm'" @click="handleDialogCancel" variant="secondary">Cancel</Button>
+          <Button @click="handleDialogConfirm" variant="success">
             {{ dialogType === 'confirm' ? 'Confirm' : 'OK' }}
-          </button>
+          </Button>
         </div>
       </template>
     </Modal>
@@ -97,6 +97,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Modal from '@/components/common/Modal.vue'
+import Button from '@/components/common/Button.vue'
 import PresenterNavbar from '@/components/presenter/PresenterNavbar.vue'
 import PresenterSidebar from '@/components/presenter/PresenterSidebar.vue'
 import QuizDisplay from '@/components/presenter/QuizDisplay.vue'
@@ -705,55 +706,7 @@ onUnmounted(() => {
   justify-content: flex-end;
 }
 
-.btn-primary,
-.btn-secondary {
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: var(--info-bg-40);
-  border: 1px solid var(--info-light);
-  color: var(--info-light);
-}
-
-.btn-primary:hover {
-  background: var(--info-bg-60);
-}
-
-.btn-success {
-  background: var(--secondary-bg-40);
-  border: 1px solid var(--secondary-light);
-  color: var(--secondary-light);
-}
-
-.btn-success:hover {
-  background: var(--secondary-bg-60);
-}
-
-.btn-danger {
-  background: var(--danger-bg-40);
-  border: 1px solid var(--danger-light);
-  color: var(--danger-light);
-}
-
-.btn-danger:hover {
-  background: var(--danger-bg-60);
-}
-
-.btn-secondary {
-  background: var(--bg-overlay-30);
-  border: 1px solid var(--border-color);
-  color: var(--text-tertiary);
-}
-
-.btn-secondary:hover {
-  background: var(--bg-overlay-50);
-  border-color: var(--border-dark);
-}
+/* Button styles now in Button component */
 
 /* Responsive Design */
 @media (max-width: 1200px) {

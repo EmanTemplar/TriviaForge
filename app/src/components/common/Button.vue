@@ -31,7 +31,22 @@ defineProps({
     type: String,
     default: 'primary',
     validator: (value) =>
-      ['primary', 'secondary', 'danger', 'outline', 'ghost'].includes(value)
+      [
+        'primary',
+        'secondary',
+        'success',
+        'danger',
+        'delete',
+        'download',
+        'upload',
+        'add',
+        'remove',
+        'quick',
+        'refresh',
+        'shuffle',
+        'outline',
+        'ghost'
+      ].includes(value)
   },
   size: {
     type: String,
@@ -89,7 +104,7 @@ defineProps({
 /* Variants */
 .btn-primary {
   background-color: var(--primary-color);
-  color: white;
+  color: var(--btn-text-light);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -104,7 +119,7 @@ defineProps({
 
 .btn-secondary {
   background-color: var(--secondary-color);
-  color: white;
+  color: var(--btn-text-light);
 }
 
 .btn-secondary:hover:not(:disabled) {
@@ -119,7 +134,7 @@ defineProps({
 
 .btn-danger {
   background-color: var(--danger-color);
-  color: white;
+  color: var(--btn-text-light);
 }
 
 .btn-danger:hover:not(:disabled) {
@@ -153,6 +168,137 @@ defineProps({
   background-color: var(--bg-secondary);
 }
 
+.btn-success {
+  background: var(--secondary-bg-40);
+  border: 1px solid var(--secondary-light);
+  color: var(--btn-text-overlay);
+}
+
+.btn-success:hover:not(:disabled) {
+  background: var(--secondary-bg-60);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-success:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-delete {
+  background: var(--danger-bg-30);
+  border: 1px solid var(--danger-light);
+  color: var(--danger-light);
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: var(--danger-bg-50);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-delete:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-download {
+  background: var(--secondary-bg-30);
+  border: 1px solid var(--secondary-light);
+  color: var(--btn-text-overlay);
+}
+
+.btn-download:hover:not(:disabled) {
+  background: var(--secondary-bg-50);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-download:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-upload {
+  background: var(--primary-bg-40);
+  border: 1px solid var(--primary-light);
+  color: var(--primary-light);
+}
+
+.btn-upload:hover:not(:disabled) {
+  background: var(--primary-bg-60);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-upload:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-add {
+  background: var(--secondary-bg-30);
+  border: 1px solid var(--secondary-light);
+  color: var(--btn-text-overlay);
+}
+
+.btn-add:hover:not(:disabled) {
+  background: var(--secondary-bg-50);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-add:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-remove {
+  background: var(--danger-bg-30);
+  border: 1px solid var(--danger-light);
+  color: var(--danger-light);
+}
+
+.btn-remove:hover:not(:disabled) {
+  background: var(--danger-bg-50);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-remove:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-quick,
+.btn-refresh {
+  background: var(--bg-tertiary-30);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.btn-quick:hover:not(:disabled),
+.btn-refresh:hover:not(:disabled) {
+  background: var(--bg-tertiary-50);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-quick:active:not(:disabled),
+.btn-refresh:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-shuffle {
+  background: var(--warning-bg-30);
+  border: 1px solid var(--warning-light);
+  color: var(--warning-light);
+}
+
+.btn-shuffle:hover:not(:disabled) {
+  background: var(--warning-bg-50);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-shuffle:active:not(:disabled) {
+  transform: translateY(0);
+}
+
 /* States */
 .btn:disabled {
   opacity: 0.5;
@@ -176,7 +322,7 @@ defineProps({
   width: 1rem;
   height: 1rem;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
+  border-top-color: var(--btn-text-light);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }

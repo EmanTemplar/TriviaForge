@@ -1,0 +1,91 @@
+/**
+ * Shared Modal/Dialog Styles
+ * Common patterns for modal dialogs, messages, and button layouts
+ */
+
+/* Dialog Message */
+.dialog-message {
+  margin: 0;
+  color: var(--text-tertiary);
+  text-align: center;
+  white-space: pre-wrap;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* Modal Message (alternative) */
+.modal-message {
+  margin: 0;
+  color: var(--text-secondary);
+  text-align: center;
+  white-space: pre-wrap;
+}
+
+/* Dialog Buttons Container */
+.dialog-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+/* Modal Buttons Container (alternative alignment) */
+.modal-buttons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+/* Modal Footer */
+.modal-footer {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Dialog Input Wrapper */
+.dialog-input-wrapper {
+  margin-top: 1rem;
+}
+
+/* Dialog Input Field */
+.dialog-input {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--bg-tertiary-30);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.dialog-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.dialog-input:focus {
+  outline: none;
+  background: var(--bg-tertiary-50);
+  border-color: var(--info-color);
+}
+
+/* Modal Description Text */
+.modal-description {
+  color: var(--text-tertiary);
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Status Display (for modals) */
+.status-display {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: var(--bg-overlay-10);
+  border-radius: 8px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}

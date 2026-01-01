@@ -145,6 +145,11 @@
   --bg-overlay-10: rgba(255, 255, 255, 0.05);
   --bg-overlay-20: rgba(255, 255, 255, 0.08);
   --bg-overlay-30: rgba(255, 255, 255, 0.1);
+
+  /* Button Text Colors (Dark theme) */
+  --btn-text-light: #ffffff;        /* White text for solid colored button backgrounds */
+  --btn-text-dark: #0f172a;         /* Dark text (not used in dark theme) */
+  --btn-text-overlay: #ffffff;      /* Light text for semi-transparent overlays on dark backgrounds */
 }
 
 /* ============================================
@@ -247,6 +252,11 @@
   --bg-overlay-10: rgba(15, 23, 42, 0.06);
   --bg-overlay-20: rgba(15, 23, 42, 0.09);
   --bg-overlay-30: rgba(15, 23, 42, 0.12);
+
+  /* Button Text Colors (Light theme) */
+  --btn-text-light: #ffffff;        /* White text for solid colored button backgrounds */
+  --btn-text-dark: #0f172a;         /* Dark text for semi-transparent overlays on light backgrounds */
+  --btn-text-overlay: #0f172a;      /* Dark text for semi-transparent overlays on light backgrounds */
 }
 
 /* ============================================
@@ -349,6 +359,11 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+
+  /* Button Text Colors (Grey theme) */
+  --btn-text-light: #ffffff;        /* White text for solid colored button backgrounds */
+  --btn-text-dark: #0f172a;         /* Dark text (not used in grey theme) */
+  --btn-text-overlay: #ffffff;      /* Light text for semi-transparent overlays on dark backgrounds */
 }
 
 /* ============================================
@@ -436,6 +451,11 @@
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+
+    /* Button Text Colors (System theme - dark variant) */
+    --btn-text-light: #ffffff;        /* White text for solid colored button backgrounds */
+    --btn-text-dark: #0f172a;         /* Dark text (not used in dark variant) */
+    --btn-text-overlay: #ffffff;      /* Light text for semi-transparent overlays on dark backgrounds */
   }
 }
 
@@ -521,6 +541,11 @@
     --shadow-md: 0 4px 6px -1px rgba(56, 69, 83, 0.08);
     --shadow-lg: 0 10px 15px -3px rgba(56, 69, 83, 0.1);
     --shadow-xl: 0 20px 25px -5px rgba(56, 69, 83, 0.12);
+
+    /* Button Text Colors (System theme - light variant) */
+    --btn-text-light: #ffffff;        /* White text for solid colored button backgrounds */
+    --btn-text-dark: #0f172a;         /* Dark text for semi-transparent overlays on light backgrounds */
+    --btn-text-overlay: #0f172a;      /* Dark text for semi-transparent overlays on light backgrounds */
   }
 }
 

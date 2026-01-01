@@ -1,0 +1,46 @@
+/**
+ * Shared Scrollbar Styles
+ * Webkit scrollbar styling for custom scrollable containers
+ * Apply .custom-scrollbar class to any scrollable container
+ */
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--bg-tertiary-20);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--info-bg-50);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--info-bg-70);
+}
+
+/* Alternative: Apply directly to common scrollable containers */
+.scrollable-list::-webkit-scrollbar,
+.tab-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollable-list::-webkit-scrollbar-track,
+.tab-content::-webkit-scrollbar-track {
+  background: var(--bg-tertiary-20);
+  border-radius: 4px;
+}
+
+.scrollable-list::-webkit-scrollbar-thumb,
+.tab-content::-webkit-scrollbar-thumb {
+  background: var(--info-bg-50);
+  border-radius: 4px;
+}
+
+.scrollable-list::-webkit-scrollbar-thumb:hover,
+.tab-content::-webkit-scrollbar-thumb:hover {
+  background: var(--info-bg-70);
+}

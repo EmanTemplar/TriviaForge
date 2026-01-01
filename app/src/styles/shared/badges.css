@@ -1,0 +1,116 @@
+/**
+ * Shared Badge Styles
+ * Status badges and semantic indicators used across pages
+ */
+
+/* Base Badge */
+.badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+/* Semantic Badge Variants */
+.badge-success {
+  background: var(--secondary-bg-30);
+  color: var(--secondary-light);
+  border: 1px solid var(--secondary-light);
+}
+
+.badge-warning {
+  background: var(--warning-bg-30);
+  color: var(--warning-light);
+  border: 1px solid var(--warning-light);
+}
+
+.badge-danger {
+  background: var(--danger-bg-30);
+  color: var(--danger-light);
+  border: 1px solid var(--danger-light);
+}
+
+.badge-info {
+  background: var(--info-bg-30);
+  color: var(--info-light);
+  border: 1px solid var(--info-light);
+}
+
+.badge-primary {
+  background: var(--primary-bg-30);
+  color: var(--primary-light);
+  border: 1px solid var(--primary-light);
+}
+
+/* Connection Status Badges */
+.status-connected {
+  color: var(--secondary-light);
+}
+
+.status-away {
+  color: var(--warning-light);
+}
+
+.status-disconnected {
+  color: var(--danger-light);
+}
+
+.status-warning {
+  color: var(--warning-light);
+  animation: pulse-warning 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Pattern Type Badges (for banned names, etc.) */
+.pattern-type-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pattern-type-badge.type-exact {
+  background: var(--primary-bg-30);
+  color: var(--primary-light);
+  border: 1px solid var(--primary-light);
+}
+
+.pattern-type-badge.type-contains {
+  background: var(--primary-bg-40);
+  color: var(--primary-light);
+  border: 1px solid var(--primary-light);
+}
+
+/* Player Status Indicators */
+.player-status {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.player-status.status-connected {
+  color: var(--secondary-light);
+}
+
+.player-status.status-away {
+  color: var(--warning-light);
+}
+
+.player-status.status-disconnected {
+  color: var(--danger-light);
+}
+
+.player-status.status-warning {
+  color: var(--warning-light);
+  animation: pulse-warning 1.5s ease-in-out infinite;
+}

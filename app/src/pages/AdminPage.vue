@@ -137,12 +137,12 @@
     <Modal :isOpen="showDialog" size="small" :title="dialogTitle" @close="handleDialogCancel">
       <p class="dialog-message">{{ dialogMessage }}</p>
       <div v-if="dialogShowInput" class="dialog-input-wrapper">
-        <input v-model="dialogInputValue" type="text" class="dialog-input" />
+        <FormInput v-model="dialogInputValue" type="text" />
       </div>
       <template #footer>
         <div class="dialog-buttons">
-          <button @click="handleDialogCancel" class="btn-secondary">Cancel</button>
-          <button @click="handleDialogConfirm" class="btn-success">{{ dialogConfirmText }}</button>
+          <Button @click="handleDialogCancel" variant="secondary">Cancel</Button>
+          <Button @click="handleDialogConfirm" variant="success">{{ dialogConfirmText }}</Button>
         </div>
       </template>
     </Modal>
@@ -167,8 +167,8 @@
         This action cannot be undone.
       </p>
       <template #footer>
-        <button class="btn-danger" @click="confirmDelete">Delete</button>
-        <button class="btn-secondary" @click="showDeleteConfirmModal = false">Cancel</button>
+        <Button variant="danger" @click="confirmDelete">Delete</Button>
+        <Button variant="secondary" @click="showDeleteConfirmModal = false">Cancel</Button>
       </template>
     </Modal>
   </div>
@@ -178,6 +178,9 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Modal from '@/components/common/Modal.vue'
+import Button from '@/components/common/Button.vue'
+import FormInput from '@/components/common/FormInput.vue'
+import Card from '@/components/common/Card.vue'
 import { useApi } from '@/composables/useApi.js'
 import { useAuthStore } from '@/stores/auth.js'
 import { useTheme } from '@/composables/useTheme.js'
@@ -1130,57 +1133,9 @@ onUnmounted(() => {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
+/* Navbar base styles in shared/navbars.css */
 .navbar {
-  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-accent) 100%);
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--info-light);
-  position: relative;
-  z-index: 100;
-}
-
-.logo {
-  font-weight: bold;
-  font-size: 1.2rem;
-  color: var(--info-light);
-}
-
-.hamburger {
-  display: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--info-light);
-}
-
-.menu {
-  display: flex;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  gap: 1rem;
-  align-items: center;
-}
-
-.menu li {
-  white-space: nowrap;
-}
-
-.menu a {
-  color: var(--text-secondary);
-  text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-
-.menu a:hover {
-  background: var(--info-bg-20);
-}
-
-.username-item {
-  color: var(--info-light);
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-accent) 100%); /* AdminPage-specific gradient */
 }
 
 .tabs-container {
@@ -1232,40 +1187,7 @@ onUnmounted(() => {
   padding-right: 0.5rem;
 }
 
-/* Custom scrollbar for scrollable tabs */
-.sessions-management::-webkit-scrollbar,
-.options-management::-webkit-scrollbar,
-.users-management::-webkit-scrollbar,
-.settings-management::-webkit-scrollbar,
-.about-tab::-webkit-scrollbar {
-  width: 8px;
-}
-
-.sessions-management::-webkit-scrollbar-track,
-.options-management::-webkit-scrollbar-track,
-.users-management::-webkit-scrollbar-track,
-.settings-management::-webkit-scrollbar-track,
-.about-tab::-webkit-scrollbar-track {
-  background: var(--bg-tertiary-20);
-  border-radius: 4px;
-}
-
-.sessions-management::-webkit-scrollbar-thumb,
-.options-management::-webkit-scrollbar-thumb,
-.users-management::-webkit-scrollbar-thumb,
-.settings-management::-webkit-scrollbar-thumb,
-.about-tab::-webkit-scrollbar-thumb {
-  background: var(--info-bg-50);
-  border-radius: 4px;
-}
-
-.sessions-management::-webkit-scrollbar-thumb:hover,
-.options-management::-webkit-scrollbar-thumb:hover,
-.users-management::-webkit-scrollbar-thumb:hover,
-.settings-management::-webkit-scrollbar-thumb:hover,
-.about-tab::-webkit-scrollbar-thumb:hover {
-  background: var(--info-bg-70);
-}
+/* Scrollbar styles now in shared/scrollbars.css */
 
 .tab-content {
   animation: fadeIn 0.2s ease-in;
@@ -1390,153 +1312,7 @@ onUnmounted(() => {
   font-size: 0.95rem;
 }
 
-.btn-primary,
-.btn-secondary,
-.btn-delete,
-.btn-danger,
-.btn-download,
-.btn-upload,
-.btn-add,
-.btn-remove,
-.btn-quick,
-.btn-refresh,
-.btn-shuffle {
-  padding: 0.6rem 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  border: 1px solid transparent;
-  transition: all 0.2s;
-  font-size: 0.95rem;
-}
-
-.btn-primary {
-  width: 100%;
-  background: var(--primary-bg-40);
-  border-color: var(--primary-light);
-  color: var(--text-primary);
-  margin-top: 1rem;
-}
-
-.btn-primary:hover {
-  background: var(--primary-bg-60);
-  border-color: var(--primary-light);
-}
-
-.btn-success {
-  background: var(--secondary-bg-40);
-  border-color: var(--secondary-light);
-  color: var(--secondary-light);
-}
-
-.btn-success:hover {
-  background: var(--secondary-bg-60);
-  border-color: var(--secondary-light);
-}
-
-.btn-secondary {
-  background: var(--bg-tertiary-50);
-  border-color: var(--border-color);
-  color: var(--text-tertiary);
-}
-
-.btn-secondary:hover {
-  background: var(--bg-tertiary-70);
-  border-color: var(--border-color);
-}
-
-.btn-delete {
-  width: 100%;
-  background: var(--danger-bg-30);
-  border-color: var(--danger-light);
-  color: var(--danger-light);
-  margin-top: 0rem;
-}
-
-.btn-delete:hover {
-  background: var(--danger-bg-50);
-}
-
-.btn-danger {
-  background: var(--danger-bg-30);
-  border-color: var(--danger-light);
-  color: var(--danger-light);
-}
-
-.btn-danger:hover {
-  background: var(--danger-bg-50);
-  border-color: var(--danger-light);
-}
-
-.btn-download,
-.btn-upload {
-  width: 100%;
-  margin-bottom: 0.5rem;
-}
-
-.btn-download {
-  background: var(--secondary-bg-30);
-  border-color: var(--secondary-light);
-  color: var(--secondary-light);
-}
-
-.btn-download:hover {
-  background: var(--secondary-bg-50);
-}
-
-.btn-upload {
-  background: var(--primary-bg-40);
-  border-color: var(--primary-light);
-  color: var(--primary-light);
-}
-
-.btn-upload:hover {
-  background: var(--primary-bg-60);
-}
-
-.btn-add {
-  background: var(--secondary-bg-30);
-  border-color: var(--secondary-light);
-  color: var(--secondary-light);
-  padding: 0.4rem 0.8rem;
-}
-
-.btn-add:hover {
-  background: var(--secondary-bg-50);
-}
-
-.btn-remove {
-  background: var(--danger-bg-30);
-  border-color: var(--danger-light);
-  color: var(--danger-light);
-  padding: 0.4rem 0.8rem;
-}
-
-.btn-remove:hover {
-  background: var(--danger-bg-50);
-}
-
-.btn-quick,
-.btn-refresh {
-  background: var(--bg-tertiary-30);
-  border-color: var(--border-color);
-  color: var(--text-primary);
-}
-
-.btn-quick:hover,
-.btn-refresh:hover {
-  background: var(--bg-tertiary-50);
-}
-
-.btn-shuffle {
-  background: var(--warning-bg-30);
-  border-color: var(--warning-light);
-  color: var(--warning-light);
-}
-
-.btn-shuffle:hover {
-  background: var(--warning-bg-50);
-}
+/* Button styles now in Button component */
 
 .excel-import-box {
   margin: 1rem 0;
@@ -1568,33 +1344,7 @@ onUnmounted(() => {
   margin: 1rem 0;
 }
 
-.quiz-form input,
-.quiz-form textarea,
-input[type="text"],
-textarea,
-select {
-  width: 100%;
-  padding: 0.75rem;
-  margin-bottom: 0.75rem;
-  background: var(--bg-tertiary-30);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-family: inherit;
-}
-
-input[type="text"]::placeholder,
-textarea::placeholder {
-  color: var(--text-tertiary);
-}
-
-input[type="text"]:focus,
-textarea:focus,
-select:focus {
-  outline: none;
-  background: var(--bg-tertiary-50);
-  border-color: var(--info-color);
-}
+/* Form input styles now in FormInput component */
 
 .quiz-list {
   display: flex;
@@ -2245,25 +1995,7 @@ select:focus {
   font-size: 1.05rem;
 }
 
-.pattern-type-badge {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.pattern-type-badge.type-exact {
-  background: var(--primary-bg-30);
-  color: var(--primary-light);
-  border: 1px solid var(--primary-light);
-}
-
-.pattern-type-badge.type-contains {
-  background: var(--primary-bg-40);
-  color: var(--primary-light);
-  border: 1px solid var(--primary-light);
-}
+/* Badge styles now in shared/badges.css */
 
 .banned-meta {
   display: flex;
@@ -2473,37 +2205,7 @@ select:focus {
 }
 
 /* Dialog */
-.dialog-message {
-  margin: 0;
-  color: var(--text-tertiary);
-  text-align: center;
-  white-space: pre-wrap;
-}
-
-.dialog-input-wrapper {
-  margin-top: 1rem;
-}
-
-.dialog-input {
-  width: 100%;
-  padding: 0.75rem;
-  background: var(--bg-tertiary-30);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  color: var(--text-primary);
-}
-
-.dialog-input:focus {
-  outline: none;
-  background: var(--bg-tertiary-50);
-  border-color: var(--info-color);
-}
-
-.dialog-buttons {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-}
+/* Dialog styles now in shared/modals.css and FormInput component */
 
 /* Session Detail Modal */
 .session-detail-content {
