@@ -15,7 +15,8 @@
         :disabled="answeredCurrentQuestion || answerRevealed"
         @click="$emit('selectAnswer', idx)"
       >
-        <strong>{{ String.fromCharCode(65 + idx) }}.</strong> {{ choice }}
+        <span class="choice-letter">{{ String.fromCharCode(65 + idx) }}.</span>
+        <span class="choice-text">{{ choice }}</span>
       </button>
     </div>
 
@@ -75,15 +76,12 @@ defineEmits(['selectAnswer']);
   font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.3s;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  -webkit-hyphens: auto;
-  -moz-hyphens: auto;
-  -ms-hyphens: auto;
-  hyphens: auto;
   min-width: 0;
   box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  text-align: left;
 }
 
 .choice-btn:hover:not(:disabled) {
@@ -111,10 +109,21 @@ defineEmits(['selectAnswer']);
   cursor: not-allowed;
 }
 
-/* Prevent letter (A. B. C. D.) from wrapping */
-.choice-btn strong {
+/* Answer choice letter (A. B. C. D.) - never wraps */
+.choice-letter {
+  font-weight: bold;
+  font-size: 1.3rem;
   white-space: nowrap;
-  display: inline-block;
+  flex-shrink: 0;
+  color: var(--text-primary);
+}
+
+/* Answer choice text - allows wrapping */
+.choice-text {
+  flex: 1;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
 }
 
 .answer-feedback {
