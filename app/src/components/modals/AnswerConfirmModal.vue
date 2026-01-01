@@ -4,7 +4,7 @@
       <div class="answer-confirm-content">
         <p class="selection-label">You selected:</p>
         <div class="selected-answer-display">
-          <strong class="answer-letter">{{ answerLetter }}</strong>
+          <strong class="answer-letter">{{ answerLetter }}.</strong>
           <span class="answer-text">{{ answerText }}</span>
         </div>
         <p class="confirmation-prompt">
@@ -18,7 +18,7 @@
       <button class="btn-success btn-large" @click="$emit('confirm')" autofocus>
         Confirm Answer
       </button>
-      <button class="btn-secondary btn-large" @click="$emit('cancel')">
+      <button class="btn-cancel btn-large" @click="$emit('cancel')">
         Cancel
       </button>
     </template>
@@ -119,6 +119,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   min-width: 2.5rem;
   text-align: center;
+  white-space: nowrap; /* Prevent letter and period from wrapping */
 }
 
 .answer-text {
@@ -151,6 +152,26 @@ onUnmounted(() => {
   font-size: 1.1rem;
   min-height: 56px; /* iOS recommended touch target */
   font-weight: 600;
+}
+
+/* Cancel button styling - grey/neutral to differentiate from confirm */
+.btn-cancel {
+  background: var(--bg-overlay-20);
+  color: var(--text-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background: var(--bg-overlay-30);
+  border-color: var(--border-dark);
+  color: var(--text-primary);
+}
+
+.btn-cancel:active {
+  transform: scale(0.98);
 }
 
 /* Mobile optimizations */
