@@ -241,6 +241,33 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
   color: var(--danger-light);
 }
 
+/* Mobile - allow room info to wrap to show wake lock indicator */
+@media (max-width: 1024px) {
+  .nav-room-info {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 140px;
+  }
+
+  .wake-lock-indicator {
+    order: 3;
+    width: 100%;
+    text-align: right;
+    font-size: 1.1rem;
+    margin-left: 0;
+    margin-top: 0.25rem;
+  }
+
+  .nav-progress-container {
+    flex: 0 1 auto;
+  }
+
+  .progress-btn {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+  }
+}
+
 /* Mobile styles */
 @media (max-width: 1024px) {
   .hamburger {
