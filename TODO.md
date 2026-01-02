@@ -34,27 +34,32 @@
 ## 🚀 Current Priorities (Active Development)
 
 ### 1. Fix Stay-Awake Notification on Mobile 📱
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETE
 **Priority:** HIGH
+**Completed:** 2026-01-01 (v4.2.2)
+**Branch:** `player-improvements-v4`
+
 **Issue:** Wake lock indicator not visible on mobile browsers (navbar space constraint)
 
 **Problem:**
-- Stay-awake/wake lock status badge shows on desktop but not on mobile
-- Mobile navbar has limited space, causing UI elements to be hidden or overlap
-- Players on mobile can't see if screen will stay awake during quiz
+- Stay-awake/wake lock status badge showed on desktop but was completely hidden on mobile
+- Mobile navbar had limited space, causing wake lock indicator to be cut off
+- Specifically affected Android devices at ~1008px width (Brave browser)
 
-**Solution Approach:**
-- Investigate navbar layout on mobile viewports
-- Options:
-  1. Move wake lock indicator to a different location (sidebar, below room code)
-  2. Use icon-only indicator with tooltip (no text)
-  3. Show indicator only when active (hide when inactive)
-  4. Combine with existing status indicators
+**Solution Implemented:**
+- Changed mobile breakpoint from 768px to 1024px to match hamburger menu threshold
+- Room info section now wraps to two lines on mobile (≤1024px)
+- Wake lock indicator (🔆) appears on its own line below room code and connection status
+- Right-aligned and slightly larger (1.1rem) for better visibility
+- Increased max-width to 140px for proper layout
 
-**Files to Review:**
-- `app/src/components/player/PlayerNavbar.vue` - Navbar layout and responsive design
-- `app/src/pages/PlayerPage.vue` - Wake lock state management
-- `app/src/styles/main.css` - Mobile breakpoint styles
+**Files Modified:**
+- `app/src/components/player/PlayerNavbar.vue` - Added mobile-specific wrapping layout
+
+**Testing:**
+✅ Should now be visible on Android devices (~1008px width)
+✅ Wraps to own line on mobile devices
+✅ Desktop layout unchanged
 
 ---
 
