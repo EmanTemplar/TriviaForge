@@ -37,12 +37,19 @@
         :presentedQuestions="presentedQuestions"
         :revealedQuestions="revealedQuestions"
         :currentRoomCode="currentRoomCode"
+        :answeredCount="answeredPlayers.length"
+        :totalActivePlayers="activePlayers.length"
+        :allAnswered="allPlayersAnswered"
+        :autoRevealCountdown="autoRevealCountdown"
+        :autoRevealEnabled="autoRevealEnabled"
         @selectQuestion="selectQuestion"
         @previousQuestion="previousQuestion"
         @nextQuestion="nextQuestion"
         @presentQuestion="presentQuestion"
         @revealAnswer="revealAnswer"
         @completeQuiz="completeQuiz"
+        @cancelAutoReveal="cancelAutoReveal"
+        @update:autoRevealEnabled="autoRevealEnabled = $event"
       />
 
       <!-- Right Column: Connected Players -->
@@ -154,9 +161,30 @@ const activeRooms = ref([])
 const progressStats = ref(null)
 const sortedPlayers = ref([])
 
+// All players answered notification state
+const allPlayersAnswered = ref(false)
+const autoRevealCountdown = ref(null)
+const autoRevealEnabled = ref(true) // Default: auto-reveal enabled
+let autoRevealTimer = null
+
 // Computed: Filter out spectators from connected players
 const nonSpectatorPlayers = computed(() => {
   return connectedPlayers.value.filter(p => !p.isSpectator)
+})
+
+// Computed: Count of active players (connected + away, excluding disconnected)
+const activePlayers = computed(() => {
+  return connectedPlayers.value.filter(
+    p => !p.isSpectator && (p.connectionState === 'connected' || p.connectionState === 'away' || p.connectionState === 'warning')
+  )
+})
+
+// Computed: Count of players who have answered the current question
+const answeredPlayers = computed(() => {
+  if (presentedQuestionIndex.value === null) return []
+  return activePlayers.value.filter(
+    p => p.choice !== null
+  )
 })
 
 // Answer reveal modal data
@@ -316,6 +344,7 @@ const presentQuestion = async () => {
     return
   }
   presentedQuestionIndex.value = currentQuestionIndex.value
+  resetAllAnsweredState() // Reset notification state for new question
   socket.emit('presentQuestion', { roomCode: currentRoomCode.value, questionIndex: currentQuestionIndex.value })
 }
 
@@ -329,6 +358,7 @@ const revealAnswer = async () => {
     await showAlert('Please present a question to players first.', 'No Question Presented')
     return
   }
+  cancelAutoReveal() // Cancel auto-reveal if manually revealing
   socket.emit('revealAnswer', { roomCode: currentRoomCode.value })
 }
 
@@ -475,6 +505,51 @@ const resetRoom = () => {
   presentedQuestionIndex.value = null
   currentQuizTitle.value = 'No Quiz Loaded'
   connectedPlayers.value = []
+  resetAllAnsweredState()
+}
+
+// Reset all players answered state
+const resetAllAnsweredState = () => {
+  allPlayersAnswered.value = false
+  autoRevealCountdown.value = null
+  if (autoRevealTimer) {
+    clearInterval(autoRevealTimer)
+    autoRevealTimer = null
+  }
+}
+
+// Start auto-reveal countdown (3 seconds)
+const startAutoRevealCountdown = () => {
+  if (!autoRevealEnabled.value) {
+    console.log('[AUTO-REVEAL] Auto-reveal is disabled, skipping countdown')
+    return
+  }
+
+  autoRevealCountdown.value = 3
+  console.log('[AUTO-REVEAL] Starting 3-second countdown...')
+
+  autoRevealTimer = setInterval(() => {
+    autoRevealCountdown.value--
+    console.log(`[AUTO-REVEAL] Countdown: ${autoRevealCountdown.value}`)
+
+    if (autoRevealCountdown.value <= 0) {
+      clearInterval(autoRevealTimer)
+      autoRevealTimer = null
+      autoRevealCountdown.value = null
+      console.log('[AUTO-REVEAL] Countdown complete, revealing answer...')
+      revealAnswer()
+    }
+  }, 1000)
+}
+
+// Cancel auto-reveal countdown
+const cancelAutoReveal = () => {
+  if (autoRevealTimer) {
+    clearInterval(autoRevealTimer)
+    autoRevealTimer = null
+    autoRevealCountdown.value = null
+    console.log('[AUTO-REVEAL] Countdown canceled')
+  }
 }
 
 // Logout
@@ -651,6 +726,16 @@ const setupSocketListeners = () => {
   socketInstance.on('quizCompleted', ({ message, filename }) => {
     showAlert(message, 'Quiz Completed')
     loadIncompleteSessions()
+  })
+
+  socketInstance.on('allPlayersAnswered', ({ questionIndex, totalPlayers, timestamp }) => {
+    console.log(`[ALL ANSWERED] Received notification: ${totalPlayers} players answered question ${questionIndex}`)
+
+    // Only show notification if this is the currently presented question
+    if (questionIndex === presentedQuestionIndex.value) {
+      allPlayersAnswered.value = true
+      startAutoRevealCountdown()
+    }
   })
 
   // Request initial active rooms

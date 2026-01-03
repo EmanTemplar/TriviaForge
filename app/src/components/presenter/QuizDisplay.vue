@@ -26,6 +26,39 @@
 
       <!-- Presenter Controls -->
       <div class="presenter-controls">
+        <!-- Progress Indicator (when question is presented) -->
+        <div v-if="presentedQuestionIndex !== null" class="answer-progress">
+          <div class="progress-text">
+            <span class="progress-count">{{ answeredCount }}/{{ totalActivePlayers }} answered</span>
+            <span v-if="totalActivePlayers > 0" class="progress-percentage">({{ answerPercentage }}%)</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" :style="{ width: `${answerPercentage}%` }"></div>
+          </div>
+        </div>
+
+        <!-- All Players Answered Notification -->
+        <div v-if="allAnswered && presentedQuestionIndex !== null" class="all-answered-notification">
+          <div class="notification-content">
+            <span class="notification-icon">🎯</span>
+            <span class="notification-text">All players have answered!</span>
+            <span v-if="autoRevealCountdown !== null" class="countdown-badge">Auto-revealing in {{ autoRevealCountdown }}s</span>
+            <button v-if="autoRevealCountdown !== null" @click="$emit('cancelAutoReveal')" class="btn-cancel-auto">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Auto-Reveal Toggle -->
+        <div class="auto-reveal-toggle">
+          <label class="toggle-label">
+            <input
+              type="checkbox"
+              :checked="autoRevealEnabled"
+              @change="$emit('update:autoRevealEnabled', $event.target.checked)"
+            />
+            <span class="toggle-text">Auto-reveal when all answers are submitted (3s delay)</span>
+          </label>
+        </div>
+
         <div class="presenter-controls-row">
           <button @click="$emit('previousQuestion')">← Previous</button>
           <button @click="$emit('nextQuestion')">Next →</button>
@@ -42,14 +75,21 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   currentQuizTitle: { type: String, default: '' },
   currentQuestions: { type: Array, default: () => [] },
   currentQuestionIndex: { type: Number, default: -1 },
   presentedQuestionIndex: { type: Number, default: null },
   presentedQuestions: { type: Array, default: () => [] },
   revealedQuestions: { type: Array, default: () => [] },
-  currentRoomCode: { type: String, default: null }
+  currentRoomCode: { type: String, default: null },
+  answeredCount: { type: Number, default: 0 },
+  totalActivePlayers: { type: Number, default: 0 },
+  allAnswered: { type: Boolean, default: false },
+  autoRevealCountdown: { type: Number, default: null },
+  autoRevealEnabled: { type: Boolean, default: true }
 })
 
 defineEmits([
@@ -58,8 +98,16 @@ defineEmits([
   'nextQuestion',
   'presentQuestion',
   'revealAnswer',
-  'completeQuiz'
+  'completeQuiz',
+  'cancelAutoReveal',
+  'update:autoRevealEnabled'
 ])
+
+// Computed: Answer percentage
+const answerPercentage = computed(() => {
+  if (props.totalActivePlayers === 0) return 0
+  return Math.round((props.answeredCount / props.totalActivePlayers) * 100)
+})
 </script>
 
 <style scoped>
@@ -181,6 +229,144 @@ defineEmits([
 
 .questionCard ul li.correct-choice {
   color: var(--secondary-light);
+}
+
+/* Answer Progress Indicator */
+.answer-progress {
+  background: var(--bg-overlay-30);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.progress-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.progress-count {
+  color: var(--info-light);
+}
+
+.progress-percentage {
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-overlay-20);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--info-light), var(--secondary-light));
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* All Players Answered Notification */
+.all-answered-notification {
+  background: var(--secondary-bg-20);
+  border: 2px solid var(--secondary-light);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.notification-icon {
+  font-size: 1.5rem;
+}
+
+.notification-text {
+  font-weight: 700;
+  color: var(--secondary-light);
+  font-size: 1rem;
+  flex: 1;
+  min-width: 150px;
+}
+
+.countdown-badge {
+  background: var(--warning-bg-30);
+  color: var(--warning-light);
+  border: 1px solid var(--warning-light);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  animation: pulse 1s infinite;
+}
+
+.btn-cancel-auto {
+  background: var(--danger-bg-20);
+  color: var(--danger-light);
+  border: 1px solid var(--danger-light);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel-auto:hover {
+  background: var(--danger-bg-30);
+}
+
+/* Auto-Reveal Toggle */
+.auto-reveal-toggle {
+  background: var(--bg-overlay-20);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--secondary-light);
+}
+
+.toggle-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
 }
 
 .presenter-controls {

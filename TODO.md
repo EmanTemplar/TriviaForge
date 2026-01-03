@@ -1,8 +1,8 @@
 # TriviaForge - Active Development Tasks (2026)
 
 > **Purpose:** Current development priorities and pending tasks
-> **Last Updated:** 2026-01-01
-> **Version:** v4.2.1
+> **Last Updated:** 2026-01-03
+> **Version:** v4.2.3
 
 ---
 
@@ -116,50 +116,51 @@ Add confirmation modal when players select an answer to prevent accidental miscl
 ---
 
 ### 3. Presenter Connected Players - Visual Improvements 👥
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETE
 **Priority:** HIGH
+**Completed:** 2026-01-03 (v4.2.3)
+**Branch:** `presenter-improvements-v4`
 
 **Description:**
 Enhance connected players sidebar with better organization, player count summary, and connection status grouping.
 
-**Features to Implement:**
+**Implementation Summary:**
+✅ **Player Count Summary (Priority 1)**
+   - Compact icon-based summary at top: ✅ 5 • ⚠️ 2 • ❌ 1
+   - Color-coded numbers (green/yellow/red)
+   - Tooltips for clarity ("Connected players", etc.)
+   - No text wrapping with nowrap layout
 
-**3a. Player Count Summary (Priority 1)**
-- Add summary banner at top of ConnectedPlayersList
-- Display: "12 connected, 2 away, 1 disconnected"
-- Color-coded counts (green/yellow/red)
-- Total player count prominently displayed
+✅ **Player Status Grouping (Priority 2)**
+   - Grouped players by connection status:
+     - ✅ **Connected** - Active, online players (includes warning state)
+     - ⚠️ **Away** - Tab/app switched
+     - ❌ **Disconnected** - Network issues
+   - Collapsible groups with click-to-toggle headers
+   - Disconnected group starts collapsed by default
+   - Alphabetical sorting within each group using localeCompare
 
-**3b. Player Status Grouping (Priority 2)**
-- Group players by connection status:
-  - ✅ **Connected** (green section) - Active, online players
-  - ⚠️ **Away** (yellow section) - Tab/app switched, may return
-  - ❌ **Disconnected** (red/gray section) - Network issues, may rejoin
-- Visual separators between groups
-- Collapse/expand groups (optional)
+✅ **Visual Improvements**
+   - Fixed player menu dropdown overlay (removed overflow clipping)
+   - Increased z-index to 9999 for proper layering
+   - Neutral backgrounds with existing connection state styling
+   - Improved visual hierarchy
+   - Group headers with hover effects
 
-**3c. Connection Quality Indicators (Priority 3)**
-- Show latency/stability icons next to player names
-- Color-coded status dots (green = good, yellow = fair, red = poor)
-- Answered status checkmark (✓) with improved visibility
+**Technical Achievements:**
+- Computed properties filter and sort players by connectionState
+- CSS position: relative on groups and items for proper menu positioning
+- overflow: visible on group-content to allow menu spillover
+- Session-persistent collapse state (in component ref)
 
-**Implementation Details:**
-- Computed properties to group players by status
-- CSS grid/flexbox for clean grouping layout
-- Transition animations for status changes
-- Responsive design for mobile presenter view
+**Files Modified:**
+- `app/src/components/presenter/ConnectedPlayersList.vue` - Complete refactor (225 insertions, 21 deletions)
 
-**Zombie Disconnect Handling (Review):**
-- Current zombie cleanup may need adjustment
-- Only trigger cleanup if actual duplicates detected
-- Grace period (30 seconds) before marking as zombie
-- Preserve legitimate disconnected players for reconnection
-
-**Files to Modify:**
-- `app/src/components/presenter/ConnectedPlayersList.vue` - Visual improvements, grouping logic
-- `app/src/pages/PresenterPage.vue` - Player status tracking (if needed)
-- `app/server.js` - Zombie detection logic review (if needed)
-- `app/src/services/room.service.js` - Player duplicate detection (if needed)
+**Testing:**
+✅ Compact icon layout prevents text wrapping
+✅ Player menus overlay correctly without border clipping
+✅ Collapsible groups with persistent state
+✅ Alphabetical sorting working correctly
 
 ---
 
@@ -263,8 +264,9 @@ Add notification to presenter when all connected players have answered the curre
 - Network failure scenarios (airplane mode, wifi switching)
 
 ### Version Planning
-- **v4.2.2 (Next Minor):** Stay-awake fix + Answer confirmation modal
-- **v4.3.0 (Next Feature):** Presenter visual improvements + All answered notification
+- **v4.2.2 (Released):** Stay-awake fix + Answer confirmation modal ✅
+- **v4.2.3 (Released):** Presenter connected players visual improvements ✅
+- **v4.3.0 (Next Feature):** All players answered notification + potential automation
 - **v5.0.0 (Future Major):** Consider solo-play mode, automated presenter, mDNS
 
 ---
@@ -284,5 +286,5 @@ Before marking a task as complete:
 
 **Archive:** See [archive/TODO-2025.md](archive/TODO-2025.md) for historical tasks and completed features from 2025.
 
-**Last Updated:** 2026-01-01
+**Last Updated:** 2026-01-03
 **Maintained By:** TriviaForge Development Team

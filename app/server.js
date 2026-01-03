@@ -1822,6 +1822,23 @@ io.on('connection', (socket) => {
       io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
 
       console.log(`${player.name} answered question ${room.currentQuestionIndex} with choice ${choice}`);
+
+      // Check if all active players have answered (connected + away, excluding disconnected)
+      const activePlayers = Object.values(room.players).filter(
+        p => !p.isSpectator && (p.connectionState === 'connected' || p.connectionState === 'away' || p.connectionState === 'warning')
+      );
+      const answeredPlayers = activePlayers.filter(
+        p => p.answers && p.answers[room.currentQuestionIndex] !== undefined
+      );
+
+      if (activePlayers.length > 0 && answeredPlayers.length === activePlayers.length) {
+        console.log(`[ALL ANSWERED] All ${activePlayers.length} active players have answered question ${room.currentQuestionIndex}`);
+        io.to(roomCode).emit('allPlayersAnswered', {
+          questionIndex: room.currentQuestionIndex,
+          totalPlayers: activePlayers.length,
+          timestamp: Date.now()
+        });
+      }
     } else {
       if (DEBUG_ENABLED) {
         console.log('[ANSWER DEBUG] Player NOT found in room.players', {
