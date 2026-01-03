@@ -6,7 +6,6 @@
       :currentRoomCode="currentRoomCode"
       :connectionStateClass="connectionStateClass"
       :connectionStateSymbol="connectionStateSymbol"
-      :wakeLockActive="wakeLock.isActive.value"
       :menuOpen="menuOpen"
       :nonSpectatorPlayers="nonSpectatorPlayers"
       :loginUsername="loginUsername"
@@ -143,6 +142,14 @@
       @confirm="confirmAnswer"
       @cancel="cancelAnswer"
     />
+
+    <!-- Wake Lock Indicator - Floating bottom-left -->
+    <WakeLockIndicator
+      :inRoom="inRoom"
+      :wakeLockActive="wakeLock.isActive.value"
+      :error="wakeLock.error.value"
+      :isSupported="wakeLock.isSupported.value"
+    />
   </div>
 </template>
 
@@ -169,6 +176,7 @@ import JoinRoomSection from '@/components/player/JoinRoomSection.vue'
 import RoomInfoSection from '@/components/player/RoomInfoSection.vue'
 import PlayersList from '@/components/player/PlayersList.vue'
 import StatusMessage from '@/components/player/StatusMessage.vue'
+import WakeLockIndicator from '@/components/player/WakeLockIndicator.vue'
 
 const router = useRouter()
 const route = useRoute()

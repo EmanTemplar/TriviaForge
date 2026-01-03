@@ -12,7 +12,6 @@
     <div v-if="inRoom" class="nav-room-info" :class="{ active: inRoom }">
       <span class="nav-room-code">{{ currentRoomCode || '----' }}</span>
       <span class="nav-connection-status" :class="connectionStateClass">{{ connectionStateSymbol }}</span>
-      <span v-if="wakeLockActive" class="wake-lock-indicator" title="Screen will stay on">🔆</span>
     </div>
 
     <ThemeSelector />
@@ -51,7 +50,6 @@ defineProps({
   currentRoomCode: { type: String, default: null },
   connectionStateClass: { type: String, required: true },
   connectionStateSymbol: { type: String, required: true },
-  wakeLockActive: { type: Boolean, required: true },
   menuOpen: { type: Boolean, required: true },
   nonSpectatorPlayers: { type: Array, required: true },
   loginUsername: { type: String, default: '' }
@@ -145,13 +143,6 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
   50% { opacity: 0.5; }
 }
 
-/* Wake Lock Indicator */
-.wake-lock-indicator {
-  font-size: 1rem;
-  margin-left: 0.5rem;
-  cursor: help;
-  opacity: 0.9;
-}
 
 .hamburger {
   display: none;
@@ -239,33 +230,6 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
 
 .player-status.offline {
   color: var(--danger-light);
-}
-
-/* Mobile - allow room info to wrap to show wake lock indicator */
-@media (max-width: 1024px) {
-  .nav-room-info {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    max-width: 140px;
-  }
-
-  .wake-lock-indicator {
-    order: 3;
-    width: 100%;
-    text-align: right;
-    font-size: 1.1rem;
-    margin-left: 0;
-    margin-top: 0.25rem;
-  }
-
-  .nav-progress-container {
-    flex: 0 1 auto;
-  }
-
-  .progress-btn {
-    font-size: 0.85rem;
-    padding: 0.4rem 0.8rem;
-  }
 }
 
 /* Mobile styles */

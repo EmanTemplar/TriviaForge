@@ -41,9 +41,14 @@ desktop.ini
 .temp/
 
 # Development/Internal documentation (for AI agents and internal use only)
-DEV-SUMMARY.md
 PHASE-*.md
 *-PLAN.md
+
+# LOCAL-AI folder - AI assistant onboarding, memory, and internal docs (DO NOT COMMIT)
+LOCAL-AI/
+
+# Continue.dev configuration and rules (local AI assistant config)
+.continue/
 
 # Vite build output
 app/dist/
