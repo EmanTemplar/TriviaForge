@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v4.2.1 - Style Refactoring Release: Component-first CSS architecture, theme-aware colors, centralized version management
+**Latest Release**: v4.3.0 - Presenter Enhancements: Real-time answer progress tracking, all players answered notification with auto-reveal
 
 ### Key Highlights
 
@@ -38,7 +38,10 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 
 ### For Presenters
 - **Live Quiz Control**: Present questions, reveal answers, and navigate through quizzes in real-time
-- **Player Management**: See connected players with live status indicators
+- **Player Management**: See connected players with live status indicators, organized by connection status (connected/away/disconnected)
+- **Real-time Answer Progress**: Track how many players have answered with percentage and animated progress bar
+- **All Players Answered Notification**: Visual notification when all active players have submitted answers
+- **Auto-Reveal Option**: Configurable 3-second auto-reveal countdown when all players answer (can be canceled)
 - **Kick Player**: Remove disruptive players from sessions with confirmation dialog
 - **Ban Display Names**: Block offensive display names globally to prevent rejoining
 - **Live Standings Dashboard**: Real-time leaderboard showing all players' scores, accuracy, and rankings with medal recognition for top performers
@@ -627,6 +630,15 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 ## Roadmap
 
 ### Completed Features
+
+**v4.3.0 (Jan 2026) - Presenter Enhancements**
+- [x] Real-time answer progress tracking with percentage and animated progress bar
+- [x] All players answered notification banner with visual indicator
+- [x] Auto-reveal functionality with 3-second countdown and cancel option
+- [x] Configurable auto-reveal toggle (persists during session)
+- [x] Smart player counting (excludes disconnected players)
+- [x] Enhanced player status grouping (connected/away/disconnected)
+- [x] Player count summary with color-coded icons
 
 **v4.2.1 (Jan 2026) - Style Refactoring Release**
 - [x] Component-first CSS architecture (Button, FormInput, Card enhancements)
