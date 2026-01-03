@@ -1,23 +1,107 @@
 <template>
   <section class="presenter-players">
-    <h2>Connected Players</h2>
+    <!-- Player Count Summary -->
+    <div class="player-summary">
+      <div class="summary-counts">
+        <span class="count-item count-connected" title="Connected players">
+          <span class="count-icon">✅</span>
+          <span class="count-number">{{ connectedPlayers.length }}</span>
+        </span>
+        <span class="count-separator">•</span>
+        <span class="count-item count-away" title="Away players">
+          <span class="count-icon">⚠️</span>
+          <span class="count-number">{{ awayPlayers.length }}</span>
+        </span>
+        <span class="count-separator">•</span>
+        <span class="count-item count-disconnected" title="Disconnected players">
+          <span class="count-icon">❌</span>
+          <span class="count-number">{{ disconnectedPlayers.length }}</span>
+        </span>
+      </div>
+    </div>
+
     <button v-if="currentRoomCode" class="btn-standings" @click="$emit('showPresenterProgress')">📊 Standings</button>
+
     <div class="live-feed">
       <div v-if="nonSpectatorPlayers.length === 0" class="empty-state"><em>No players yet</em></div>
-      <div v-for="player in nonSpectatorPlayers" :key="player.name" class="player-item">
-        <span class="player-status" :class="getConnectionStateClass(player)">{{ getConnectionSymbol(player) }}</span>
-        {{ player.name }}
-        <span v-if="player.connectionState === 'warning'" class="player-warning-icon" title="Rapid switching detected">⚠️</span>
-        <span v-if="player.choice !== null" class="player-answered">✓</span>
-        <div class="player-menu-container">
-          <button class="btn-player-menu" @click="togglePlayerMenu(player.name)" title="Player actions">⋮</button>
-          <div v-if="playerMenuOpen === player.name" class="player-menu">
-            <button @click="$emit('kickPlayer', player.name)" class="menu-item menu-item-kick">
-              <span class="menu-icon">👢</span> Kick Player
-            </button>
-            <button @click="$emit('banDisplayName', player.name)" class="menu-item menu-item-ban">
-              <span class="menu-icon">🚫</span> Ban Display Name
-            </button>
+
+      <!-- Connected Players Group -->
+      <div v-if="connectedPlayers.length > 0" class="player-group">
+        <div class="group-header" @click="toggleGroup('connected')">
+          <span class="group-icon">{{ groupCollapsed.connected ? '▶' : '▼' }}</span>
+          <span class="group-title">✅ Connected ({{ connectedPlayers.length }})</span>
+        </div>
+        <div v-if="!groupCollapsed.connected" class="group-content">
+          <div v-for="player in connectedPlayers" :key="player.name" class="player-item">
+            <span class="player-status" :class="getConnectionStateClass(player)">{{ getConnectionSymbol(player) }}</span>
+            {{ player.name }}
+            <span v-if="player.connectionState === 'warning'" class="player-warning-icon" title="Rapid switching detected">⚠️</span>
+            <span v-if="player.choice !== null" class="player-answered">✓</span>
+            <div class="player-menu-container">
+              <button class="btn-player-menu" @click="togglePlayerMenu(player.name)" title="Player actions">⋮</button>
+              <div v-if="playerMenuOpen === player.name" class="player-menu">
+                <button @click="$emit('kickPlayer', player.name)" class="menu-item menu-item-kick">
+                  <span class="menu-icon">👢</span> Kick Player
+                </button>
+                <button @click="$emit('banDisplayName', player.name)" class="menu-item menu-item-ban">
+                  <span class="menu-icon">🚫</span> Ban Display Name
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Away Players Group -->
+      <div v-if="awayPlayers.length > 0" class="player-group">
+        <div class="group-header" @click="toggleGroup('away')">
+          <span class="group-icon">{{ groupCollapsed.away ? '▶' : '▼' }}</span>
+          <span class="group-title">⚠️ Away ({{ awayPlayers.length }})</span>
+        </div>
+        <div v-if="!groupCollapsed.away" class="group-content">
+          <div v-for="player in awayPlayers" :key="player.name" class="player-item">
+            <span class="player-status" :class="getConnectionStateClass(player)">{{ getConnectionSymbol(player) }}</span>
+            {{ player.name }}
+            <span v-if="player.connectionState === 'warning'" class="player-warning-icon" title="Rapid switching detected">⚠️</span>
+            <span v-if="player.choice !== null" class="player-answered">✓</span>
+            <div class="player-menu-container">
+              <button class="btn-player-menu" @click="togglePlayerMenu(player.name)" title="Player actions">⋮</button>
+              <div v-if="playerMenuOpen === player.name" class="player-menu">
+                <button @click="$emit('kickPlayer', player.name)" class="menu-item menu-item-kick">
+                  <span class="menu-icon">👢</span> Kick Player
+                </button>
+                <button @click="$emit('banDisplayName', player.name)" class="menu-item menu-item-ban">
+                  <span class="menu-icon">🚫</span> Ban Display Name
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Disconnected Players Group -->
+      <div v-if="disconnectedPlayers.length > 0" class="player-group">
+        <div class="group-header" @click="toggleGroup('disconnected')">
+          <span class="group-icon">{{ groupCollapsed.disconnected ? '▶' : '▼' }}</span>
+          <span class="group-title">❌ Disconnected ({{ disconnectedPlayers.length }})</span>
+        </div>
+        <div v-if="!groupCollapsed.disconnected" class="group-content">
+          <div v-for="player in disconnectedPlayers" :key="player.name" class="player-item">
+            <span class="player-status" :class="getConnectionStateClass(player)">{{ getConnectionSymbol(player) }}</span>
+            {{ player.name }}
+            <span v-if="player.connectionState === 'warning'" class="player-warning-icon" title="Rapid switching detected">⚠️</span>
+            <span v-if="player.choice !== null" class="player-answered">✓</span>
+            <div class="player-menu-container">
+              <button class="btn-player-menu" @click="togglePlayerMenu(player.name)" title="Player actions">⋮</button>
+              <div v-if="playerMenuOpen === player.name" class="player-menu">
+                <button @click="$emit('kickPlayer', player.name)" class="menu-item menu-item-kick">
+                  <span class="menu-icon">👢</span> Kick Player
+                </button>
+                <button @click="$emit('banDisplayName', player.name)" class="menu-item menu-item-ban">
+                  <span class="menu-icon">🚫</span> Ban Display Name
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -26,9 +110,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
-defineProps({
+const props = defineProps({
   nonSpectatorPlayers: { type: Array, default: () => [] },
   currentRoomCode: { type: String, default: null }
 })
@@ -37,8 +121,38 @@ defineEmits(['showPresenterProgress', 'kickPlayer', 'banDisplayName'])
 
 const playerMenuOpen = ref(null)
 
+// Group collapse state (disconnected starts collapsed)
+const groupCollapsed = ref({
+  connected: false,
+  away: false,
+  disconnected: true
+})
+
+// Computed properties to group and sort players
+const connectedPlayers = computed(() => {
+  return props.nonSpectatorPlayers
+    .filter(p => (p.connectionState || 'connected') === 'connected' || (p.connectionState || 'connected') === 'warning')
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
+
+const awayPlayers = computed(() => {
+  return props.nonSpectatorPlayers
+    .filter(p => (p.connectionState || 'connected') === 'away')
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
+
+const disconnectedPlayers = computed(() => {
+  return props.nonSpectatorPlayers
+    .filter(p => (p.connectionState || 'connected') === 'disconnected')
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
+
 const togglePlayerMenu = (playerName) => {
   playerMenuOpen.value = playerMenuOpen.value === playerName ? null : playerName
+}
+
+const toggleGroup = (groupName) => {
+  groupCollapsed.value[groupName] = !groupCollapsed.value[groupName]
 }
 
 const getConnectionStateClass = (player) => {
@@ -70,8 +184,52 @@ const getConnectionSymbol = (player) => {
   box-shadow: var(--shadow-md);
 }
 
-.presenter-players h2 {
-  margin: 0 0 1rem 0;
+/* Player Count Summary */
+.player-summary {
+  margin-bottom: 1rem;
+}
+
+.summary-counts {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.count-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.count-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.count-number {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.count-connected .count-number {
+  color: var(--secondary-light);
+}
+
+.count-away .count-number {
+  color: var(--warning-light);
+}
+
+.count-disconnected .count-number {
+  color: var(--danger-light);
+}
+
+.count-separator {
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
 }
 
 .btn-standings {
@@ -96,9 +254,54 @@ const getConnectionSymbol = (player) => {
 .live-feed {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
   flex: 1;
   overflow-y: auto;
+}
+
+/* Player Groups */
+.player-group {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-overlay-10);
+  position: relative;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--bg-overlay-20);
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: background 0.2s ease;
+  border-radius: 6px 6px 0 0;
+}
+
+.group-header:hover {
+  background: var(--bg-overlay-30);
+}
+
+.group-icon {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  min-width: 12px;
+}
+
+.group-title {
+  flex: 1;
+}
+
+.group-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  overflow: visible;
+  position: relative;
 }
 
 .player-item {
@@ -109,6 +312,7 @@ const getConnectionSymbol = (player) => {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.9rem;
+  position: relative;
 }
 
 .player-status {
@@ -181,7 +385,7 @@ const getConnectionSymbol = (player) => {
   border-radius: 6px;
   box-shadow: var(--shadow-lg);
   min-width: 180px;
-  z-index: 1000;
+  z-index: 9999;
   overflow: hidden;
 }
 
