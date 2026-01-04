@@ -4,9 +4,9 @@
  * Update this file to change version across the entire application
  */
 
-export const VERSION = '4.2.1'
-export const VERSION_NAME = 'Style Refactoring Release'
-export const RELEASE_DATE = '2026-01-01'
+export const VERSION = '4.3.0'
+export const VERSION_NAME = 'Presenter Enhancements'
+export const RELEASE_DATE = '2026-01-03'
 
 export default {
   VERSION,
