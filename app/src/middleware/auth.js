@@ -93,6 +93,47 @@ export async function requireAdmin(req, res, next) {
 }
 
 /**
+ * Require root admin middleware
+ * Ensures authenticated user is the root administrator
+ *
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
+ * @param {Function} next - Next middleware
+ *
+ * @example
+ * app.post('/api/auth/create-admin', requireRootAdmin, (req, res) => {
+ *   // Only root admin can access this
+ * });
+ */
+export async function requireRootAdmin(req, res, next) {
+  // First check admin authentication
+  await requireAdmin(req, res, async (err) => {
+    if (err) {
+      return next(err);
+    }
+
+    try {
+      // Check if this admin is the root admin
+      const result = await query(
+        'SELECT is_root_admin FROM users WHERE id = $1',
+        [req.user.user_id]
+      );
+
+      if (result.rows.length === 0 || !result.rows[0].is_root_admin) {
+        return next(new ForbiddenError('Root admin access required'));
+      }
+
+      // Attach root admin flag to user object
+      req.user.is_root_admin = true;
+      next();
+    } catch (err) {
+      console.error('[AUTH] Root admin check failed:', err);
+      return next(new ForbiddenError('Authorization check failed'));
+    }
+  });
+}
+
+/**
  * Optional authentication middleware
  * Attaches user if token is valid, but doesn't require it
  *
@@ -179,6 +220,7 @@ export function isGuest(user) {
 export default {
   requireAuth,
   requireAdmin,
+  requireRootAdmin,
   optionalAuth,
   hasRole,
   isAdmin,

@@ -49,9 +49,10 @@ class RoomService {
    * @param {string} socketId - Presenter socket ID
    * @param {Object} quiz - Quiz data from database
    * @param {string} quizFilename - Quiz filename (for backward compatibility)
+   * @param {number} createdBy - Admin user ID who created the room
    * @returns {Object} Created/updated room object
    */
-  createOrUpdateRoom(roomCode, socketId, quiz, quizFilename) {
+  createOrUpdateRoom(roomCode, socketId, quiz, quizFilename, createdBy = null) {
     // Convert database format to legacy format for compatibility
     const quizData = {
       filename: quizFilename,
@@ -88,6 +89,7 @@ class RoomService {
       kickedPlayers: {}, // { username: kickedTimestamp }
       status: 'in_progress',
       createdAt: new Date().toISOString(),
+      createdBy: createdBy || 1, // Admin user ID who created the room
     };
 
     console.log(`[ROOM SERVICE] Room ${roomCode} created for quiz ID ${quiz.id} (${quiz.title})`);

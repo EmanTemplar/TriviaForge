@@ -40,9 +40,9 @@ class SessionService {
         `
       INSERT INTO game_sessions (
         quiz_id, room_code, status, current_question_index,
-        created_at, completed_at, original_session_id
+        created_at, completed_at, original_session_id, created_by
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       ON CONFLICT (room_code) DO UPDATE SET
         status = $3,
         current_question_index = $4,
@@ -57,6 +57,7 @@ class SessionService {
           sessionTimestamp,
           room.completedAt || null,
           room.originalSessionId || null,
+          room.createdBy || 1, // Admin user ID who created the room
         ]
       );
 

@@ -998,7 +998,7 @@ io.on('connection', (socket) => {
   });
 
   // Presenter creates a room
-  socket.on('createRoom', async ({ roomCode, quizFilename }) => {
+  socket.on('createRoom', async ({ roomCode, quizFilename, userId }) => {
     try {
       // Extract quiz ID from filename format (quiz_123.json → 123)
       const quizId = quizFilename.includes('_')
@@ -1049,9 +1049,10 @@ io.on('connection', (socket) => {
           revealedQuestions: [],
           kickedPlayers: {}, // { username: kickedTimestamp }
           status: 'in_progress',
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          createdBy: userId || 1, // Admin user ID who created the room
         };
-        console.log(`Room ${roomCode} created for quiz ID ${quizId} (${quiz.title})`);
+        console.log(`Room ${roomCode} created for quiz ID ${quizId} (${quiz.title}) by admin ${userId || 1}`);
       }
 
       socket.join(roomCode);
@@ -1116,6 +1117,7 @@ io.on('connection', (socket) => {
           gs.room_code as original_room_code,
           gs.quiz_id,
           gs.created_at,
+          gs.created_by,
           q.title as quiz_title
         FROM game_sessions gs
         JOIN quizzes q ON gs.quiz_id = q.id
@@ -1251,6 +1253,7 @@ io.on('connection', (socket) => {
         kickedPlayers: {}, // { username: kickedTimestamp }
         status: 'in_progress',
         createdAt: session.created_at,
+        createdBy: session.created_by || 1, // Admin user ID who created the session
         resumedAt: new Date().toISOString(),
         originalRoomCode: session.original_room_code,
         originalSessionId: sessionId
@@ -2253,7 +2256,7 @@ if (DEBUG_ENABLED) {
         quiz = await getQuizById(quizzes[0].id);
       }
 
-      // Create room
+      // Create room (debug endpoint - default to root admin)
       roomService.liveRooms[finalRoomCode] = {
         quizData: {
           id: quiz.id,
@@ -2274,7 +2277,8 @@ if (DEBUG_ENABLED) {
         presentedQuestions: [],
         revealedQuestions: [],
         status: 'waiting',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        createdBy: 1, // Debug endpoint defaults to root admin
       };
 
       res.json({

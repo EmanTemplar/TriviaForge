@@ -29,21 +29,23 @@ export async function listUsers(req, res, next) {
         u.id,
         u.username,
         u.account_type,
+        u.is_root_admin,
         u.created_at,
         COUNT(DISTINCT gp.game_session_id) as games_played,
         MAX(gs.created_at) as last_seen
       FROM users u
       LEFT JOIN game_participants gp ON u.id = gp.user_id
       LEFT JOIN game_sessions gs ON gp.game_session_id = gs.id
-      WHERE u.account_type IN ('guest', 'player')
-      GROUP BY u.id, u.username, u.account_type, u.created_at
-      ORDER BY u.created_at DESC
+      WHERE u.account_type IN ('guest', 'player', 'admin')
+      GROUP BY u.id, u.username, u.account_type, u.is_root_admin, u.created_at
+      ORDER BY u.account_type DESC, u.is_root_admin DESC NULLS LAST, u.created_at DESC
     `);
 
     const users = result.rows.map((row) => ({
       id: row.id,
       username: row.username,
       accountType: row.account_type,
+      isRootAdmin: row.is_root_admin || false,
       createdAt: row.created_at,
       gamesPlayed: parseInt(row.games_played),
       lastSeen: row.last_seen,

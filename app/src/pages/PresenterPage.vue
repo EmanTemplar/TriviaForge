@@ -258,7 +258,7 @@ const makeRoomLive = async () => {
   }
   const roomCode = Math.floor(1000 + Math.random() * 9000).toString()
   currentQuizFilename.value = selectedQuizFilename.value // Store for reconnection
-  socket.emit('createRoom', { roomCode, quizFilename: selectedQuizFilename.value })
+  socket.emit('createRoom', { roomCode, quizFilename: selectedQuizFilename.value, userId: authStore.userId })
 }
 
 // Resume session

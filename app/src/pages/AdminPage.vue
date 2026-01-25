@@ -110,14 +110,18 @@
       <!-- User Management Tab -->
       <div v-if="activeTab === 'users'" class="tab-content users-management">
         <UserManagementPanel
+          ref="userManagementPanel"
           :adminUsers="adminUsers"
           :playerUsers="playerUsers"
           :guestUsers="guestUsers"
           :formatDate="formatDate"
+          :isRootAdmin="authStore.isRootAdmin"
           @refresh="loadUsers"
           @deleteUser="deleteUser"
           @resetPassword="resetUserPassword"
           @downgrade="downgradeUser"
+          @createAdmin="createAdmin"
+          @deleteAdmin="deleteAdmin"
         />
       </div>
 
@@ -265,6 +269,7 @@ const optionsSaveMessageType = ref('success')
 // Users
 const users = ref([])
 const bannedNames = ref([])
+const userManagementPanel = ref(null)
 
 // Computed Properties
 // Group users by account type
@@ -922,6 +927,40 @@ const deleteUser = async (user) => {
     const message = err.response?.data?.error || 'Failed to delete user'
     await showAlert(message, 'Error')
     console.error('Error deleting user:', err)
+  }
+}
+
+// Create new admin (root admin only)
+const createAdmin = async (adminData) => {
+  try {
+    await post('/api/auth/create-admin', adminData)
+    userManagementPanel.value?.onAdminCreated()
+    await showAlert(`Admin "${adminData.username}" created successfully.`, 'Admin Created')
+    await loadUsers() // Refresh the list
+  } catch (err) {
+    const message = err.response?.data?.message || 'Failed to create admin'
+    userManagementPanel.value?.onAdminCreateError(message)
+    console.error('Error creating admin:', err)
+  }
+}
+
+// Delete admin account (root admin only)
+const deleteAdmin = async (admin) => {
+  const confirmed = await showConfirm(
+    `Are you sure you want to delete admin "${admin.username}"?\n\nThis action cannot be undone and will remove all their sessions.`,
+    'Delete Admin'
+  )
+
+  if (!confirmed) return
+
+  try {
+    await delete_(`/api/auth/admins/${admin.id}`)
+    await showAlert(`Admin "${admin.username}" has been deleted successfully.`, 'Admin Deleted')
+    await loadUsers() // Refresh the list
+  } catch (err) {
+    const message = err.response?.data?.message || 'Failed to delete admin'
+    await showAlert(message, 'Error')
+    console.error('Error deleting admin:', err)
   }
 }
 

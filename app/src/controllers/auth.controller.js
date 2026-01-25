@@ -515,6 +515,186 @@ export async function verifyPlayer(req, res, next) {
   }
 }
 
+/**
+ * Create a new admin account (root admin only)
+ *
+ * POST /api/auth/create-admin
+ * Body: { username, password, email? }
+ */
+export async function createAdmin(req, res, next) {
+  try {
+    const { username, password, email } = req.body;
+
+    // Validate input
+    if (!username || !password) {
+      throw new BadRequestError('Username and password required');
+    }
+
+    throwIfInvalid(validateUsername(username));
+    throwIfInvalid(validatePassword(password));
+
+    // Check if username already exists
+    const existingUser = await query(
+      'SELECT id FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (existingUser.rows.length > 0) {
+      throw new ConflictError('Username already exists');
+    }
+
+    // Check if email already exists (if provided)
+    if (email) {
+      const existingEmail = await query(
+        'SELECT id FROM users WHERE email = $1',
+        [email]
+      );
+
+      if (existingEmail.rows.length > 0) {
+        throw new ConflictError('Email already in use');
+      }
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, DEFAULTS.BCRYPT_SALT_ROUNDS);
+
+    // Create admin user
+    const result = await query(
+      `INSERT INTO users (username, password_hash, account_type, email, is_root_admin)
+       VALUES ($1, $2, $3, $4, FALSE)
+       RETURNING id, username, account_type, email, created_at`,
+      [username, passwordHash, USER_ROLES.ADMIN, email || null]
+    );
+
+    const newAdmin = result.rows[0];
+
+    console.log(`[CREATE ADMIN] Root admin ${req.user.username} created new admin: ${username}`);
+
+    sendSuccess(res, {
+      admin: {
+        id: newAdmin.id,
+        username: newAdmin.username,
+        account_type: newAdmin.account_type,
+        email: newAdmin.email,
+        created_at: newAdmin.created_at,
+      },
+    }, 'Admin account created successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Get current authenticated user with admin details
+ *
+ * GET /api/auth/admin-info
+ * Headers: Authorization: Bearer <token>
+ */
+export async function getAdminInfo(req, res, next) {
+  try {
+    const result = await query(
+      'SELECT id, username, account_type, email, is_root_admin, created_at FROM users WHERE id = $1',
+      [req.user.user_id]
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundError('User');
+    }
+
+    const user = result.rows[0];
+
+    res.json({
+      user: {
+        id: user.id,
+        username: user.username,
+        account_type: user.account_type,
+        email: user.email,
+        is_root_admin: user.is_root_admin || false,
+        created_at: user.created_at,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * List all admin accounts (root admin only)
+ *
+ * GET /api/auth/admins
+ * Headers: Authorization: Bearer <token>
+ */
+export async function listAdmins(req, res, next) {
+  try {
+    const result = await query(
+      `SELECT id, username, email, is_root_admin, created_at
+       FROM users
+       WHERE account_type = $1
+       ORDER BY is_root_admin DESC, created_at ASC`,
+      [USER_ROLES.ADMIN]
+    );
+
+    res.json({
+      admins: result.rows.map(admin => ({
+        id: admin.id,
+        username: admin.username,
+        email: admin.email,
+        is_root_admin: admin.is_root_admin || false,
+        created_at: admin.created_at,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Delete an admin account (root admin only, cannot delete self or root admin)
+ *
+ * DELETE /api/auth/admins/:id
+ * Headers: Authorization: Bearer <token>
+ */
+export async function deleteAdmin(req, res, next) {
+  try {
+    const adminId = parseInt(req.params.id, 10);
+
+    if (isNaN(adminId)) {
+      throw new BadRequestError('Invalid admin ID');
+    }
+
+    // Prevent deleting self
+    if (adminId === req.user.user_id) {
+      throw new ForbiddenError('Cannot delete your own account');
+    }
+
+    // Check if target is root admin
+    const targetResult = await query(
+      'SELECT id, username, is_root_admin FROM users WHERE id = $1 AND account_type = $2',
+      [adminId, USER_ROLES.ADMIN]
+    );
+
+    if (targetResult.rows.length === 0) {
+      throw new NotFoundError('Admin');
+    }
+
+    const targetAdmin = targetResult.rows[0];
+
+    if (targetAdmin.is_root_admin) {
+      throw new ForbiddenError('Cannot delete the root admin account');
+    }
+
+    // Delete admin (this will cascade to their sessions)
+    await query('DELETE FROM user_sessions WHERE user_id = $1', [adminId]);
+    await query('DELETE FROM users WHERE id = $1', [adminId]);
+
+    console.log(`[DELETE ADMIN] Root admin ${req.user.username} deleted admin: ${targetAdmin.username}`);
+
+    sendSuccess(res, null, 'Admin account deleted successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
 // Export all controller functions
 export default {
   adminLogin,
@@ -526,4 +706,8 @@ export default {
   checkUsername,
   setNewPassword,
   verifyPlayer,
+  createAdmin,
+  getAdminInfo,
+  listAdmins,
+  deleteAdmin,
 };

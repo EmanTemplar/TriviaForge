@@ -29,11 +29,18 @@
             title="Downgrade to Guest"
           >⬇️</button>
           <button
-            v-if="showDelete"
+            v-if="showDeleteAdmin && !user.isRootAdmin"
+            @click="$emit('deleteAdmin', user)"
+            class="btn-delete"
+            title="Delete Admin"
+          >🗑️</button>
+          <button
+            v-else-if="showDelete"
             @click="$emit('delete', user)"
             class="btn-delete"
             title="Delete User"
           >🗑️</button>
+          <span v-if="user.isRootAdmin" class="root-badge" title="Root Administrator">👑</span>
         </div>
       </div>
     </div>
@@ -54,10 +61,11 @@ defineProps({
   showResetPassword: { type: Boolean, default: false },
   showDowngrade: { type: Boolean, default: false },
   showDelete: { type: Boolean, default: true },
+  showDeleteAdmin: { type: Boolean, default: false },
   formatDate: { type: Function, required: true }
 });
 
-defineEmits(['resetPassword', 'downgrade', 'delete']);
+defineEmits(['resetPassword', 'downgrade', 'delete', 'deleteAdmin']);
 </script>
 
 <style scoped>
@@ -237,6 +245,11 @@ defineEmits(['resetPassword', 'downgrade', 'delete']);
 
 .btn-delete:hover {
   background: var(--danger-bg-30);
+}
+
+.root-badge {
+  font-size: 1.25rem;
+  padding: 0.25rem;
 }
 
 @media (max-width: 768px) {

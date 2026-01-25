@@ -81,7 +81,7 @@ import FormInput from '@/components/common/FormInput.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 const uiStore = useUIStore()
-const { post } = useApi()
+const { get, post } = useApi()
 
 // Initialize theme for LoginPage (dark theme default)
 const { initTheme } = useTheme('LOGIN')
@@ -129,9 +129,19 @@ const attemptLogin = async () => {
       return
     }
 
-    // Store auth
-    authStore.setAuth(data.token, data.user.username, 'admin')
+    // Store auth with user ID
+    authStore.setAuth(data.token, data.user.username, 'admin', data.user.id)
     isLoggedIn.value = true
+
+    // Fetch admin info to check if root admin
+    try {
+      const adminInfoResponse = await get('/api/auth/admin-info')
+      if (adminInfoResponse.data?.user?.is_root_admin) {
+        authStore.setAuth(data.token, data.user.username, 'admin', data.user.id, true)
+      }
+    } catch (adminErr) {
+      console.warn('Could not fetch admin info:', adminErr)
+    }
 
     // Show success notification
     uiStore.addNotification(`Welcome back, ${data.user.username}!`, 'success')

@@ -10,7 +10,7 @@
 
 import { Router } from 'express';
 import * as authController from '../controllers/auth.controller.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireAdmin, requireRootAdmin } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = Router();
@@ -99,5 +99,42 @@ router.post('/set-new-password', asyncHandler(authController.setNewPassword));
  * Returns: { valid, user, expiresAt }
  */
 router.post('/verify-player', asyncHandler(authController.verifyPlayer));
+
+/**
+ * Get admin info (includes is_root_admin flag)
+ * GET /api/auth/admin-info
+ *
+ * Headers: Authorization: Bearer <token>
+ * Returns: { user }
+ */
+router.get('/admin-info', requireAdmin, asyncHandler(authController.getAdminInfo));
+
+/**
+ * List all admin accounts (root admin only)
+ * GET /api/auth/admins
+ *
+ * Headers: Authorization: Bearer <token>
+ * Returns: { admins }
+ */
+router.get('/admins', requireRootAdmin, asyncHandler(authController.listAdmins));
+
+/**
+ * Create a new admin account (root admin only)
+ * POST /api/auth/create-admin
+ *
+ * Headers: Authorization: Bearer <token>
+ * Body: { username, password, email? }
+ * Returns: { admin }
+ */
+router.post('/create-admin', requireRootAdmin, asyncHandler(authController.createAdmin));
+
+/**
+ * Delete an admin account (root admin only)
+ * DELETE /api/auth/admins/:id
+ *
+ * Headers: Authorization: Bearer <token>
+ * Returns: { success }
+ */
+router.delete('/admins/:id', requireRootAdmin, asyncHandler(authController.deleteAdmin));
 
 export default router;

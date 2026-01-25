@@ -216,10 +216,11 @@ export async function createQuiz(req, res, next) {
   try {
     await client.query('BEGIN');
 
-    // Insert quiz
+    // Insert quiz (use authenticated user's ID)
+    const userId = req.user?.user_id || 1; // Fallback for backward compatibility
     const quizResult = await client.query(
       'INSERT INTO quizzes (title, description, created_by) VALUES ($1, $2, $3) RETURNING id',
-      [title, description, 1] // TODO: Use actual user ID from auth session
+      [title, description, userId]
     );
     const quizId = quizResult.rows[0].id;
 
@@ -233,7 +234,7 @@ export async function createQuiz(req, res, next) {
       const imageType = q.imageType || null;
       const questionResult = await client.query(
         'INSERT INTO questions (question_text, question_type, image_url, image_type, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-        [q.text, questionType, imageUrl, imageType, 1] // TODO: Use actual user ID
+        [q.text, questionType, imageUrl, imageType, userId]
       );
       const questionId = questionResult.rows[0].id;
 
@@ -331,7 +332,8 @@ export async function updateQuiz(req, res, next) {
       );
     }
 
-    // Insert new questions with answers
+    // Insert new questions with answers (use authenticated user's ID)
+    const userId = req.user?.user_id || 1; // Fallback for backward compatibility
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
 
@@ -341,7 +343,7 @@ export async function updateQuiz(req, res, next) {
       const imageType = q.imageType || null;
       const questionResult = await client.query(
         'INSERT INTO questions (question_text, question_type, image_url, image_type, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-        [q.text, questionType, imageUrl, imageType, 1] // TODO: Use actual user ID
+        [q.text, questionType, imageUrl, imageType, userId]
       );
       const questionId = questionResult.rows[0].id;
 
@@ -729,7 +731,8 @@ export async function importQuiz(req, res, next) {
       throw new BadRequestError('No valid questions found in the file');
     }
 
-    // Save quiz to database
+    // Save quiz to database (use authenticated user's ID)
+    const userId = req.user?.user_id || 1; // Fallback for backward compatibility
     const client = await getClient();
     try {
       await client.query('BEGIN');
@@ -737,7 +740,7 @@ export async function importQuiz(req, res, next) {
       // Insert quiz
       const quizResult = await client.query(
         'INSERT INTO quizzes (title, description, created_by) VALUES ($1, $2, $3) RETURNING id',
-        [title, description, 1] // TODO: Use actual user ID from auth session
+        [title, description, userId]
       );
       const quizId = quizResult.rows[0].id;
 
@@ -749,7 +752,7 @@ export async function importQuiz(req, res, next) {
         const questionType = q.type || 'multiple_choice';
         const questionResult = await client.query(
           'INSERT INTO questions (question_text, question_type, created_by) VALUES ($1, $2, $3) RETURNING id',
-          [q.text, questionType, 1] // TODO: Use actual user ID
+          [q.text, questionType, userId]
         );
         const questionId = questionResult.rows[0].id;
 
