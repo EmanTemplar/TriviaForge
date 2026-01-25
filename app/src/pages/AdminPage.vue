@@ -6,6 +6,7 @@
       :menuOpen="menuOpen"
       @toggle-menu="toggleMenu"
       @logout="logout"
+      @settings="openAccountSettings"
     />
 
     <!-- Tab Navigation -->
@@ -180,6 +181,33 @@
         <Button variant="secondary" @click="showDeleteConfirmModal = false">Cancel</Button>
       </template>
     </Modal>
+
+    <!-- Account Settings Modal -->
+    <Modal :isOpen="showAccountSettingsModal" @close="showAccountSettingsModal = false" title="Account Settings" size="small">
+      <div class="account-settings-content">
+        <div class="settings-field">
+          <label>Username</label>
+          <div class="settings-value">{{ authStore.username }}</div>
+        </div>
+        <div class="settings-field">
+          <label for="accountEmail">Email Address</label>
+          <FormInput
+            id="accountEmail"
+            v-model="accountEmail"
+            type="email"
+            placeholder="Enter your email address"
+          />
+          <p class="settings-hint">Used for account recovery and notifications (future feature)</p>
+        </div>
+        <div v-if="accountSettingsError" class="settings-error">{{ accountSettingsError }}</div>
+      </div>
+      <template #footer>
+        <Button variant="secondary" @click="showAccountSettingsModal = false">Cancel</Button>
+        <Button variant="success" @click="saveAccountSettings" :disabled="isSavingAccountSettings">
+          {{ isSavingAccountSettings ? 'Saving...' : 'Save Changes' }}
+        </Button>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -223,6 +251,10 @@ const showDialog = ref(false)
 const showSessionModal = ref(false)
 const showDeleteConfirmModal = ref(false)
 const sessionToDelete = ref(null)
+const showAccountSettingsModal = ref(false)
+const accountEmail = ref('')
+const accountSettingsError = ref(null)
+const isSavingAccountSettings = ref(false)
 
 // Column resizing
 const col1Width = ref(280)
@@ -1137,6 +1169,39 @@ const logout = async () => {
   }
   authStore.logout()
   router.push({name: 'login'})
+}
+
+// Account Settings
+const openAccountSettings = async () => {
+  accountSettingsError.value = null
+  isSavingAccountSettings.value = false
+  // Fetch current email from admin info
+  try {
+    const response = await get('/api/auth/admin-info')
+    accountEmail.value = response.data?.user?.email || ''
+  } catch (err) {
+    accountEmail.value = ''
+  }
+  showAccountSettingsModal.value = true
+}
+
+const saveAccountSettings = async () => {
+  accountSettingsError.value = null
+  isSavingAccountSettings.value = true
+
+  try {
+    await put('/api/auth/update-email', { email: accountEmail.value || null })
+    showAccountSettingsModal.value = false
+    await showAlert('Email updated successfully.', 'Settings Saved')
+    // Refresh users list if on that tab
+    if (activeTab.value === 'users') {
+      await loadUsers()
+    }
+  } catch (err) {
+    accountSettingsError.value = err.response?.data?.message || 'Failed to update email'
+  } finally {
+    isSavingAccountSettings.value = false
+  }
 }
 
 // Column resizing utilities
@@ -2295,6 +2360,45 @@ onUnmounted(() => {
 .modal-text-danger {
   color: var(--danger-light);
   margin-bottom: 1.5rem;
+}
+
+/* Account Settings */
+.account-settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-field label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.settings-value {
+  color: var(--text-primary);
+  font-size: 1rem;
+  padding: 0.5rem 0;
+}
+
+.settings-hint {
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.settings-error {
+  color: var(--danger-light);
+  background: var(--danger-bg-10);
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
 }
 
 /* Dialog */

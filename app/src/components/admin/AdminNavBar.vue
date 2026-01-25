@@ -9,6 +9,7 @@
       <li><RouterLink to="/display">Spectate</RouterLink></li>
       <li class="username-item">
         <span>{{ username || 'Admin' }}</span>
+        <a href="#" @click.prevent="$emit('settings')" class="settings-link" title="Account Settings">&#9881;</a>
       </li>
       <li>
         <a href="#" @click.prevent="$emit('logout')" class="logout-link">Logout</a>
@@ -25,7 +26,7 @@ defineProps({
   menuOpen: { type: Boolean, required: true }
 });
 
-defineEmits(['toggle-menu', 'logout']);
+defineEmits(['toggle-menu', 'logout', 'settings']);
 </script>
 
 <style scoped>
@@ -78,12 +79,25 @@ defineEmits(['toggle-menu', 'logout']);
 }
 
 .username-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.5rem 1rem;
   background: var(--info-bg-20);
   border: 1px solid var(--info-light);
   border-radius: 8px;
   color: var(--info-light);
   font-weight: 600;
+}
+
+.settings-link {
+  font-size: 1.1rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.settings-link:hover {
+  opacity: 1;
 }
 
 .logout-link {

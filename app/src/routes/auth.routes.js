@@ -137,4 +137,14 @@ router.post('/create-admin', requireRootAdmin, asyncHandler(authController.creat
  */
 router.delete('/admins/:id', requireRootAdmin, asyncHandler(authController.deleteAdmin));
 
+/**
+ * Update admin's own email address
+ * PUT /api/auth/update-email
+ *
+ * Headers: Authorization: Bearer <token>
+ * Body: { email }
+ * Returns: { email }
+ */
+router.put('/update-email', requireAdmin, asyncHandler(authController.updateAdminEmail));
+
 export default router;

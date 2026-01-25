@@ -695,6 +695,48 @@ export async function deleteAdmin(req, res, next) {
   }
 }
 
+/**
+ * Update admin's own email address
+ *
+ * PUT /api/auth/update-email
+ * Body: { email }
+ */
+export async function updateAdminEmail(req, res, next) {
+  try {
+    const { email } = req.body;
+    const adminId = req.user.user_id;
+
+    // Validate email format (basic validation)
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestError('Invalid email format');
+    }
+
+    // Check if email already in use by another user
+    if (email) {
+      const existingEmail = await query(
+        'SELECT id FROM users WHERE email = $1 AND id != $2',
+        [email, adminId]
+      );
+
+      if (existingEmail.rows.length > 0) {
+        throw new ConflictError('Email already in use');
+      }
+    }
+
+    // Update email
+    await query(
+      'UPDATE users SET email = $1 WHERE id = $2',
+      [email || null, adminId]
+    );
+
+    console.log(`[UPDATE EMAIL] Admin ${req.user.username} updated their email to: ${email || '(cleared)'}`);
+
+    sendSuccess(res, { email: email || null }, 'Email updated successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
 // Export all controller functions
 export default {
   adminLogin,
@@ -710,4 +752,5 @@ export default {
   getAdminInfo,
   listAdmins,
   deleteAdmin,
+  updateAdminEmail,
 };
