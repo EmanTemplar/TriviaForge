@@ -1,7 +1,7 @@
 <template>
   <div class="admin-page">
     <!-- Navigation Bar -->
-    <AdminNavBar
+    <AdminNavbar
       :username="authStore.username"
       :menuOpen="menuOpen"
       @toggle-menu="toggleMenu"
@@ -223,7 +223,7 @@ import { useAuthStore } from '@/stores/auth.js'
 import { useTheme } from '@/composables/useTheme.js'
 
 // Admin Components
-import AdminNavBar from '@/components/admin/AdminNavBar.vue'
+import AdminNavbar from '@/components/admin/AdminNavbar.vue'
 import AdminTabNavigation from '@/components/admin/AdminTabNavigation.vue'
 import QuizSidebar from '@/components/admin/QuizSidebar.vue'
 import QuestionEditor from '@/components/admin/QuestionEditor.vue'
