@@ -12,6 +12,8 @@
           <div class="user-type" :class="typeClass">{{ typeLabel }}</div>
         </div>
         <div class="user-stats">
+          <div v-if="showEmail && user.email" class="user-email">{{ user.email }}</div>
+          <div v-else-if="showEmail" class="user-email no-email">No email set</div>
           <div v-if="user.lastSeen" class="user-last-login">Last seen: {{ formatDate(user.lastSeen) }}</div>
           <div v-else class="user-last-login">{{ neverSeenMessage }}</div>
         </div>
@@ -62,6 +64,7 @@ defineProps({
   showDowngrade: { type: Boolean, default: false },
   showDelete: { type: Boolean, default: true },
   showDeleteAdmin: { type: Boolean, default: false },
+  showEmail: { type: Boolean, default: false },
   formatDate: { type: Function, required: true }
 });
 
@@ -200,6 +203,17 @@ defineEmits(['resetPassword', 'downgrade', 'delete', 'deleteAdmin']);
 
 .user-last-login {
   color: var(--text-tertiary);
+}
+
+.user-email {
+  color: var(--info-light);
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.user-email.no-email {
+  color: var(--text-tertiary);
+  font-style: italic;
 }
 
 .user-actions {

@@ -28,6 +28,7 @@ export async function listUsers(req, res, next) {
       SELECT
         u.id,
         u.username,
+        u.email,
         u.account_type,
         u.is_root_admin,
         u.created_at,
@@ -37,13 +38,14 @@ export async function listUsers(req, res, next) {
       LEFT JOIN game_participants gp ON u.id = gp.user_id
       LEFT JOIN game_sessions gs ON gp.game_session_id = gs.id
       WHERE u.account_type IN ('guest', 'player', 'admin')
-      GROUP BY u.id, u.username, u.account_type, u.is_root_admin, u.created_at
+      GROUP BY u.id, u.username, u.email, u.account_type, u.is_root_admin, u.created_at
       ORDER BY u.account_type DESC, u.is_root_admin DESC NULLS LAST, u.created_at DESC
     `);
 
     const users = result.rows.map((row) => ({
       id: row.id,
       username: row.username,
+      email: row.email || null,
       accountType: row.account_type,
       isRootAdmin: row.is_root_admin || false,
       createdAt: row.created_at,

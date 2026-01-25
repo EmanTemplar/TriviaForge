@@ -70,8 +70,8 @@
       emptyMessage="No administrators"
       neverSeenMessage="Never logged in"
       :formatDate="formatDate"
+      :showEmail="true"
       :showDeleteAdmin="isRootAdmin"
-      @delete="$emit('deleteUser', $event)"
       @deleteAdmin="$emit('deleteAdmin', $event)"
     />
 
