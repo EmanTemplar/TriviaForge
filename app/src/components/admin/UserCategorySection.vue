@@ -35,7 +35,7 @@
             title="Delete Admin"
           >🗑️</button>
           <button
-            v-else-if="showDelete"
+            v-else-if="showDelete && !user.isRootAdmin"
             @click="$emit('delete', user)"
             class="btn-delete"
             title="Delete User"
