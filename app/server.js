@@ -103,6 +103,10 @@ if (DEBUG_ENABLED) {
 const distPath = path.join(process.cwd(), 'dist');
 app.use(express.static(distPath));
 
+// Serve uploaded media files (question images)
+const uploadsPath = path.join(process.cwd(), 'public', 'uploads');
+app.use('/uploads', express.static(uploadsPath));
+
 const PORT = process.env.APP_PORT || 3000;
 const QUIZ_FOLDER = path.join(process.cwd(), 'quizzes'); // Legacy folder kept for backward compatibility
 const COMPLETED_FOLDER = path.join(QUIZ_FOLDER, 'completed'); // Still used for session storage (will migrate later)
@@ -675,7 +679,8 @@ app.get('/api/room/progress/:roomCode', async (req, res) => {
           username: player.username,
           correct: correctCount,
           answered: answeredCount,
-          connected: player.connected
+          connected: player.connected,
+          answers: player.answers || {}
         };
       });
 
@@ -1018,6 +1023,9 @@ io.on('connection', (socket) => {
         questions: quiz.questions.map(q => ({
           id: q.id,
           text: q.text,
+          type: q.type || 'multiple_choice',
+          imageUrl: q.imageUrl || null,
+          imageType: q.imageType || null,
           choices: q.choices.map(c => c.text),
           correctChoice: q.choices.findIndex(c => c.isCorrect)
         }))
@@ -1151,6 +1159,9 @@ io.on('connection', (socket) => {
         questions: quiz.questions.map(q => ({
           id: q.id,
           text: q.text,
+          type: q.type || 'multiple_choice',
+          imageUrl: q.imageUrl || null,
+          imageType: q.imageType || null,
           choices: q.choices.map(c => c.text),
           correctChoice: q.choices.findIndex(c => c.isCorrect)
         }))
@@ -2250,6 +2261,9 @@ if (DEBUG_ENABLED) {
           description: quiz.description,
           questions: quiz.questions.map(q => ({
             text: q.text,
+            type: q.type || 'multiple_choice',
+            imageUrl: q.imageUrl || null,
+            imageType: q.imageType || null,
             choices: q.choices.map(c => c.text),
             correctChoice: q.choices.findIndex(c => c.isCorrect)
           })),
@@ -2625,6 +2639,9 @@ if (DEBUG_ENABLED) {
             description: quiz.description,
             questions: quiz.questions.map(q => ({
               text: q.text,
+              type: q.type || 'multiple_choice',
+              imageUrl: q.imageUrl || null,
+              imageType: q.imageType || null,
               choices: q.choices.map(c => c.text),
               correctChoice: q.choices.findIndex(c => c.isCorrect)
             })),

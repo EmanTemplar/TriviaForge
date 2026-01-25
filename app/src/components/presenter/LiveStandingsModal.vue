@@ -59,21 +59,125 @@
           <p>No players have answered yet!</p>
           <p class="empty-hint">Standings will appear here once you present questions and players start answering.</p>
         </div>
+
+        <!-- Question Breakdown (with images and player responses) -->
+        <div v-if="questions.length > 0" class="question-breakdown">
+          <h4>Question Breakdown</h4>
+          <div v-for="(question, qIdx) in questions" :key="qIdx" class="question-detail">
+            <div class="question-header-detail">
+              <div class="question-number-badge">Q{{ qIdx + 1 }}</div>
+              <div class="question-status-badges">
+                <span v-if="presentedQuestions.includes(qIdx)" class="status-badge presented">Presented</span>
+                <span v-if="revealedQuestions.includes(qIdx)" class="status-badge revealed">Revealed</span>
+              </div>
+            </div>
+            <div class="question-text-detail">{{ question.text }}</div>
+
+            <!-- Question Image -->
+            <div v-if="question.imageUrl" class="question-image-detail">
+              <img :src="question.imageUrl" alt="Question image" @error="handleImageError" />
+            </div>
+
+            <!-- Answer Choices -->
+            <div class="question-choices">
+              <div
+                v-for="(choice, cIdx) in question.choices"
+                :key="cIdx"
+                :class="['choice-item', { 'choice-correct': cIdx === question.correctChoice && revealedQuestions.includes(qIdx) }]"
+              >
+                <strong>{{ String.fromCharCode(65 + cIdx) }}.</strong> {{ choice }}
+                <span v-if="cIdx === question.correctChoice && revealedQuestions.includes(qIdx)" class="correct-indicator">✓ Correct</span>
+              </div>
+            </div>
+
+            <!-- Player Responses (expandable) -->
+            <div v-if="presentedQuestions.includes(qIdx)" class="player-answers">
+              <div class="player-answers-header" @click="toggleQuestion(qIdx)">
+                <strong>Player Responses ({{ getAnswerCount(qIdx) }}/{{ sortedPlayers.length }})</strong>
+                <span class="toggle-arrow" :class="{ expanded: expandedQuestions.has(qIdx) }">▼</span>
+              </div>
+              <div v-if="expandedQuestions.has(qIdx)" class="player-responses-grid">
+                <div
+                  v-for="player in sortedPlayers"
+                  :key="player.name"
+                  :class="['player-response', getResponseClass(player, qIdx, question.correctChoice)]"
+                >
+                  <span class="player-name">{{ player.name }}:</span>
+                  <span class="player-answer">
+                    <template v-if="player.answers && player.answers[qIdx] !== undefined">
+                      {{ String.fromCharCode(65 + player.answers[qIdx]) }}
+                      <template v-if="revealedQuestions.includes(qIdx)">
+                        <span v-if="player.answers[qIdx] === question.correctChoice" class="answer-result correct">✓</span>
+                        <span v-else class="answer-result incorrect">✗</span>
+                      </template>
+                    </template>
+                    <template v-else>
+                      <em class="no-answer">No answer</em>
+                    </template>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="not-presented">
+              <em>Question not yet presented</em>
+            </div>
+          </div>
+        </div>
       </div>
     </template>
   </Modal>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 
-defineProps({
+const props = defineProps({
   isOpen: { type: Boolean, required: true },
   progressStats: { type: Object, default: null },
-  sortedPlayers: { type: Array, default: () => [] }
+  sortedPlayers: { type: Array, default: () => [] },
+  questions: { type: Array, default: () => [] },
+  revealedQuestions: { type: Array, default: () => [] },
+  presentedQuestions: { type: Array, default: () => [] }
 })
 
 defineEmits(['close'])
+
+// Expanded questions state (local to modal)
+const expandedQuestions = ref(new Set())
+
+// Toggle expanded state for a question
+const toggleQuestion = (qIdx) => {
+  if (expandedQuestions.value.has(qIdx)) {
+    expandedQuestions.value.delete(qIdx)
+  } else {
+    expandedQuestions.value.add(qIdx)
+  }
+  // Force reactivity update
+  expandedQuestions.value = new Set(expandedQuestions.value)
+}
+
+// Get count of players who answered a question
+const getAnswerCount = (qIdx) => {
+  return props.sortedPlayers.filter(p => p.answers && p.answers[qIdx] !== undefined).length
+}
+
+// Get response class for player answer
+const getResponseClass = (player, qIdx, correctChoice) => {
+  if (!player.answers || player.answers[qIdx] === undefined) {
+    return 'response-unanswered'
+  }
+  // Only show correct/incorrect if the question has been revealed
+  if (props.revealedQuestions.includes(qIdx)) {
+    return player.answers[qIdx] === correctChoice ? 'response-correct' : 'response-incorrect'
+  }
+  return 'response-answered'
+}
+
+// Handle broken images
+const handleImageError = (event) => {
+  event.target.style.display = 'none'
+}
 
 // Helper functions
 const getAccuracy = (player) => {
@@ -264,8 +368,232 @@ const getMedal = (idx) => {
   margin-top: 0.5rem;
 }
 
+/* Question Breakdown Section */
+.question-breakdown {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.question-breakdown h4 {
+  margin: 0 0 1rem 0;
+  color: var(--info-light);
+  font-size: 1.1rem;
+}
+
+.question-detail {
+  margin-bottom: 1.5rem;
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.question-header-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.question-number-badge {
+  font-weight: bold;
+  color: var(--info-light);
+  font-size: 1rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--info-bg-20);
+  border-radius: 4px;
+}
+
+.question-status-badges {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.status-badge {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.status-badge.presented {
+  background: var(--warning-bg-20);
+  color: var(--warning-light);
+}
+
+.status-badge.revealed {
+  background: var(--secondary-bg-20);
+  color: var(--secondary-light);
+}
+
+.question-text-detail {
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.question-image-detail {
+  margin: 0.75rem 0;
+  display: flex;
+  justify-content: center;
+}
+
+.question-image-detail img {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: var(--bg-overlay-10);
+}
+
+.question-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.choice-item {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.choice-item.choice-correct {
+  background: var(--secondary-bg-10);
+  border-color: var(--secondary-light);
+  color: var(--secondary-light);
+}
+
+.choice-item strong {
+  margin-right: 0.5rem;
+}
+
+.correct-indicator {
+  color: var(--secondary-light);
+  font-weight: bold;
+}
+
+.player-answers {
+  margin-top: 1rem;
+}
+
+.player-answers-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: var(--info-bg-10);
+  border: 1px solid var(--info-light);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--info-light);
+  font-weight: 500;
+}
+
+.player-answers-header:hover {
+  background: var(--info-bg-20);
+}
+
+.toggle-arrow {
+  transition: transform 0.2s;
+  color: var(--info-light);
+}
+
+.toggle-arrow.expanded {
+  transform: rotate(180deg);
+}
+
+.player-responses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-overlay-30);
+  border-radius: 6px;
+}
+
+.player-response {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.player-response.response-correct {
+  background: var(--secondary-bg-20);
+  border: 1px solid var(--secondary-light);
+}
+
+.player-response.response-incorrect {
+  background: var(--danger-bg-20);
+  border: 1px solid var(--danger-light);
+}
+
+.player-response.response-unanswered {
+  background: var(--bg-overlay-20);
+  border: 1px solid var(--border-color);
+}
+
+.player-response.response-answered {
+  background: var(--warning-bg-10);
+  border: 1px solid var(--warning-light);
+}
+
+.player-name {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.player-answer {
+  color: var(--text-primary);
+  font-weight: bold;
+}
+
+.answer-result {
+  margin-left: 0.25rem;
+}
+
+.answer-result.correct {
+  color: var(--secondary-light);
+}
+
+.answer-result.incorrect {
+  color: var(--danger-light);
+}
+
+.no-answer {
+  color: var(--text-tertiary);
+  font-weight: normal;
+}
+
+.not-presented {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-tertiary);
+  background: var(--bg-overlay-10);
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+  font-style: italic;
+}
+
 @media (max-width: 768px) {
   .overall-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .player-responses-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -16,6 +16,9 @@ app/sessions/
 app/quizzes/*.json
 app/quizzes/completed/*.json
 
+# Uploaded media files (question images)
+app/public/uploads/
+
 # Archive folders
 app/archive/
 screenshots/archive/

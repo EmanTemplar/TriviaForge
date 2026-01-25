@@ -74,6 +74,9 @@
       :isOpen="showProgressModal"
       :progressStats="progressStats"
       :sortedPlayers="sortedPlayers"
+      :questions="currentQuestions"
+      :revealedQuestions="revealedQuestions"
+      :presentedQuestions="presentedQuestions"
       @close="showProgressModal = false"
     />
 
@@ -553,8 +556,7 @@ const cancelAutoReveal = () => {
 }
 
 // Logout
-const logout = async (e) => {
-  e.preventDefault()
+const logout = async () => {
   try {
     await post('/api/auth/logout', {})
   } catch (err) {

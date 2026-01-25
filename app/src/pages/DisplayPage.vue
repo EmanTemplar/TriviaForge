@@ -13,6 +13,10 @@
 
       <!-- Question Display -->
       <div v-else class="question-display-area">
+        <!-- Question Image (if present) -->
+        <div v-if="currentQuestion?.imageUrl" class="display-image-container">
+          <img :src="currentQuestion.imageUrl" alt="Question image" class="display-question-image" />
+        </div>
         <h2 class="question-text">{{ currentQuestion?.text }}</h2>
         <div class="choices-display">
           <div
@@ -222,6 +226,7 @@ onMounted(() => {
     // Store the current question with its choices
     currentQuestion.value = {
       text: question.text,
+      imageUrl: question.imageUrl || null,
       choices: question.choices || [],
       correctChoice: question.correctChoice
     }
@@ -342,6 +347,25 @@ onUnmounted(() => {
   animation: fadeIn 0.3s ease-in;
   box-sizing: border-box;
   min-height: 0;
+}
+
+/* Display Question Image Styles */
+.display-image-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-height: 350px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.display-question-image {
+  max-width: 100%;
+  max-height: 350px;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px var(--bg-overlay-30);
 }
 
 .question-text {

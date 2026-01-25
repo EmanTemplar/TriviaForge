@@ -39,6 +39,8 @@ class QuizService {
           qs.id as question_id,
           qs.question_text,
           qs.question_type,
+          qs.image_url,
+          qs.image_type,
           qq.question_order,
           a.id as answer_id,
           a.answer_text,
@@ -61,6 +63,8 @@ class QuizService {
             id: row.question_id,
             text: row.question_text,
             type: row.question_type,
+            imageUrl: row.image_url || null,
+            imageType: row.image_type || null,
             order: row.question_order,
             choices: [],
           });
@@ -118,6 +122,9 @@ class QuizService {
       questions: quiz.questions.map((q) => ({
         id: q.id,
         text: q.text,
+        type: q.type || 'multiple_choice',
+        imageUrl: q.imageUrl || null,
+        imageType: q.imageType || null,
         choices: q.choices.map((c) => c.text),
         correctChoice: q.choices.findIndex((c) => c.isCorrect),
       })),

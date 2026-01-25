@@ -15,8 +15,8 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = Router();
 
-// Configure multer for file uploads
-const upload = multer({
+// Configure multer for Excel file uploads
+const excelUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
@@ -30,6 +30,32 @@ const upload = multer({
   },
 });
 
+// Configure multer for image uploads (question media)
+const imageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'questions');
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      // Generate unique filename: timestamp_random.ext
+      const ext = path.extname(file.originalname).toLowerCase();
+      const filename = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}${ext}`;
+      cb(null, filename);
+    }
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (jpg, jpeg, png, gif, webp) are allowed'));
+    }
+  },
+});
+
 /**
  * List all quizzes
  * GET /api/quizzes
@@ -37,6 +63,23 @@ const upload = multer({
  * Returns: Array of quiz objects with basic info
  */
 router.get('/', requireAdmin, asyncHandler(quizController.listQuizzes));
+
+/**
+ * Upload image for question
+ * POST /api/quizzes/upload-image
+ *
+ * Multipart form data with 'image' field
+ * Returns: { success: true, imageUrl: '/uploads/questions/filename.jpg' }
+ *
+ * Note: This route MUST be before /:filename to avoid matching "upload-image" as a filename
+ * Note: Uses doubleCsrfProtection middleware (applied in server.js)
+ */
+router.post(
+  '/upload-image',
+  requireAdmin,
+  imageUpload.single('image'),
+  asyncHandler(quizController.uploadImage)
+);
 
 /**
  * Get single quiz by ID
@@ -109,6 +152,6 @@ export const importRouter = Router();
 importRouter.post(
   '/',
   requireAdmin,
-  upload.single('file'),
+  excelUpload.single('file'),
   asyncHandler(quizController.importQuiz)
 );

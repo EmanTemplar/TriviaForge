@@ -15,6 +15,11 @@
               <span v-if="revealedQuestions.includes(idx)" class="status-badge revealed">✓ Revealed</span>
             </div>
           </div>
+          <!-- Question Image (if present) - with hover to enlarge -->
+          <div v-if="question.imageUrl" class="question-image-wrapper" @mouseenter="showImagePreview($event, question.imageUrl)" @mouseleave="hideImagePreview">
+            <span class="image-icon" title="Hover to enlarge image">🖼️</span>
+            <img :src="question.imageUrl" alt="Question image" class="question-thumbnail" />
+          </div>
           <ul>
             <li v-for="(choice, choiceIdx) in question.choices" :key="choiceIdx"
                 :class="{ 'correct-choice': question.correctChoice === choiceIdx }">
@@ -71,11 +76,34 @@
     <div v-else class="empty-state">
       <em>No quiz loaded</em>
     </div>
+
+    <!-- Image Preview Overlay -->
+    <div v-if="previewImage" class="image-preview-overlay" :style="previewPosition">
+      <img :src="previewImage" alt="Enlarged question image" />
+    </div>
   </section>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
+
+// Image preview state
+const previewImage = ref(null)
+const previewPosition = ref({})
+
+const showImagePreview = (event, imageUrl) => {
+  previewImage.value = imageUrl
+  // Position the preview near the mouse but within viewport
+  const rect = event.target.getBoundingClientRect()
+  previewPosition.value = {
+    top: `${Math.min(rect.top, window.innerHeight - 350)}px`,
+    left: `${Math.min(rect.right + 10, window.innerWidth - 420)}px`
+  }
+}
+
+const hideImagePreview = () => {
+  previewImage.value = null
+}
 
 const props = defineProps({
   currentQuizTitle: { type: String, default: '' },
@@ -158,6 +186,71 @@ const answerPercentage = computed(() => {
 .questionCard.presented {
   background: var(--info-bg-20);
   border-color: var(--info-light);
+}
+
+/* Question Image in Card */
+.question-image-wrapper {
+  margin: 0.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.question-image-wrapper:hover {
+  background: var(--info-bg-20);
+}
+
+.image-icon {
+  font-size: 1.2rem;
+  opacity: 0.7;
+}
+
+.question-image-wrapper:hover .image-icon {
+  opacity: 1;
+}
+
+.question-thumbnail {
+  max-width: 80px;
+  max-height: 60px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: var(--bg-overlay-10);
+}
+
+/* Image Preview Overlay */
+.image-preview-overlay {
+  position: fixed;
+  z-index: 1000;
+  background: var(--bg-overlay-95);
+  border: 2px solid var(--info-light);
+  border-radius: 12px;
+  padding: 0.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  animation: fadeIn 0.15s ease;
+}
+
+.image-preview-overlay img {
+  max-width: 400px;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 8px;
+  display: block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .question-header {

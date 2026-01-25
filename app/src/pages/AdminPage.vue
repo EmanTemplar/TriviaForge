@@ -35,6 +35,9 @@
         <QuestionEditor
           v-model:questionText="questionText"
           v-model:correctChoice="correctChoice"
+          v-model:questionType="questionType"
+          v-model:imageUrl="imageUrl"
+          v-model:imageType="imageType"
           :choices="choices"
           :editingQuestionIdx="editingQuestionIdx"
           :draggedChoiceIdx="draggedChoiceIdx"
@@ -50,6 +53,8 @@
           @choiceDragLeave="handleChoiceDragLeave"
           @choiceDrop="handleChoiceDrop"
           @choiceDragEnd="handleChoiceDragEnd"
+          @setChoicesForType="setChoicesForType"
+          @uploadImage="handleImageUpload"
         />
 
         <QuestionsList
@@ -200,7 +205,7 @@ import AboutPanel from '@/components/admin/AboutPanel.vue'
 import SessionDetailModal from '@/components/admin/SessionDetailModal.vue'
 
 const router = useRouter()
-const { get, post, put, delete: delete_ } = useApi()
+const { get, post, put, delete: delete_, upload } = useApi()
 const authStore = useAuthStore()
 
 // Initialize theme for AdminPage (dark theme default)
@@ -236,6 +241,9 @@ const quizDescription = ref('')
 const questionText = ref('')
 const choices = ref(['', '', '', ''])
 const correctChoice = ref(0)
+const questionType = ref('multiple_choice')
+const imageUrl = ref(null)
+const imageType = ref(null)
 const currentQuestions = ref([])
 const importStatus = ref('')
 const editingQuestionIdx = ref(null)
@@ -407,6 +415,9 @@ const editQuestion = (idx) => {
   questionText.value = question.text
   choices.value = [...question.choices]
   correctChoice.value = question.correctChoice
+  questionType.value = question.type || 'multiple_choice'
+  imageUrl.value = question.imageUrl || null
+  imageType.value = question.imageType || null
   editingQuestionIdx.value = idx
   // Scroll to editor
   document.querySelector('.question-editor')?.scrollIntoView({ behavior: 'smooth' })
@@ -416,7 +427,48 @@ const clearQuestionForm = () => {
   questionText.value = ''
   choices.value = ['', '', '', '']
   correctChoice.value = 0
+  questionType.value = 'multiple_choice'
+  imageUrl.value = null
+  imageType.value = null
   editingQuestionIdx.value = null
+}
+
+// Handle question type change - auto-set choices for True/False
+const setChoicesForType = (type) => {
+  if (type === 'true_false') {
+    choices.value = ['True', 'False']
+    correctChoice.value = 0
+  } else if (type === 'multiple_choice' && choices.value.length === 2 &&
+             choices.value[0] === 'True' && choices.value[1] === 'False') {
+    // Switching from True/False to multiple choice - reset to 4 empty choices
+    choices.value = ['', '', '', '']
+    correctChoice.value = 0
+  }
+}
+
+// Handle image upload
+const handleImageUpload = async (file) => {
+  if (!file) return
+
+  // Validate file size (5MB max)
+  if (file.size > 5 * 1024 * 1024) {
+    showAlert('Image must be less than 5MB', 'File Too Large')
+    return
+  }
+
+  try {
+    const formData = new FormData()
+    formData.append('image', file)
+
+    // Use the useApi upload function which handles CSRF tokens
+    const response = await upload('/api/quizzes/upload-image', formData)
+    imageUrl.value = response.data.imageUrl
+    imageType.value = 'upload'
+    showAlert('Image uploaded successfully')
+  } catch (err) {
+    console.error('Error uploading image:', err)
+    showAlert('Failed to upload image: ' + (err.response?.data?.message || err.message), 'Upload Error')
+  }
 }
 
 const saveQuestion = async () => {
@@ -438,7 +490,10 @@ const saveQuestion = async () => {
     const question = {
       text: questionText.value,
       choices: choices.value,
-      correctChoice: parseInt(correctChoice.value)
+      correctChoice: parseInt(correctChoice.value),
+      type: questionType.value,
+      imageUrl: imageUrl.value,
+      imageType: imageType.value
     }
 
     // Update local questions array
@@ -1035,8 +1090,7 @@ const closeMenuIfOutside = (e) => {
 }
 
 // Logout
-const logout = async (e) => {
-  e.preventDefault()
+const logout = async () => {
   try {
     await post('/api/auth/logout', {})
   } catch (err) {

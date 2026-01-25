@@ -649,6 +649,7 @@ const setupSocketListeners = () => {
         index: questionIndex,
         text: question.text,
         choices: question.choices,
+        imageUrl: question.imageUrl || null,
         playerChoice: null,
         correctChoice: isAlreadyRevealed ? question.correctChoice : undefined,
         presented: true,

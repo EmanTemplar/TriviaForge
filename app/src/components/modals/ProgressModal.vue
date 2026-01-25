@@ -38,6 +38,9 @@
           >
             <div class="history-content">
               <div class="history-question">Q{{ q.index + 1 }}. {{ q.text }}</div>
+              <div v-if="q.imageUrl" class="history-image">
+                <img :src="q.imageUrl" alt="Question image" @error="handleImageError" />
+              </div>
               <div class="history-answer">
                 <strong class="answer-label">Your answer:</strong>
                 {{ q.playerChoice !== null ? `${String.fromCharCode(65 + q.playerChoice)}. ${q.choices[q.playerChoice]}` : 'No answer submitted' }}
@@ -106,6 +109,11 @@ const getQuestionStatusText = (q) => {
   if (q.revealed && !q.isCorrect) return 'Incorrect';
   if (q.playerChoice !== null) return 'Waiting for reveal';
   return 'Not answered';
+};
+
+// Handle broken images
+const handleImageError = (event) => {
+  event.target.style.display = 'none';
 };
 </script>
 
@@ -218,6 +226,20 @@ const getQuestionStatusText = (q) => {
   font-weight: bold;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
+}
+
+.history-image {
+  margin: 0.5rem 0;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.history-image img {
+  max-width: 150px;
+  max-height: 100px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: var(--bg-overlay-10);
 }
 
 .history-answer {

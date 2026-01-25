@@ -18,13 +18,13 @@ services:
     restart: unless-stopped
   app:
     # PRODUCTION/DOCKER HUB: Uses Docker Hub image (default)
-    image: emancodetemplar/triviaforge:v4.3.0
+    #image: emancodetemplar/triviaforge:v4.3.0
 
     # LOCAL DEVELOPMENT: Uncomment below to build from local Dockerfile
-    # build:
-    #    context: ./app
-    #    dockerfile: Dockerfile
-    # image: triviaforge:local
+    build:
+        context: ./app
+        dockerfile: Dockerfile
+    image: triviaforge:local
 
     container_name: triviagame-app
     ports:
@@ -47,6 +47,9 @@ services:
       HOST_IP: ${HOST_IP:-}
       SESSION_TIMEOUT: ${SESSION_TIMEOUT:-3600000}
       APP_NAME: ${APP_NAME:-TriviaForge}
+    volumes:
+      - uploads:/app/public/uploads
     restart: unless-stopped
 volumes:
   pgdata:
+  uploads:

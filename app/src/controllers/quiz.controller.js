@@ -8,6 +8,8 @@
  */
 
 import ExcelJS from 'exceljs';
+import fs from 'fs';
+import path from 'path';
 import { query, getClient, transaction } from '../config/database.js';
 import {
   NotFoundError,
@@ -15,6 +17,12 @@ import {
   DatabaseError,
 } from '../utils/errors.js';
 import { sendSuccess } from '../utils/responses.js';
+
+// Ensure uploads directory exists on startup
+const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'questions');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 /**
  * Helper: Get quiz by ID with all questions and answers
@@ -37,21 +45,25 @@ async function getQuizById(quizId) {
 
     const quiz = quizResult.rows[0];
 
-    // Fetch questions with answers (using the view for convenience)
+    // Fetch questions with answers (direct query to include image fields)
     const questionsResult = await client.query(
       `
       SELECT
-        question_id,
-        question_text,
-        question_type,
-        question_order,
-        answer_id,
-        answer_text,
-        is_correct,
-        display_order
-      FROM quiz_full_details
-      WHERE quiz_id = $1
-      ORDER BY question_order, display_order
+        qs.id AS question_id,
+        qs.question_text,
+        qs.question_type,
+        qs.image_url,
+        qs.image_type,
+        qq.question_order,
+        a.id AS answer_id,
+        a.answer_text,
+        a.is_correct,
+        a.display_order
+      FROM quiz_questions qq
+      JOIN questions qs ON qq.question_id = qs.id
+      JOIN answers a ON qs.id = a.question_id
+      WHERE qq.quiz_id = $1
+      ORDER BY qq.question_order, a.display_order
     `,
       [quizId]
     );
@@ -64,6 +76,8 @@ async function getQuizById(quizId) {
           id: row.question_id,
           text: row.question_text,
           type: row.question_type,
+          imageUrl: row.image_url,
+          imageType: row.image_type,
           order: row.question_order,
           choices: [],
         });
@@ -175,6 +189,9 @@ export async function getQuiz(req, res, next) {
       questions: quiz.questions.map((q) => ({
         id: q.id,
         text: q.text,
+        type: q.type,
+        imageUrl: q.imageUrl || null,
+        imageType: q.imageType || null,
         choices: q.choices.map((c) => c.text),
         correctChoice: q.choices.findIndex((c) => c.isCorrect),
       })),
@@ -210,10 +227,13 @@ export async function createQuiz(req, res, next) {
     for (let i = 0; i < (questions || []).length; i++) {
       const q = questions[i];
 
-      // Insert question
+      // Insert question - use provided type or default to multiple_choice
+      const questionType = q.type || 'multiple_choice';
+      const imageUrl = q.imageUrl || null;
+      const imageType = q.imageType || null;
       const questionResult = await client.query(
-        'INSERT INTO questions (question_text, question_type, created_by) VALUES ($1, $2, $3) RETURNING id',
-        [q.text, 'multiple_choice', 1] // TODO: Use actual user ID
+        'INSERT INTO questions (question_text, question_type, image_url, image_type, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        [q.text, questionType, imageUrl, imageType, 1] // TODO: Use actual user ID
       );
       const questionId = questionResult.rows[0].id;
 
@@ -315,10 +335,13 @@ export async function updateQuiz(req, res, next) {
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
 
-      // Insert question
+      // Insert question - use provided type or default to multiple_choice
+      const questionType = q.type || 'multiple_choice';
+      const imageUrl = q.imageUrl || null;
+      const imageType = q.imageType || null;
       const questionResult = await client.query(
-        'INSERT INTO questions (question_text, question_type, created_by) VALUES ($1, $2, $3) RETURNING id',
-        [q.text, 'multiple_choice', 1] // TODO: Use actual user ID
+        'INSERT INTO questions (question_text, question_type, image_url, image_type, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        [q.text, questionType, imageUrl, imageType, 1] // TODO: Use actual user ID
       );
       const questionId = questionResult.rows[0].id;
 
@@ -386,6 +409,32 @@ export async function deleteQuiz(req, res, next) {
 
     sendSuccess(res, null, 'Quiz deleted successfully');
   } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Upload image for question
+ *
+ * POST /api/quizzes/upload-image
+ * Multipart form data with 'image' field
+ */
+export async function uploadImage(req, res, next) {
+  try {
+    if (!req.file) {
+      throw new BadRequestError('No image file uploaded');
+    }
+
+    // Return the URL path for the uploaded image
+    const imageUrl = `/uploads/questions/${req.file.filename}`;
+
+    res.json({
+      success: true,
+      imageUrl,
+      filename: req.file.filename,
+    });
+  } catch (err) {
+    console.error('Error uploading image:', err);
     next(err);
   }
 }
@@ -696,10 +745,11 @@ export async function importQuiz(req, res, next) {
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
 
-        // Insert question
+        // Insert question - use provided type or default to multiple_choice
+        const questionType = q.type || 'multiple_choice';
         const questionResult = await client.query(
           'INSERT INTO questions (question_text, question_type, created_by) VALUES ($1, $2, $3) RETURNING id',
-          [q.text, 'multiple_choice', 1] // TODO: Use actual user ID
+          [q.text, questionType, 1] // TODO: Use actual user ID
         );
         const questionId = questionResult.rows[0].id;
 
@@ -749,6 +799,7 @@ export default {
   createQuiz,
   updateQuiz,
   deleteQuiz,
+  uploadImage,
   downloadTemplate,
   importQuiz,
 };

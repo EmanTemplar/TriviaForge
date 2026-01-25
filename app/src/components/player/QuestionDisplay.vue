@@ -1,8 +1,40 @@
 <template>
   <div class="question-display-area">
+    <!-- Question Image (if present) -->
+    <div v-if="currentQuestion?.imageUrl" class="question-image-container">
+      <img
+        :src="currentQuestion.imageUrl"
+        alt="Question image"
+        class="question-image"
+        @error="handleImageError"
+      />
+    </div>
+
     <h2 class="question-text">{{ currentQuestion?.text }}</h2>
 
-    <div class="choices-container">
+    <!-- True/False Question Layout -->
+    <div v-if="isTrueFalse" class="true-false-container">
+      <button
+        v-for="(choice, idx) in currentQuestion?.choices || []"
+        :key="idx"
+        class="tf-choice-btn"
+        :class="{
+          'tf-true': idx === 0,
+          'tf-false': idx === 1,
+          selected: selectedAnswer === idx,
+          correct: idx === currentQuestion?.correctChoice && answerRevealed,
+          incorrect: idx === selectedAnswer && selectedAnswer !== currentQuestion?.correctChoice && answerRevealed
+        }"
+        :disabled="answeredCurrentQuestion || answerRevealed"
+        @click="$emit('selectAnswer', idx)"
+      >
+        <span class="tf-icon">{{ idx === 0 ? '✓' : '✗' }}</span>
+        <span class="tf-text">{{ choice }}</span>
+      </button>
+    </div>
+
+    <!-- Multiple Choice Question Layout -->
+    <div v-else class="choices-container">
       <button
         v-for="(choice, idx) in currentQuestion?.choices || []"
         :key="idx"
@@ -29,7 +61,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue';
+
+const props = defineProps({
   currentQuestion: { type: Object, default: null },
   selectedAnswer: { type: Number, default: null },
   answerRevealed: { type: Boolean, required: true },
@@ -38,6 +72,19 @@ defineProps({
 });
 
 defineEmits(['selectAnswer']);
+
+// Detect True/False questions
+const isTrueFalse = computed(() => {
+  return props.currentQuestion?.type === 'true_false' ||
+    (props.currentQuestion?.choices?.length === 2 &&
+     props.currentQuestion?.choices[0]?.toLowerCase() === 'true' &&
+     props.currentQuestion?.choices[1]?.toLowerCase() === 'false');
+});
+
+// Handle broken image
+const handleImageError = (event) => {
+  event.target.style.display = 'none';
+};
 </script>
 
 <style scoped>
@@ -48,6 +95,25 @@ defineEmits(['selectAnswer']);
   flex-direction: column;
   gap: 2rem;
   box-sizing: border-box;
+}
+
+/* Question Image Styles */
+.question-image-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-height: 300px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--bg-overlay-10);
+}
+
+.question-image {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 8px;
 }
 
 .question-text {
@@ -157,6 +223,121 @@ defineEmits(['selectAnswer']);
 @media (max-width: 768px) {
   .choices-container {
     grid-template-columns: 1fr;
+  }
+}
+
+/* True/False Question Styles */
+.true-false-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.tf-choice-btn {
+  padding: 3rem 2rem;
+  border: 4px solid var(--border-color);
+  border-radius: 20px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.tf-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.tf-text {
+  font-size: 1.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* True button - green theme */
+.tf-choice-btn.tf-true {
+  background: var(--secondary-bg-20);
+  border-color: var(--secondary-light);
+  color: var(--secondary-light);
+}
+
+.tf-choice-btn.tf-true:hover:not(:disabled) {
+  background: var(--secondary-bg-40);
+  border-color: var(--secondary-color);
+}
+
+/* False button - red theme */
+.tf-choice-btn.tf-false {
+  background: var(--danger-bg-20);
+  border-color: var(--danger-light);
+  color: var(--danger-light);
+}
+
+.tf-choice-btn.tf-false:hover:not(:disabled) {
+  background: var(--danger-bg-40);
+  border-color: var(--danger-color);
+}
+
+/* Selected state for True/False */
+.tf-choice-btn.selected {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px var(--info-bg-40);
+}
+
+.tf-choice-btn.tf-true.selected {
+  background: var(--secondary-bg-50);
+  border-color: var(--secondary-color);
+}
+
+.tf-choice-btn.tf-false.selected {
+  background: var(--danger-bg-50);
+  border-color: var(--danger-color);
+}
+
+/* Answer revealed states for True/False */
+.tf-choice-btn.correct {
+  background: var(--secondary-bg-50);
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
+}
+
+.tf-choice-btn.incorrect {
+  background: var(--danger-bg-50);
+  border-color: var(--danger-color);
+  color: var(--danger-color);
+  opacity: 0.7;
+}
+
+.tf-choice-btn:disabled {
+  cursor: not-allowed;
+}
+
+/* Mobile - keep side-by-side for True/False */
+@media (max-width: 768px) {
+  .true-false-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .tf-choice-btn {
+    padding: 2rem 1rem;
+  }
+
+  .tf-icon {
+    font-size: 2.5rem;
+  }
+
+  .tf-text {
+    font-size: 1.1rem;
   }
 }
 </style>

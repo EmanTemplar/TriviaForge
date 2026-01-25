@@ -1,8 +1,8 @@
 # TriviaForge - Active Development Tasks (2026)
 
 > **Purpose:** Current development priorities and pending tasks
-> **Last Updated:** 2026-01-03
-> **Version:** v4.2.3
+> **Last Updated:** 2026-01-24
+> **Version:** v5.0.0b (In Development)
 
 ---
 
@@ -225,32 +225,6 @@ Add notification to presenter when all connected players have answered the curre
 
 ---
 
-## 🔍 Items Needing Verification
-
-> **Note:** These items were marked incomplete in the archived TODO. Please verify if they've been implemented or are still needed.
-
-### Post-Vue 3 Migration Tasks
-
-**C. Socket.IO Production Integration Testing**
-- [ ] Test player-presenter communication in production
-- [ ] Test session creation and management
-- [ ] Test question presentation and answer submission
-- [ ] Test real-time standings update
-- [ ] Test player reconnection handling
-- [ ] Test large group scenarios (50+ players)
-- [ ] Test network failure recovery
-- [ ] Cross-browser compatibility testing
-
-**D. Production Deployment & Testing**
-- [ ] Build Docker image with Vite production build
-- [ ] Test locally with `docker-compose up`
-- [ ] Push to Docker Hub: `emancodetemplar/triviaforge:v4.x.x`
-- [ ] Test production deployment
-- [ ] Verify all features work end-to-end
-- [ ] Monitor for errors in production
-
----
-
 ## 📋 Long-term / Future Enhancements
 
 > **Note:** These are planned features but not immediate priorities. See archived TODO-2025.md for detailed specifications.
@@ -265,7 +239,9 @@ Add notification to presenter when all connected players have answered the curre
 - [ ] Implement Phase 1 security fixes from SECURITY-AUDIT.md (if not done)
 - [ ] Ban Player Account system (permanent/temporary bans)
 - [ ] Enhanced Player Security & Management (needs re-review post v3.2.1 improvements)
-- [ ] Multi-Admin Support System (role-based permissions)
+- [x] Multi-Admin Support System (isolated instances) - v5.0.0b
+- [ ] Email verification for admin accounts
+- [ ] Two-Factor Authentication (2FA) for admins
 
 ### Player & Presenter Features
 - [ ] Automated Presenter Mode with Timers (auto-reveal, auto-advance)
@@ -280,23 +256,24 @@ Add notification to presenter when all connected players have answered the curre
 
 ## 📝 Development Notes
 
-### Current Focus Areas
-1. **Mobile UX:** Stay-awake notification visibility
-2. **Player Experience:** Answer confirmation to prevent mistakes
-3. **Presenter Experience:** Better player status visibility and grouping
-4. **Quality Assurance:** Test reconnection fixes in real scenarios
+### Current Focus Areas (v5.0.0b)
+1. **Bug Fixes:** Logout button functionality on Admin/Presenter pages
+2. **Answer Types:** True/False question support
+3. **Media Support:** Question images (upload + URL reference)
+4. **Multi-Admin:** Isolated instances per admin account
+5. **Security Research:** Email verification and 2FA options
 
 ### Testing Priorities
 - Mobile browser testing (iOS Safari, Chrome Mobile, Firefox Mobile)
-- Large group testing (50+ players) when possible
 - Cross-browser compatibility (Edge, Firefox, Chrome, Safari)
-- Network failure scenarios (airplane mode, wifi switching)
+- Admin isolation verification (quizzes/sessions per admin)
+- Image upload and display across devices
 
 ### Version Planning
 - **v4.2.2 (Released):** Stay-awake fix + Answer confirmation modal ✅
 - **v4.2.3 (Released):** Presenter connected players visual improvements ✅
 - **v4.3.0 (Released):** All players answered notification with auto-reveal ✅
-- **v5.0.0 (Future Major):** Consider solo-play mode, automated presenter, mDNS
+- **v5.0.0b (In Progress):** True/False, media support, multi-admin, security research
 
 ---
 
@@ -315,5 +292,5 @@ Before marking a task as complete:
 
 **Archive:** See [archive/TODO-2025.md](archive/TODO-2025.md) for historical tasks and completed features from 2025.
 
-**Last Updated:** 2026-01-03
+**Last Updated:** 2026-01-24
 **Maintained By:** TriviaForge Development Team
