@@ -1,7 +1,7 @@
 # TriviaForge - Active Development Tasks (2026)
 
 > **Purpose:** Current development priorities and pending tasks
-> **Last Updated:** 2026-01-24
+> **Last Updated:** 2026-01-26
 > **Version:** v5.0.0b (In Development)
 
 ---
@@ -32,6 +32,56 @@
 ---
 
 ## 🚀 Current Priorities (Active Development)
+
+### v5.0.0b Features - Multi-Admin Support & UI Improvements ✅ COMPLETE
+
+**Status:** ✅ COMPLETE
+**Priority:** HIGH
+**Completed:** 2026-01-26
+**Branch:** `app-enhancements-v5.0.0b`
+
+#### Multi-Admin Support System ✅
+- [x] Admin session isolation - regular admins only see their own quizzes/sessions
+- [x] Root admin sees all sessions across all admins
+- [x] Session creator tracking - displays which admin created each session
+- [x] Socket.IO ownership validation for room operations (resume, view, close)
+- [x] Admin account creation with auto-generated passwords (root admin only)
+- [x] Admin account deletion (root admin only, cannot delete self)
+- [x] Admin password reset by root admin
+
+#### Account Settings Enhancements ✅
+- [x] Account Settings modal on Admin page with email and password change
+- [x] Account Settings modal on Presenter page (matching Admin page)
+- [x] Password change with current password verification
+- [x] Email address management for future recovery features
+- [x] Password visibility toggle on all password fields
+
+#### UI/UX Improvements ✅
+- [x] Presenter navbar dropdown matching Admin page style
+- [x] User Management tab visual alignment fix (CSS Grid layout)
+- [x] Last seen timestamp fix - now includes session token activity
+- [x] Text truncation with ellipsis for long usernames/emails
+
+#### Bug Fixes ✅
+- [x] Logout button working on Admin and Presenter pages
+- [x] Player disconnect now properly sets connectionState to 'disconnected'
+- [x] Players clicking "Leave Room" immediately marked as disconnected
+
+**Files Modified:**
+- `app/src/middleware/auth.js` - Added is_root_admin flag to requireAdmin
+- `app/src/controllers/session.controller.js` - Session filtering by admin
+- `app/src/controllers/user.controller.js` - Fixed last seen query
+- `app/src/controllers/auth.controller.js` - Admin CRUD operations
+- `app/src/routes/auth.routes.js` - Admin management routes
+- `app/server.js` - Socket ownership validation, disconnect fix
+- `app/src/pages/AdminPage.vue` - Account settings, admin management UI
+- `app/src/pages/PresenterPage.vue` - Account settings modal
+- `app/src/components/presenter/PresenterNavbar.vue` - Dropdown style
+- `app/src/components/admin/UserCategorySection.vue` - Grid layout
+- `app/src/components/admin/SessionsList.vue` - Creator display
+- `app/src/components/common/FormInput.vue` - Password toggle
+
+---
 
 ### 1. Fix Stay-Awake Notification on Mobile 📱
 **Status:** ✅ COMPLETE
@@ -257,11 +307,11 @@ Add notification to presenter when all connected players have answered the curre
 ## 📝 Development Notes
 
 ### Current Focus Areas (v5.0.0b)
-1. **Bug Fixes:** Logout button functionality on Admin/Presenter pages
-2. **Answer Types:** True/False question support
-3. **Media Support:** Question images (upload + URL reference)
-4. **Multi-Admin:** Isolated instances per admin account
-5. **Security Research:** Email verification and 2FA options
+1. ~~**Bug Fixes:** Logout button functionality on Admin/Presenter pages~~ ✅ COMPLETE
+2. **Answer Types:** True/False question support (future)
+3. **Media Support:** Question images (upload + URL reference) (future)
+4. ~~**Multi-Admin:** Isolated instances per admin account~~ ✅ COMPLETE
+5. **Security Research:** Email verification and 2FA options (future)
 
 ### Testing Priorities
 - Mobile browser testing (iOS Safari, Chrome Mobile, Firefox Mobile)
@@ -273,7 +323,8 @@ Add notification to presenter when all connected players have answered the curre
 - **v4.2.2 (Released):** Stay-awake fix + Answer confirmation modal ✅
 - **v4.2.3 (Released):** Presenter connected players visual improvements ✅
 - **v4.3.0 (Released):** All players answered notification with auto-reveal ✅
-- **v5.0.0b (In Progress):** True/False, media support, multi-admin, security research
+- **v5.0.0b (Complete):** Multi-admin support, session isolation, account settings, UI improvements ✅
+- **v5.1.0 (Planned):** True/False question type, media support, security research
 
 ---
 
@@ -292,5 +343,5 @@ Before marking a task as complete:
 
 **Archive:** See [archive/TODO-2025.md](archive/TODO-2025.md) for historical tasks and completed features from 2025.
 
-**Last Updated:** 2026-01-24
+**Last Updated:** 2026-01-26
 **Maintained By:** TriviaForge Development Team

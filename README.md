@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v4.3.0 - Presenter Enhancements: Real-time answer progress tracking, all players answered notification with auto-reveal
+**Latest Release**: v5.0.0b - Multi-Admin Support: Session isolation, account management, and UI improvements
 
 ### Key Highlights
 
@@ -30,8 +30,11 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - **Excel Import**: Bulk import quizzes from professionally formatted Excel templates (supports 2-10 answer choices)
 - **Session Management**: Resume interrupted sessions with full state preservation
 - **Real-time Monitoring**: Track active rooms and player participation live
-- **User Management**: View and manage all user accounts (guest and registered players)
+- **User Management**: View and manage all user accounts (guest, registered players, and admins)
 - **Password Reset**: Reset player passwords and manage account types
+- **Multi-Admin Support**: Multiple admin accounts with isolated quizzes and sessions
+- **Admin Management** (Root Admin): Create/delete admin accounts, reset admin passwords
+- **Account Settings**: Update email and password from any admin page
 
 <!-- Screenshot Placeholder: Admin Dashboard -->
 ![Admin Dashboard](screenshots/admin-dashboard.png?v=202511)
@@ -631,6 +634,19 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 
 ### Completed Features
 
+**v5.0.0b (Jan 2026) - Multi-Admin Support**
+- [x] Multi-admin support with isolated quizzes and sessions per admin
+- [x] Root admin can create/delete admin accounts and reset passwords
+- [x] Session isolation - regular admins only see their own sessions
+- [x] Session creator tracking - root admin sees who created each session
+- [x] Account settings modal on Admin and Presenter pages
+- [x] Password change with current password verification
+- [x] Email address management for future recovery features
+- [x] Presenter navbar dropdown matching Admin page style
+- [x] User Management visual alignment improvements (CSS Grid)
+- [x] Last seen timestamp fix including session token activity
+- [x] Player disconnect immediately marks as disconnected
+
 **v4.3.0 (Jan 2026) - Presenter Enhancements**
 - [x] Real-time answer progress tracking with percentage and animated progress bar
 - [x] All players answered notification banner with visual indicator
@@ -678,11 +694,13 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 
 **Under Consideration:**
 - [ ] Question media support (images, audio, video)
+- [ ] True/False question type
 - [ ] Advanced leaderboard and scoring systems
 - [ ] Timer-based questions with countdown
 - [ ] Team mode for collaborative play
 - [ ] Export results to CSV/PDF
-- [ ] Dark mode / Light mode toggle
+- [ ] Email verification for admin accounts
+- [ ] Two-Factor Authentication (2FA) for admins
 - [ ] Internationalization (i18n)
 - [ ] Player statistics dashboard
 - [ ] Performance analytics and insights
