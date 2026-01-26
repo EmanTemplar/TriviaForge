@@ -20,7 +20,7 @@
         :incompleteSessions="incompleteSessions"
         :selectedSessionFilename="selectedSessionFilename"
         @update:selectedSessionFilename="selectedSessionFilename = $event"
-        :activeRooms="activeRooms"
+        :activeRooms="filteredActiveRooms"
         @makeRoomLive="makeRoomLive"
         @showQRModal="showQRModal"
         @resumeSession="resumeSession"
@@ -173,6 +173,16 @@ let autoRevealTimer = null
 // Computed: Filter out spectators from connected players
 const nonSpectatorPlayers = computed(() => {
   return connectedPlayers.value.filter(p => !p.isSpectator)
+})
+
+// Computed: Filter active rooms based on admin permissions
+// Root admin sees all rooms, regular admins only see their own rooms
+const filteredActiveRooms = computed(() => {
+  if (authStore.isRootAdmin) {
+    return activeRooms.value // Root admin sees all rooms
+  }
+  // Regular admins only see rooms they created
+  return activeRooms.value.filter(room => room.createdBy === authStore.userId)
 })
 
 // Computed: Count of active players (connected + away, excluding disconnected)

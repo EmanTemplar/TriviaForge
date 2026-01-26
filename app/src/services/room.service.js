@@ -320,6 +320,7 @@ class RoomService {
         playerCount: Object.values(room.players).filter((p) => !p.isSpectator).length,
         status: room.status,
         createdAt: room.createdAt,
+        createdBy: room.createdBy || 1, // Include which admin created this room
       };
     });
   }
