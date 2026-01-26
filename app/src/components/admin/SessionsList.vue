@@ -9,7 +9,12 @@
             <div class="session-title">{{ session.quizTitle }} ({{ session.roomCode }})</div>
             <div class="session-status" :class="'status-' + session.status">{{ session.status }}</div>
           </div>
-          <div class="session-date">{{ formatDate(session.completedAt || session.createdAt) }}</div>
+          <div class="session-meta">
+            <span class="session-date">{{ formatDate(session.completedAt || session.createdAt) }}</span>
+            <span v-if="isRootAdmin && session.createdByUsername" class="session-creator">
+              by <strong>{{ session.createdByUsername }}</strong>
+            </span>
+          </div>
           <div class="session-stats">{{ session.playerCount || 0 }} players · {{ session.presentedCount || 0 }}/{{ session.questionCount || 0 }} presented</div>
         </div>
         <button class="btn-delete-inline" @click.stop="$emit('deleteSession', session)" title="Delete Session">🗑️</button>
@@ -21,7 +26,8 @@
 <script setup>
 defineProps({
   sessions: { type: Array, required: true },
-  formatDate: { type: Function, required: true }
+  formatDate: { type: Function, required: true },
+  isRootAdmin: { type: Boolean, default: false }
 });
 
 defineEmits(['viewSession', 'deleteSession']);
@@ -118,9 +124,28 @@ h2 {
   color: var(--warning-light);
 }
 
+.session-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .session-date {
   color: var(--text-tertiary);
   font-size: 0.85rem;
+}
+
+.session-creator {
+  color: var(--info-light);
+  font-size: 0.85rem;
+  padding: 0.15rem 0.5rem;
+  background: var(--info-bg-10);
+  border-radius: 4px;
+}
+
+.session-creator strong {
+  color: var(--info-color);
 }
 
 .session-stats {

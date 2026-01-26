@@ -7,6 +7,7 @@
       :username="authStore.username"
       @toggleMenu="toggleMenu"
       @logout="logout"
+      @settings="openAccountSettings"
     />
 
     <!-- Main Content -->
@@ -86,6 +87,70 @@
       @close="showAnswerRevealModal = false"
     />
 
+    <!-- Account Settings Modal -->
+    <Modal :isOpen="showAccountSettingsModal" @close="showAccountSettingsModal = false" title="Account Settings" size="small">
+      <div class="account-settings-content">
+        <div class="settings-field">
+          <label>Username</label>
+          <div class="settings-value">{{ authStore.username }}</div>
+        </div>
+        <div class="settings-field">
+          <label for="accountEmail">Email Address</label>
+          <FormInput
+            id="accountEmail"
+            v-model="accountEmail"
+            type="email"
+            placeholder="Enter your email address"
+          />
+          <p class="settings-hint">Used for account recovery and notifications (future feature)</p>
+        </div>
+
+        <div class="settings-divider"></div>
+        <h4 class="settings-section-title">Change Password</h4>
+
+        <div class="settings-field">
+          <label for="currentPassword">Current Password</label>
+          <FormInput
+            id="currentPassword"
+            v-model="currentPassword"
+            type="password"
+            placeholder="Enter current password"
+            :showPasswordToggle="true"
+          />
+        </div>
+        <div class="settings-field">
+          <label for="newPassword">New Password</label>
+          <FormInput
+            id="newPassword"
+            v-model="newPassword"
+            type="password"
+            placeholder="Enter new password (min 8 characters)"
+            :showPasswordToggle="true"
+          />
+        </div>
+        <div class="settings-field">
+          <label for="confirmPassword">Confirm New Password</label>
+          <FormInput
+            id="confirmPassword"
+            v-model="confirmPassword"
+            type="password"
+            placeholder="Confirm new password"
+            :showPasswordToggle="true"
+          />
+        </div>
+        <p class="settings-hint">Leave password fields empty to keep your current password.</p>
+
+        <div v-if="accountSettingsError" class="settings-error">{{ accountSettingsError }}</div>
+        <div v-if="accountSettingsSuccess" class="settings-success">{{ accountSettingsSuccess }}</div>
+      </div>
+      <template #footer>
+        <Button variant="secondary" @click="showAccountSettingsModal = false">Cancel</Button>
+        <Button variant="success" @click="saveAccountSettings" :disabled="isSavingAccountSettings">
+          {{ isSavingAccountSettings ? 'Saving...' : 'Save Changes' }}
+        </Button>
+      </template>
+    </Modal>
+
     <!-- Custom Dialog Modal -->
     <Modal :isOpen="showDialog" size="small" :title="dialogTitle" @close="handleDialogCancel">
       <template #default>
@@ -108,6 +173,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
+import FormInput from '@/components/common/FormInput.vue'
 import PresenterNavbar from '@/components/presenter/PresenterNavbar.vue'
 import PresenterSidebar from '@/components/presenter/PresenterSidebar.vue'
 import QuizDisplay from '@/components/presenter/QuizDisplay.vue'
@@ -135,6 +201,16 @@ const showQRCodeModal = ref(false)
 const showProgressModal = ref(false)
 const showDialog = ref(false)
 const showAnswerRevealModal = ref(false)
+const showAccountSettingsModal = ref(false)
+
+// Account Settings state
+const accountEmail = ref('')
+const currentPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const accountSettingsError = ref(null)
+const accountSettingsSuccess = ref(null)
+const isSavingAccountSettings = ref(false)
 
 // Dialog state
 const dialogTitle = ref('')
@@ -283,21 +359,25 @@ const resumeSession = async () => {
     'Resume Session'
   )
   if (confirmed) {
-    socket.emit('resumeSession', { sessionFilename: selectedSessionFilename.value })
+    socket.emit('resumeSession', {
+      sessionFilename: selectedSessionFilename.value,
+      userId: authStore.userId,
+      isRootAdmin: authStore.isRootAdmin
+    })
   }
 }
 
 // View room
 const viewRoom = (roomCode) => {
   currentRoomCode.value = roomCode
-  socket.emit('viewRoom', { roomCode })
+  socket.emit('viewRoom', { roomCode, userId: authStore.userId, isRootAdmin: authStore.isRootAdmin })
 }
 
 // Close room
 const closeRoom = async (roomCode) => {
   const confirmed = await showConfirm(`Close room ${roomCode}?`, 'Close Room')
   if (confirmed) {
-    socket.emit('closeRoom', { roomCode })
+    socket.emit('closeRoom', { roomCode, userId: authStore.userId, isRootAdmin: authStore.isRootAdmin })
     if (currentRoomCode.value === roomCode) {
       resetRoom()
     }
@@ -576,6 +656,88 @@ const logout = async () => {
   router.push({name: 'login'})
 }
 
+// Account Settings
+const openAccountSettings = async () => {
+  accountSettingsError.value = null
+  accountSettingsSuccess.value = null
+  isSavingAccountSettings.value = false
+  // Reset password fields
+  currentPassword.value = ''
+  newPassword.value = ''
+  confirmPassword.value = ''
+  // Fetch current email
+  try {
+    const response = await get('/api/auth/admin-info')
+    accountEmail.value = response.data?.user?.email || ''
+  } catch (err) {
+    accountEmail.value = ''
+  }
+  showAccountSettingsModal.value = true
+}
+
+const saveAccountSettings = async () => {
+  accountSettingsError.value = null
+  accountSettingsSuccess.value = null
+  isSavingAccountSettings.value = true
+
+  try {
+    // Check if user wants to change password
+    const wantsPasswordChange = currentPassword.value || newPassword.value || confirmPassword.value
+
+    if (wantsPasswordChange) {
+      // Validate password fields
+      if (!currentPassword.value) {
+        accountSettingsError.value = 'Current password is required to change password'
+        isSavingAccountSettings.value = false
+        return
+      }
+      if (!newPassword.value) {
+        accountSettingsError.value = 'New password is required'
+        isSavingAccountSettings.value = false
+        return
+      }
+      if (newPassword.value.length < 8) {
+        accountSettingsError.value = 'New password must be at least 8 characters'
+        isSavingAccountSettings.value = false
+        return
+      }
+      if (newPassword.value !== confirmPassword.value) {
+        accountSettingsError.value = 'New passwords do not match'
+        isSavingAccountSettings.value = false
+        return
+      }
+
+      // Change password
+      await post('/api/auth/change-password', {
+        currentPassword: currentPassword.value,
+        newPassword: newPassword.value
+      })
+
+      // Clear password fields after successful change
+      currentPassword.value = ''
+      newPassword.value = ''
+      confirmPassword.value = ''
+    }
+
+    // Update email if changed
+    await post('/api/auth/update-email', { email: accountEmail.value })
+
+    isSavingAccountSettings.value = false
+
+    // Show success message
+    if (wantsPasswordChange) {
+      accountSettingsSuccess.value = 'Password and email updated successfully!'
+    } else {
+      showAccountSettingsModal.value = false
+      await showAlert('Settings saved successfully.', 'Settings Saved')
+    }
+  } catch (err) {
+    console.error('Save account settings error:', err)
+    accountSettingsError.value = err.response?.data?.error || 'Failed to save settings'
+    isSavingAccountSettings.value = false
+  }
+}
+
 // Socket event handlers
 const setupSocketListeners = () => {
   const socketInstance = socket.connect()
@@ -823,5 +985,64 @@ onUnmounted(() => {
     padding: 0.5rem;
     gap: 0.5rem;
   }
+}
+
+/* Account Settings */
+.account-settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-field label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.settings-value {
+  color: var(--text-primary);
+  font-size: 1rem;
+  padding: 0.5rem 0;
+}
+
+.settings-hint {
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.settings-error {
+  color: var(--danger-light);
+  background: var(--danger-bg-10);
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.settings-success {
+  color: var(--secondary-light);
+  background: var(--secondary-bg-10);
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.settings-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 0.5rem 0;
+}
+
+.settings-section-title {
+  color: var(--text-primary);
+  font-size: 1rem;
+  margin: 0;
 }
 </style>

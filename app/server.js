@@ -1105,10 +1105,10 @@ io.on('connection', (socket) => {
   });
 
   // Presenter resumes an incomplete session
-  socket.on('resumeSession', async ({ sessionFilename }) => {
+  socket.on('resumeSession', async ({ sessionFilename, userId, isRootAdmin }) => {
     try {
       if (env.isVerboseLogging) {
-        console.log(`[RESUME] Attempting to resume session: ${sessionFilename}`);
+        console.log(`[RESUME] Attempting to resume session: ${sessionFilename} (User: ${userId}, Root: ${isRootAdmin})`);
       }
 
       // Extract session ID from filename (session_123.json → 123)
@@ -1145,6 +1145,13 @@ io.on('connection', (socket) => {
       }
 
       const session = sessionResult.rows[0];
+
+      // Validate ownership: only session creator or root admin can resume
+      if (!isRootAdmin && session.created_by && session.created_by !== userId) {
+        console.error(`[RESUME] ❌ Access denied: User ${userId} cannot resume session owned by ${session.created_by}`);
+        return socket.emit('roomError', 'You can only resume sessions you created');
+      }
+
       if (env.isVerboseLogging) {
         console.log(`[RESUME] Session found - Quiz ID: ${session.quiz_id}, Original Room: ${session.original_room_code}`);
       }
@@ -1318,10 +1325,17 @@ io.on('connection', (socket) => {
   });
 
   // Presenter views a room
-  socket.on('viewRoom', ({ roomCode }) => {
+  socket.on('viewRoom', ({ roomCode, userId, isRootAdmin }) => {
     const room = roomService.liveRooms[roomCode];
     if (!room) {
       socket.emit('roomError', 'Room not found.');
+      return;
+    }
+
+    // Validate ownership: only room creator or root admin can view
+    if (!isRootAdmin && room.createdBy && room.createdBy !== userId) {
+      console.error(`[VIEW] Access denied: User ${userId} cannot view room owned by ${room.createdBy}`);
+      socket.emit('roomError', 'You can only view rooms you created');
       return;
     }
 
@@ -1942,9 +1956,16 @@ io.on('connection', (socket) => {
   });
 
   // Close room
-  socket.on('closeRoom', async ({ roomCode }) => {
+  socket.on('closeRoom', async ({ roomCode, userId, isRootAdmin }) => {
     const room = roomService.liveRooms[roomCode];
     if (!room) return;
+
+    // Validate ownership: only room creator or root admin can close
+    if (!isRootAdmin && room.createdBy && room.createdBy !== userId) {
+      console.error(`[CLOSE] Access denied: User ${userId} cannot close room owned by ${room.createdBy}`);
+      socket.emit('roomError', 'You can only close rooms you created');
+      return;
+    }
 
     // Stop periodic auto-save
     stopAutoSave(roomCode);
@@ -2069,6 +2090,7 @@ io.on('connection', (socket) => {
         const playerName = room.players[socket.id].name;
         // Mark as disconnected instead of deleting
         room.players[socket.id].connected = false;
+        room.players[socket.id].connectionState = 'disconnected';
         io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
         io.emit('activeRoomsUpdate', getActiveRoomsSummary());
         console.log(`${playerName} disconnected from room ${roomCode}`);

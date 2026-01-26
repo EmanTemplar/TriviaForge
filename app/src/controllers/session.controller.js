@@ -11,12 +11,18 @@ import { getClient, query } from '../config/database.js';
 import { NotFoundError, BadRequestError } from '../utils/errors.js';
 
 /**
- * Helper: List completed sessions from database
+ * Helper: List sessions from database with optional filtering
+ * @param {Object} options - Filter options
+ * @param {number} options.userId - User ID for filtering (null for all)
+ * @param {boolean} options.isRootAdmin - If true, returns all sessions
  * @returns {Promise<Array>} Array of session objects
  */
-async function listSessionsFromDB() {
+async function listSessionsFromDB(options = {}) {
+  const { userId = null, isRootAdmin = false } = options;
+
   try {
-    const result = await query(`
+    // Build query with optional filtering by created_by
+    let queryText = `
       SELECT
         gs.id,
         gs.room_code,
@@ -24,17 +30,33 @@ async function listSessionsFromDB() {
         gs.created_at,
         gs.completed_at,
         gs.original_session_id,
+        gs.created_by,
+        u.username as created_by_username,
         q.title as quiz_title,
         COUNT(DISTINCT CASE WHEN gp.display_name != 'Spectator Display' THEN gp.id END) as player_count,
         COUNT(DISTINCT sq.id) as question_count,
         COUNT(DISTINCT CASE WHEN sq.is_presented THEN sq.id END) as presented_count
       FROM game_sessions gs
       JOIN quizzes q ON gs.quiz_id = q.id
+      LEFT JOIN users u ON gs.created_by = u.id
       LEFT JOIN game_participants gp ON gs.id = gp.game_session_id
       LEFT JOIN session_questions sq ON gs.id = sq.game_session_id
-      GROUP BY gs.id, gs.room_code, gs.status, gs.created_at, gs.completed_at, gs.original_session_id, q.title
+    `;
+
+    const queryParams = [];
+
+    // Filter by created_by if not root admin
+    if (!isRootAdmin && userId) {
+      queryText += ` WHERE gs.created_by = $1`;
+      queryParams.push(userId);
+    }
+
+    queryText += `
+      GROUP BY gs.id, gs.room_code, gs.status, gs.created_at, gs.completed_at, gs.original_session_id, gs.created_by, u.username, q.title
       ORDER BY gs.created_at DESC
-    `);
+    `;
+
+    const result = await query(queryText, queryParams);
 
     return result.rows.map((row) => ({
       session_id: row.id,
@@ -45,6 +67,8 @@ async function listSessionsFromDB() {
       completed_at: row.completed_at,
       resumed_at: row.original_session_id ? row.created_at : null, // If this is a resumed session, created_at is when it was resumed
       original_session_id: row.original_session_id,
+      created_by: row.created_by,
+      created_by_username: row.created_by_username || 'Unknown',
       player_count: parseInt(row.player_count),
       question_count: parseInt(row.question_count),
       presented_count: parseInt(row.presented_count),
@@ -79,7 +103,10 @@ function parseSessionId(filename) {
  */
 export async function listSessions(req, res, next) {
   try {
-    const sessions = await listSessionsFromDB();
+    const sessions = await listSessionsFromDB({
+      userId: req.user?.user_id,
+      isRootAdmin: req.user?.is_root_admin || false,
+    });
 
     // Format for frontend compatibility
     const formatted = sessions.map((s) => ({
@@ -94,6 +121,7 @@ export async function listSessions(req, res, next) {
       playerCount: s.player_count,
       questionCount: s.question_count,
       presentedCount: s.presented_count,
+      createdByUsername: s.created_by_username,
     }));
 
     res.json(formatted);
@@ -108,7 +136,10 @@ export async function listSessions(req, res, next) {
  */
 export async function listIncompleteSessions(req, res, next) {
   try {
-    const sessions = await listSessionsFromDB();
+    const sessions = await listSessionsFromDB({
+      userId: req.user?.user_id,
+      isRootAdmin: req.user?.is_root_admin || false,
+    });
     const incomplete = sessions.filter((s) => s.status !== 'completed');
 
     // Format for frontend compatibility
@@ -124,6 +155,7 @@ export async function listIncompleteSessions(req, res, next) {
       playerCount: s.player_count,
       questionCount: s.question_count,
       presentedCount: s.presented_count,
+      createdByUsername: s.created_by_username,
     }));
 
     res.json(formatted);
@@ -138,7 +170,10 @@ export async function listIncompleteSessions(req, res, next) {
  */
 export async function listCompletedSessions(req, res, next) {
   try {
-    const sessions = await listSessionsFromDB();
+    const sessions = await listSessionsFromDB({
+      userId: req.user?.user_id,
+      isRootAdmin: req.user?.is_root_admin || false,
+    });
     const completed = sessions.filter((s) => s.status === 'completed');
 
     // Format for frontend compatibility
@@ -154,6 +189,7 @@ export async function listCompletedSessions(req, res, next) {
       playerCount: s.player_count,
       questionCount: s.question_count,
       presentedCount: s.presented_count,
+      createdByUsername: s.created_by_username,
     }));
 
     res.json(formatted);

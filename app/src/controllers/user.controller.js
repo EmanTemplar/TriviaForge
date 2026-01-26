@@ -33,10 +33,14 @@ export async function listUsers(req, res, next) {
         u.is_root_admin,
         u.created_at,
         COUNT(DISTINCT gp.game_session_id) as games_played,
-        MAX(gs.created_at) as last_seen
+        GREATEST(
+          MAX(gs.created_at),
+          MAX(us.last_used_at)
+        ) as last_seen
       FROM users u
       LEFT JOIN game_participants gp ON u.id = gp.user_id
       LEFT JOIN game_sessions gs ON gp.game_session_id = gs.id
+      LEFT JOIN user_sessions us ON u.id = us.user_id
       WHERE u.account_type IN ('guest', 'player', 'admin')
       GROUP BY u.id, u.username, u.email, u.account_type, u.is_root_admin, u.created_at
       ORDER BY u.account_type DESC, u.is_root_admin DESC NULLS LAST, u.created_at DESC

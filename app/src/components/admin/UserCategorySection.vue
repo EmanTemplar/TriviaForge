@@ -134,7 +134,8 @@ defineEmits(['resetPassword', 'resetPasswordAdmin', 'downgrade', 'delete', 'dele
 }
 
 .user-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(200px, 1.5fr) auto;
   align-items: center;
   gap: 1rem;
   padding: 1rem 1.5rem;
@@ -166,13 +167,16 @@ defineEmits(['resetPassword', 'resetPasswordAdmin', 'downgrade', 'delete', 'dele
   display: flex;
   align-items: center;
   gap: 1rem;
-  flex: 1;
+  min-width: 0; /* Allow text truncation */
 }
 
 .user-name {
   font-weight: 500;
   color: var(--text-primary);
   font-size: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-type {
@@ -203,9 +207,9 @@ defineEmits(['resetPassword', 'resetPasswordAdmin', 'downgrade', 'delete', 'dele
 }
 
 .user-stats {
-  flex: 1;
   color: var(--text-secondary);
   font-size: 0.85rem;
+  min-width: 0; /* Allow text truncation */
 }
 
 .user-last-login {
@@ -216,6 +220,9 @@ defineEmits(['resetPassword', 'resetPasswordAdmin', 'downgrade', 'delete', 'dele
   color: var(--info-light);
   font-size: 0.85rem;
   margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-email.no-email {
@@ -275,8 +282,8 @@ defineEmits(['resetPassword', 'resetPasswordAdmin', 'downgrade', 'delete', 'dele
 
 @media (max-width: 768px) {
   .user-item {
-    flex-direction: column;
-    align-items: flex-start;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
 
   .user-info {
@@ -289,7 +296,15 @@ defineEmits(['resetPassword', 'resetPasswordAdmin', 'downgrade', 'delete', 'dele
 
   .user-actions {
     width: 100%;
-    justify-content: flex-end;
+    justify-content: flex-start;
+  }
+
+  .user-name {
+    white-space: normal;
+  }
+
+  .user-email {
+    white-space: normal;
   }
 }
 </style>

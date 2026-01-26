@@ -16,14 +16,14 @@
           <li>✓ Vue 3 modern interface</li>
           <li>✓ Real-time quiz presentations</li>
           <li>✓ Live leaderboards & rankings</li>
-          <li>✓ Independent room architecture</li>
+          <li>✓ Multi-admin support with isolation</li>
           <li>✓ Player connection monitoring</li>
           <li>✓ Player authentication & accounts</li>
           <li>✓ Excel bulk import</li>
           <li>✓ Session resumption</li>
           <li>✓ Mobile-optimized interface</li>
           <li>✓ Spectator display mode</li>
-          <li>✓ Answer history tracking</li>
+          <li>✓ Auto-reveal when all answer</li>
         </ul>
       </div>
 
@@ -83,7 +83,7 @@
         With features like session resumption, user authentication, player connection monitoring, and mobile-optimized interfaces, TriviaForge provides a seamless experience for presenters and players. Whether you're running classroom quizzes, corporate events, or casual game nights, TriviaForge adapts to your needs.
       </p>
       <p>
-        Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. Version {{ VERSION }} ({{ VERSION_NAME }}) includes major CSS architecture improvements: component-first refactoring with enhanced Button, FormInput, and Card components, elimination of 500+ lines of duplicate CSS, fully theme-aware styling system (no hardcoded colors), and creation of shared CSS patterns for maintainability.
+        Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. Version {{ VERSION }} ({{ VERSION_NAME }}) introduces multi-admin support with session isolation, allowing multiple administrators to manage their own quizzes and sessions independently. Root administrators can create and manage other admin accounts, while each admin only sees their own content.
       </p>
     </div>
 
@@ -255,6 +255,7 @@ import { VERSION, VERSION_NAME } from '@/config/version.js'
   border-radius: 8px;
   border: 1px solid var(--border-color);
   border-left: 4px solid var(--info-light);
+  margin-bottom: 1rem;
 }
 
 .license-box p {

@@ -85,6 +85,7 @@
         <SessionsList
           :sessions="completedSessions"
           :formatDate="formatDate"
+          :isRootAdmin="authStore.isRootAdmin"
           @viewSession="viewSessionDetails"
           @deleteSession="deleteSessionFromList"
         />

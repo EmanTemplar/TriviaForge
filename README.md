@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v5.0.0b - Multi-Admin Support: Session isolation, account management, and UI improvements
+**Latest Release**: v5.0.0 - Multi-Admin Support: Session isolation, account management, and UI improvements
 
 ### Key Highlights
 
@@ -634,7 +634,7 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 
 ### Completed Features
 
-**v5.0.0b (Jan 2026) - Multi-Admin Support**
+**v5.0.0 (Jan 2026) - Multi-Admin Support**
 - [x] Multi-admin support with isolated quizzes and sessions per admin
 - [x] Root admin can create/delete admin accounts and reset passwords
 - [x] Session isolation - regular admins only see their own sessions
