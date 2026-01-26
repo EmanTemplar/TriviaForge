@@ -668,8 +668,19 @@ const setupSocketListeners = () => {
     }
 
     if (isAlreadyRevealed) {
-      statusMessage.value = 'This question has already been revealed'
-      statusMessageType.value = 'info'
+      // Check if player already answered this question (from answerHistoryRestored)
+      const existingHistory = questionHistory.value.find(q => q.index === questionIndex)
+      if (existingHistory && existingHistory.playerChoice !== null) {
+        // Player had answered - set their correct/incorrect status
+        playerGotCorrect.value = existingHistory.isCorrect
+        statusMessage.value = existingHistory.isCorrect ? 'You got it right! 🎉' : 'Better luck next time!'
+        statusMessageType.value = existingHistory.isCorrect ? 'success' : 'error'
+      } else {
+        // Player hadn't answered before reveal
+        playerGotCorrect.value = false
+        statusMessage.value = 'This question has already been revealed'
+        statusMessageType.value = 'info'
+      }
     } else if (answeredCurrentQuestion.value) {
       statusMessage.value = 'You already answered this question'
       statusMessageType.value = 'warning'
