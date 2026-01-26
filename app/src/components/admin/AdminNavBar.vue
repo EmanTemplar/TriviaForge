@@ -7,18 +7,26 @@
       <li><RouterLink to="/player">Player</RouterLink></li>
       <li><RouterLink to="/presenter">Presenter</RouterLink></li>
       <li><RouterLink to="/display">Spectate</RouterLink></li>
-      <li class="username-item">
-        <span>{{ username || 'Admin' }}</span>
-        <a href="#" @click.prevent="$emit('settings')" class="settings-link" title="Account Settings">&#9881;</a>
-      </li>
-      <li>
-        <a href="#" @click.prevent="$emit('logout')" class="logout-link">Logout</a>
+      <li class="account-dropdown">
+        <button class="account-button" @click.stop="toggleDropdown">
+          <span class="account-name">{{ username || 'Admin' }}</span>
+          <span class="dropdown-arrow">{{ dropdownOpen ? '▲' : '▼' }}</span>
+        </button>
+        <div v-if="dropdownOpen" class="dropdown-menu">
+          <a href="#" @click.prevent="handleSettings" class="dropdown-item">
+            <span class="dropdown-icon">⚙️</span> Account Settings
+          </a>
+          <a href="#" @click.prevent="handleLogout" class="dropdown-item logout-item">
+            <span class="dropdown-icon">🚪</span> Logout
+          </a>
+        </div>
       </li>
     </ul>
   </nav>
 </template>
 
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue';
 import { RouterLink } from 'vue-router';
 
 defineProps({
@@ -26,7 +34,44 @@ defineProps({
   menuOpen: { type: Boolean, required: true }
 });
 
-defineEmits(['toggle-menu', 'logout', 'settings']);
+const emit = defineEmits(['toggle-menu', 'logout', 'settings']);
+
+const dropdownOpen = ref(false);
+const dropdownRef = ref(null);
+
+const toggleDropdown = () => {
+  dropdownOpen.value = !dropdownOpen.value;
+};
+
+const closeDropdown = () => {
+  dropdownOpen.value = false;
+};
+
+const handleSettings = () => {
+  closeDropdown();
+  emit('settings');
+};
+
+const handleLogout = () => {
+  closeDropdown();
+  emit('logout');
+};
+
+// Handle clicks outside the dropdown
+const handleClickOutside = (event) => {
+  const dropdown = document.querySelector('.account-dropdown');
+  if (dropdown && !dropdown.contains(event.target)) {
+    closeDropdown();
+  }
+};
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <style scoped>
@@ -78,7 +123,12 @@ defineEmits(['toggle-menu', 'logout', 'settings']);
   color: var(--info-light);
 }
 
-.username-item {
+/* Account Dropdown */
+.account-dropdown {
+  position: relative;
+}
+
+.account-button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -88,31 +138,61 @@ defineEmits(['toggle-menu', 'logout', 'settings']);
   border-radius: 8px;
   color: var(--info-light);
   font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.95rem;
 }
 
-.settings-link {
-  font-size: 1.1rem;
+.account-button:hover {
+  background: var(--info-bg-30);
+}
+
+.dropdown-arrow {
+  font-size: 0.7rem;
   opacity: 0.7;
-  transition: opacity 0.2s;
 }
 
-.settings-link:hover {
-  opacity: 1;
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 180px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px var(--bg-overlay-50);
+  overflow: hidden;
+  z-index: 1000;
 }
 
-.logout-link {
-  color: var(--danger-color);
-  font-weight: 600;
-  padding: 0.5rem 1rem;
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: background 0.2s;
+  font-size: 0.9rem;
+}
+
+.dropdown-item:hover {
+  background: var(--bg-overlay-20);
+  color: var(--info-light);
+}
+
+.dropdown-icon {
+  font-size: 1rem;
+}
+
+.dropdown-item.logout-item {
+  border-top: 1px solid var(--border-color);
+  color: var(--danger-light);
+}
+
+.dropdown-item.logout-item:hover {
   background: var(--danger-bg-10);
-  border-radius: 6px;
-  border: 1px solid var(--danger-light);
-}
-
-.logout-link:hover {
-  background: var(--danger-bg-20);
-  color: var(--danger-dark);
-  border-color: var(--danger-color);
+  color: var(--danger-color);
 }
 
 /* Mobile styles */
@@ -158,6 +238,24 @@ defineEmits(['toggle-menu', 'logout', 'settings']);
 
   .menu a:hover {
     background: var(--info-bg-10);
+  }
+
+  /* Mobile dropdown adjustments */
+  .account-dropdown {
+    width: 100%;
+  }
+
+  .account-button {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .dropdown-menu {
+    position: static;
+    width: 100%;
+    margin-top: 0.5rem;
+    box-shadow: none;
+    border: 1px solid var(--border-color);
   }
 }
 

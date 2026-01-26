@@ -120,6 +120,7 @@
           @refresh="loadUsers"
           @deleteUser="deleteUser"
           @resetPassword="resetUserPassword"
+          @resetPasswordAdmin="resetAdminPassword"
           @downgrade="downgradeUser"
           @createAdmin="createAdmin"
           @deleteAdmin="deleteAdmin"
@@ -199,7 +200,41 @@
           />
           <p class="settings-hint">Used for account recovery and notifications (future feature)</p>
         </div>
+
+        <div class="settings-divider"></div>
+        <h4 class="settings-section-title">Change Password</h4>
+
+        <div class="settings-field">
+          <label for="currentPassword">Current Password</label>
+          <FormInput
+            id="currentPassword"
+            v-model="currentPassword"
+            type="password"
+            placeholder="Enter current password"
+          />
+        </div>
+        <div class="settings-field">
+          <label for="newPassword">New Password</label>
+          <FormInput
+            id="newPassword"
+            v-model="newPassword"
+            type="password"
+            placeholder="Enter new password (min 8 characters)"
+          />
+        </div>
+        <div class="settings-field">
+          <label for="confirmPassword">Confirm New Password</label>
+          <FormInput
+            id="confirmPassword"
+            v-model="confirmPassword"
+            type="password"
+            placeholder="Confirm new password"
+          />
+        </div>
+        <p class="settings-hint">Leave password fields empty to keep your current password.</p>
+
         <div v-if="accountSettingsError" class="settings-error">{{ accountSettingsError }}</div>
+        <div v-if="accountSettingsSuccess" class="settings-success">{{ accountSettingsSuccess }}</div>
       </div>
       <template #footer>
         <Button variant="secondary" @click="showAccountSettingsModal = false">Cancel</Button>
@@ -253,7 +288,11 @@ const showDeleteConfirmModal = ref(false)
 const sessionToDelete = ref(null)
 const showAccountSettingsModal = ref(false)
 const accountEmail = ref('')
+const currentPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
 const accountSettingsError = ref(null)
+const accountSettingsSuccess = ref(null)
 const isSavingAccountSettings = ref(false)
 
 // Column resizing
@@ -967,7 +1006,6 @@ const createAdmin = async (adminData) => {
   try {
     await post('/api/auth/create-admin', adminData)
     userManagementPanel.value?.onAdminCreated()
-    await showAlert(`Admin "${adminData.username}" created successfully.`, 'Admin Created')
     await loadUsers() // Refresh the list
   } catch (err) {
     const message = err.response?.data?.message || 'Failed to create admin'
@@ -993,6 +1031,30 @@ const deleteAdmin = async (admin) => {
     const message = err.response?.data?.message || 'Failed to delete admin'
     await showAlert(message, 'Error')
     console.error('Error deleting admin:', err)
+  }
+}
+
+// Reset admin password (root admin only)
+const resetAdminPassword = async (admin) => {
+  const confirmed = await showConfirm(
+    `Reset password for admin "${admin.username}"?\n\nThis will generate a new temporary password and log them out of all sessions.`,
+    'Reset Admin Password'
+  )
+
+  if (!confirmed) return
+
+  try {
+    const response = await post(`/api/auth/admins/${admin.id}/reset-password`, {})
+    const tempPassword = response.data?.data?.tempPassword
+    await showAlert(
+      `Password reset for "${admin.username}".\n\nTemporary Password:\n${tempPassword}\n\nPlease share this securely with the admin. They should change it after logging in.`,
+      'Password Reset'
+    )
+    await loadUsers() // Refresh the list
+  } catch (err) {
+    const message = err.response?.data?.message || 'Failed to reset admin password'
+    await showAlert(message, 'Error')
+    console.error('Error resetting admin password:', err)
   }
 }
 
@@ -1174,7 +1236,12 @@ const logout = async () => {
 // Account Settings
 const openAccountSettings = async () => {
   accountSettingsError.value = null
+  accountSettingsSuccess.value = null
   isSavingAccountSettings.value = false
+  // Reset password fields
+  currentPassword.value = ''
+  newPassword.value = ''
+  confirmPassword.value = ''
   // Fetch current email from admin info
   try {
     const response = await get('/api/auth/admin-info')
@@ -1187,18 +1254,57 @@ const openAccountSettings = async () => {
 
 const saveAccountSettings = async () => {
   accountSettingsError.value = null
+  accountSettingsSuccess.value = null
   isSavingAccountSettings.value = true
 
   try {
+    // Handle password change if fields are filled
+    const wantsPasswordChange = currentPassword.value || newPassword.value || confirmPassword.value
+
+    if (wantsPasswordChange) {
+      // Validate password fields
+      if (!currentPassword.value) {
+        throw new Error('Current password is required to change password')
+      }
+      if (!newPassword.value) {
+        throw new Error('New password is required')
+      }
+      if (newPassword.value.length < 8) {
+        throw new Error('New password must be at least 8 characters')
+      }
+      if (newPassword.value !== confirmPassword.value) {
+        throw new Error('New passwords do not match')
+      }
+
+      // Change password
+      await put('/api/auth/change-password', {
+        currentPassword: currentPassword.value,
+        newPassword: newPassword.value
+      })
+    }
+
+    // Update email
     await put('/api/auth/update-email', { email: accountEmail.value || null })
-    showAccountSettingsModal.value = false
-    await showAlert('Email updated successfully.', 'Settings Saved')
+
+    // Clear password fields after success
+    currentPassword.value = ''
+    newPassword.value = ''
+    confirmPassword.value = ''
+
+    // Show success message
+    if (wantsPasswordChange) {
+      accountSettingsSuccess.value = 'Password and email updated successfully!'
+    } else {
+      showAccountSettingsModal.value = false
+      await showAlert('Settings saved successfully.', 'Settings Saved')
+    }
+
     // Refresh users list if on that tab
     if (activeTab.value === 'users') {
       await loadUsers()
     }
   } catch (err) {
-    accountSettingsError.value = err.response?.data?.message || 'Failed to update email'
+    accountSettingsError.value = err.response?.data?.message || err.message || 'Failed to save settings'
   } finally {
     isSavingAccountSettings.value = false
   }
@@ -2399,6 +2505,27 @@ onUnmounted(() => {
   padding: 0.75rem;
   border-radius: 6px;
   font-size: 0.9rem;
+}
+
+.settings-success {
+  color: var(--secondary-light);
+  background: var(--secondary-bg-10);
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.settings-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 0.5rem 0;
+}
+
+.settings-section-title {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
 }
 
 /* Dialog */

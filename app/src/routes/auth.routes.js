@@ -147,4 +147,23 @@ router.delete('/admins/:id', requireRootAdmin, asyncHandler(authController.delet
  */
 router.put('/update-email', requireAdmin, asyncHandler(authController.updateAdminEmail));
 
+/**
+ * Change admin's own password
+ * PUT /api/auth/change-password
+ *
+ * Headers: Authorization: Bearer <token>
+ * Body: { currentPassword, newPassword }
+ * Returns: { success }
+ */
+router.put('/change-password', requireAdmin, asyncHandler(authController.changeAdminPassword));
+
+/**
+ * Reset another admin's password (root admin only)
+ * POST /api/auth/admins/:id/reset-password
+ *
+ * Headers: Authorization: Bearer <token>
+ * Returns: { tempPassword }
+ */
+router.post('/admins/:id/reset-password', requireRootAdmin, asyncHandler(authController.resetAdminPassword));
+
 export default router;

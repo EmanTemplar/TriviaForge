@@ -25,6 +25,12 @@
             title="Reset Password"
           >🔑</button>
           <button
+            v-if="showResetPasswordAdmin && !user.isRootAdmin"
+            @click="$emit('resetPasswordAdmin', user)"
+            class="btn-reset"
+            title="Reset Password"
+          >🔑</button>
+          <button
             v-if="showDowngrade"
             @click="$emit('downgrade', user)"
             class="btn-downgrade"
@@ -61,6 +67,7 @@ defineProps({
   emptyMessage: { type: String, required: true },
   neverSeenMessage: { type: String, required: true },
   showResetPassword: { type: Boolean, default: false },
+  showResetPasswordAdmin: { type: Boolean, default: false },
   showDowngrade: { type: Boolean, default: false },
   showDelete: { type: Boolean, default: true },
   showDeleteAdmin: { type: Boolean, default: false },
@@ -68,7 +75,7 @@ defineProps({
   formatDate: { type: Function, required: true }
 });
 
-defineEmits(['resetPassword', 'downgrade', 'delete', 'deleteAdmin']);
+defineEmits(['resetPassword', 'resetPasswordAdmin', 'downgrade', 'delete', 'deleteAdmin']);
 </script>
 
 <style scoped>

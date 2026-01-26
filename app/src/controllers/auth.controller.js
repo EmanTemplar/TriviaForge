@@ -737,6 +737,122 @@ export async function updateAdminEmail(req, res, next) {
   }
 }
 
+/**
+ * Change admin's own password
+ *
+ * PUT /api/auth/change-password
+ * Body: { currentPassword, newPassword }
+ */
+export async function changeAdminPassword(req, res, next) {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const adminId = req.user.user_id;
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      throw new BadRequestError('Current password and new password are required');
+    }
+
+    throwIfInvalid(validatePassword(newPassword));
+
+    // Get current password hash
+    const result = await query(
+      'SELECT password_hash FROM users WHERE id = $1',
+      [adminId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundError('User');
+    }
+
+    const user = result.rows[0];
+
+    // Verify current password
+    const isValid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isValid) {
+      throw new UnauthorizedError('Current password is incorrect');
+    }
+
+    // Hash new password
+    const newPasswordHash = await bcrypt.hash(newPassword, DEFAULTS.BCRYPT_SALT_ROUNDS);
+
+    // Update password
+    await query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
+      [newPasswordHash, adminId]
+    );
+
+    console.log(`[CHANGE PASSWORD] Admin ${req.user.username} changed their password`);
+
+    sendSuccess(res, {}, 'Password changed successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Reset another admin's password (root admin only)
+ *
+ * POST /api/auth/admins/:id/reset-password
+ * Headers: Authorization: Bearer <token>
+ * Returns: { tempPassword }
+ */
+export async function resetAdminPassword(req, res, next) {
+  try {
+    const adminId = parseInt(req.params.id, 10);
+
+    if (isNaN(adminId)) {
+      throw new BadRequestError('Invalid admin ID');
+    }
+
+    // Check target admin exists
+    const result = await query(
+      'SELECT id, username, is_root_admin FROM users WHERE id = $1 AND account_type = $2',
+      [adminId, USER_ROLES.ADMIN]
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundError('Admin');
+    }
+
+    const targetAdmin = result.rows[0];
+
+    // Cannot reset root admin's password
+    if (targetAdmin.is_root_admin) {
+      throw new ForbiddenError('Cannot reset root admin password');
+    }
+
+    // Generate a temp password
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    let tempPassword = '';
+    tempPassword += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
+    tempPassword += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
+    tempPassword += '0123456789'[Math.floor(Math.random() * 10)];
+    tempPassword += '!@#$%^&*'[Math.floor(Math.random() * 8)];
+    for (let i = 4; i < 12; i++) {
+      tempPassword += chars[Math.floor(Math.random() * chars.length)];
+    }
+    // Shuffle
+    tempPassword = tempPassword.split('').sort(() => Math.random() - 0.5).join('');
+
+    // Hash and update password
+    const passwordHash = await bcrypt.hash(tempPassword, DEFAULTS.BCRYPT_SALT_ROUNDS);
+    await query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
+      [passwordHash, adminId]
+    );
+
+    // Invalidate all sessions for this admin
+    await query('DELETE FROM user_sessions WHERE user_id = $1', [adminId]);
+
+    console.log(`[RESET ADMIN PASSWORD] Root admin ${req.user.username} reset password for admin: ${targetAdmin.username}`);
+
+    sendSuccess(res, { tempPassword }, 'Password reset successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
 // Export all controller functions
 export default {
   adminLogin,
@@ -753,4 +869,6 @@ export default {
   listAdmins,
   deleteAdmin,
   updateAdminEmail,
+  changeAdminPassword,
+  resetAdminPassword,
 };

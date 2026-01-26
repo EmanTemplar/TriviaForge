@@ -28,17 +28,6 @@
             />
           </div>
           <div class="form-group">
-            <label for="newAdminPassword">Password</label>
-            <input
-              id="newAdminPassword"
-              v-model="newAdmin.password"
-              type="password"
-              placeholder="Enter password"
-              required
-              minlength="8"
-            />
-          </div>
-          <div class="form-group">
             <label for="newAdminEmail">Email (optional)</label>
             <input
               id="newAdminEmail"
@@ -47,6 +36,7 @@
               placeholder="Enter email"
             />
           </div>
+          <p class="password-note">A temporary password will be generated automatically.</p>
           <div v-if="createAdminError" class="error-message">{{ createAdminError }}</div>
           <div class="modal-actions">
             <button type="button" @click="closeCreateAdminModal" class="btn-cancel">Cancel</button>
@@ -55,6 +45,27 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Password Display Modal -->
+    <div v-if="showPasswordModal" class="modal-overlay">
+      <div class="modal-content password-modal">
+        <h3>Admin Created Successfully</h3>
+        <p class="success-message">Admin account "<strong>{{ createdAdminUsername }}</strong>" has been created.</p>
+        <div class="password-display">
+          <label>Temporary Password</label>
+          <div class="password-box">
+            <code>{{ generatedPassword }}</code>
+            <button type="button" @click="copyPassword" class="btn-copy" title="Copy to clipboard">
+              {{ passwordCopied ? '✓' : '📋' }}
+            </button>
+          </div>
+          <p class="password-warning">This password will only be shown once. Please save it securely.</p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" @click="closePasswordModal" class="btn-submit">Done</button>
+        </div>
       </div>
     </div>
 
@@ -71,7 +82,9 @@
       neverSeenMessage="Never logged in"
       :formatDate="formatDate"
       :showEmail="true"
+      :showResetPasswordAdmin="isRootAdmin"
       :showDeleteAdmin="isRootAdmin"
+      @resetPasswordAdmin="$emit('resetPasswordAdmin', $event)"
       @deleteAdmin="$emit('deleteAdmin', $event)"
     />
 
@@ -123,7 +136,7 @@ const props = defineProps({
   isRootAdmin: { type: Boolean, default: false }
 });
 
-const emit = defineEmits(['refresh', 'deleteUser', 'resetPassword', 'downgrade', 'createAdmin', 'deleteAdmin']);
+const emit = defineEmits(['refresh', 'deleteUser', 'resetPassword', 'resetPasswordAdmin', 'downgrade', 'createAdmin', 'deleteAdmin']);
 
 const totalUsers = computed(() => {
   return props.adminUsers.length + props.playerUsers.length + props.guestUsers.length;
@@ -135,35 +148,73 @@ const isCreatingAdmin = ref(false);
 const createAdminError = ref(null);
 const newAdmin = reactive({
   username: '',
-  password: '',
   email: ''
 });
+
+// Password Display Modal State
+const showPasswordModal = ref(false);
+const generatedPassword = ref('');
+const createdAdminUsername = ref('');
+const passwordCopied = ref(false);
+
+// Generate a random password (12 chars with mixed case, numbers, special chars)
+const generatePassword = () => {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+  let password = '';
+  // Ensure at least one of each type
+  password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
+  password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
+  password += '0123456789'[Math.floor(Math.random() * 10)];
+  password += '!@#$%^&*'[Math.floor(Math.random() * 8)];
+  // Fill the rest randomly
+  for (let i = 4; i < 12; i++) {
+    password += chars[Math.floor(Math.random() * chars.length)];
+  }
+  // Shuffle the password
+  return password.split('').sort(() => Math.random() - 0.5).join('');
+};
 
 const closeCreateAdminModal = () => {
   showCreateAdminModal.value = false;
   createAdminError.value = null;
   newAdmin.username = '';
-  newAdmin.password = '';
   newAdmin.email = '';
 };
 
-const handleCreateAdmin = () => {
-  if (!newAdmin.username.trim() || !newAdmin.password.trim()) {
-    createAdminError.value = 'Username and password are required';
-    return;
-  }
+const closePasswordModal = () => {
+  showPasswordModal.value = false;
+  generatedPassword.value = '';
+  createdAdminUsername.value = '';
+  passwordCopied.value = false;
+};
 
-  if (newAdmin.password.length < 8) {
-    createAdminError.value = 'Password must be at least 8 characters';
+const copyPassword = async () => {
+  try {
+    await navigator.clipboard.writeText(generatedPassword.value);
+    passwordCopied.value = true;
+    setTimeout(() => { passwordCopied.value = false; }, 2000);
+  } catch (err) {
+    console.error('Failed to copy password:', err);
+  }
+};
+
+const handleCreateAdmin = () => {
+  if (!newAdmin.username.trim()) {
+    createAdminError.value = 'Username is required';
     return;
   }
 
   isCreatingAdmin.value = true;
   createAdminError.value = null;
 
+  // Generate temp password
+  const tempPassword = generatePassword();
+  generatedPassword.value = tempPassword;
+  createdAdminUsername.value = newAdmin.username.trim();
+
   emit('createAdmin', {
     username: newAdmin.username.trim(),
-    password: newAdmin.password,
+    password: tempPassword,
     email: newAdmin.email.trim() || null
   });
 };
@@ -172,12 +223,17 @@ const handleCreateAdmin = () => {
 const onAdminCreated = () => {
   isCreatingAdmin.value = false;
   closeCreateAdminModal();
+  // Show the password modal
+  showPasswordModal.value = true;
 };
 
 // Called by parent when admin creation fails
 const onAdminCreateError = (error) => {
   isCreatingAdmin.value = false;
   createAdminError.value = error;
+  // Clear the generated password on error
+  generatedPassword.value = '';
+  createdAdminUsername.value = '';
 };
 
 // Expose methods for parent to call
@@ -357,6 +413,74 @@ h2 {
 .btn-submit:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.password-note {
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  font-style: italic;
+  margin: 0.5rem 0 1rem 0;
+}
+
+/* Password Display Modal */
+.password-modal .success-message {
+  color: var(--secondary-light);
+  margin-bottom: 1.5rem;
+}
+
+.password-display {
+  background: var(--bg-overlay-20);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.password-display label {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.password-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.password-box code {
+  flex: 1;
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem;
+  color: var(--warning-light);
+  letter-spacing: 1px;
+  word-break: break-all;
+}
+
+.btn-copy {
+  padding: 0.5rem;
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
+  border-radius: 4px;
+  color: var(--info-light);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.btn-copy:hover {
+  background: var(--info-bg-30);
+}
+
+.password-warning {
+  color: var(--danger-light);
+  font-size: 0.8rem;
+  margin-top: 0.75rem;
+  font-weight: 500;
 }
 
 @media (max-width: 768px) {
