@@ -992,6 +992,19 @@ io.on('connection', (socket) => {
   // Send active rooms immediately on connection
   socket.emit('activeRoomsUpdate', getActiveRoomsSummary());
 
+  // Helper: Leave all previous rooms before joining a new one
+  // This prevents cross-room event pollution when presenters switch rooms
+  const leaveAllRooms = () => {
+    const rooms = Array.from(socket.rooms);
+    for (const room of rooms) {
+      // Don't leave the socket's own room (socket.id is automatically a room)
+      if (room !== socket.id) {
+        socket.leave(room);
+        console.log(`[ROOM] Socket ${socket.id} left room ${room}`);
+      }
+    }
+  };
+
   // Get active rooms (manual request)
   socket.on('getActiveRooms', () => {
     socket.emit('activeRoomsUpdate', getActiveRoomsSummary());
@@ -1055,6 +1068,8 @@ io.on('connection', (socket) => {
         console.log(`Room ${roomCode} created for quiz ID ${quizId} (${quiz.title}) by admin ${userId || 1}`);
       }
 
+      // Leave any previous rooms before joining new one (prevents cross-room event pollution)
+      leaveAllRooms();
       socket.join(roomCode);
 
       // Log room state being sent to presenter
@@ -1263,6 +1278,8 @@ io.on('connection', (socket) => {
         console.log(`Room ${roomCode} resumed from session ID ${sessionId} (original room: ${session.original_room_code})`);
       }
 
+      // Leave any previous rooms before joining new one (prevents cross-room event pollution)
+      leaveAllRooms();
       socket.join(roomCode);
       socket.emit('roomCreated', {
         roomCode,
@@ -1308,6 +1325,8 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Leave any previous rooms before joining new one (prevents cross-room event pollution)
+    leaveAllRooms();
     socket.join(roomCode);
     socket.emit('roomRestored', {
       roomCode,

@@ -211,6 +211,7 @@
             v-model="currentPassword"
             type="password"
             placeholder="Enter current password"
+            :showPasswordToggle="true"
           />
         </div>
         <div class="settings-field">
@@ -220,6 +221,7 @@
             v-model="newPassword"
             type="password"
             placeholder="Enter new password (min 8 characters)"
+            :showPasswordToggle="true"
           />
         </div>
         <div class="settings-field">
@@ -229,6 +231,7 @@
             v-model="confirmPassword"
             type="password"
             placeholder="Confirm new password"
+            :showPasswordToggle="true"
           />
         </div>
         <p class="settings-hint">Leave password fields empty to keep your current password.</p>

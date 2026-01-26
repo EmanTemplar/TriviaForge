@@ -563,6 +563,11 @@ const setupSocketListeners = () => {
     showConnectionLostBanner.value = false
     reconnectionAttempts.value = 0
 
+    // Update connection state to connected after reconnection
+    if (connectionState.value !== 'warning') {
+      updateConnectionState('connected')
+    }
+
     // CRITICAL: After reconnect, we have a new socket.id
     // Server doesn't have this socket.id in room.players, so we must rejoin
     if (inRoom.value && currentRoomCode.value && currentUsername.value && currentDisplayName.value) {
@@ -810,6 +815,13 @@ onMounted(() => {
   // Initialize page visibility state
   isPageVisible.value = !document.hidden
   console.log(`[CONNECTION] Initial page visibility: ${isPageVisible.value}`)
+
+  // Handle case where socket is already connected when component mounts
+  // (the 'connect' event won't fire for an already-connected socket)
+  if (socket.isConnected.value && connectionState.value !== 'connected') {
+    console.log('[CONNECTION] Socket already connected on mount - updating state')
+    updateConnectionState('connected')
+  }
 
   // Auto-rejoin system: Save room state on page unload
   const handleBeforeUnload = () => {

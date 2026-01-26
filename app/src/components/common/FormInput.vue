@@ -5,8 +5,32 @@
       <span v-if="required" class="form-required">*</span>
     </label>
 
+    <div v-if="type === 'password' && showPasswordToggle" class="password-wrapper">
+      <input
+        :id="inputId"
+        :type="passwordVisible ? 'text' : 'password'"
+        :value="modelValue"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        :required="required"
+        class="form-input password-input"
+        @input="handleInput"
+        @blur="$emit('blur')"
+        @focus="$emit('focus')"
+      />
+      <button
+        type="button"
+        class="password-toggle"
+        @click="passwordVisible = !passwordVisible"
+        :title="passwordVisible ? 'Hide password' : 'Show password'"
+        tabindex="-1"
+      >
+        {{ passwordVisible ? '🙈' : '👁️' }}
+      </button>
+    </div>
+
     <input
-      v-if="type !== 'textarea' && type !== 'select'"
+      v-else-if="type !== 'textarea' && type !== 'select'"
       :id="inputId"
       :type="type"
       :value="modelValue"
@@ -60,8 +84,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { generateRoomCode } from '@/utils/helpers.js'
+
+// Password visibility state
+const passwordVisible = ref(false)
 
 const props = defineProps({
   modelValue: {
@@ -114,6 +141,10 @@ const props = defineProps({
           (typeof item === 'object' && item.label && item.value)
       )
     }
+  },
+  showPasswordToggle: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -159,6 +190,34 @@ const handleInput = (event) => {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Password toggle wrapper */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper .password-input {
+  width: 100%;
+  padding-right: 3rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.25rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.password-toggle:hover {
+  opacity: 1;
 }
 
 .form-input:disabled {
