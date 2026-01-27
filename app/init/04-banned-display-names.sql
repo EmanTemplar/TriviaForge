@@ -14,9 +14,9 @@ CREATE TABLE IF NOT EXISTS banned_display_names (
 );
 
 -- Index for fast pattern lookups (case-insensitive)
-CREATE INDEX idx_banned_names_pattern ON banned_display_names(LOWER(pattern));
-CREATE INDEX idx_banned_names_type ON banned_display_names(pattern_type);
-CREATE INDEX idx_banned_names_created_at ON banned_display_names(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_banned_names_pattern ON banned_display_names(LOWER(pattern));
+CREATE INDEX IF NOT EXISTS idx_banned_names_type ON banned_display_names(pattern_type);
+CREATE INDEX IF NOT EXISTS idx_banned_names_created_at ON banned_display_names(created_at DESC);
 
 -- Update schema version
 INSERT INTO schema_version (version, description)

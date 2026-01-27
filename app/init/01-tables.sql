@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Index for fast username lookups during login
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_account_type ON users(account_type);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_account_type ON users(account_type);
 
 -- ============================================================================
 -- 2. QUESTIONS TABLE
@@ -42,8 +42,8 @@ CREATE TABLE IF NOT EXISTS questions (
 );
 
 -- Index for searching questions by creator
-CREATE INDEX idx_questions_created_by ON questions(created_by);
-CREATE INDEX idx_questions_type ON questions(question_type);
+CREATE INDEX IF NOT EXISTS idx_questions_created_by ON questions(created_by);
+CREATE INDEX IF NOT EXISTS idx_questions_type ON questions(question_type);
 
 -- ============================================================================
 -- 3. ANSWERS TABLE
@@ -62,8 +62,8 @@ CREATE TABLE IF NOT EXISTS answers (
 );
 
 -- Index for fast lookup of all answers for a question
-CREATE INDEX idx_answers_question_id ON answers(question_id);
-CREATE INDEX idx_answers_question_order ON answers(question_id, display_order);
+CREATE INDEX IF NOT EXISTS idx_answers_question_id ON answers(question_id);
+CREATE INDEX IF NOT EXISTS idx_answers_question_order ON answers(question_id, display_order);
 
 -- ============================================================================
 -- 4. QUIZZES TABLE
@@ -83,9 +83,9 @@ CREATE TABLE IF NOT EXISTS quizzes (
 );
 
 -- Index for quiz listing and searching
-CREATE INDEX idx_quizzes_created_by ON quizzes(created_by);
-CREATE INDEX idx_quizzes_is_active ON quizzes(is_active);
-CREATE INDEX idx_quizzes_created_at ON quizzes(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_quizzes_created_by ON quizzes(created_by);
+CREATE INDEX IF NOT EXISTS idx_quizzes_is_active ON quizzes(is_active);
+CREATE INDEX IF NOT EXISTS idx_quizzes_created_at ON quizzes(created_at DESC);
 
 -- ============================================================================
 -- 5. QUIZ_QUESTIONS TABLE (Junction Table)
@@ -103,8 +103,8 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
 );
 
 -- Indexes for fast quiz question loading
-CREATE INDEX idx_quiz_questions_quiz ON quiz_questions(quiz_id, question_order);
-CREATE INDEX idx_quiz_questions_question ON quiz_questions(question_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quiz_id, question_order);
+CREATE INDEX IF NOT EXISTS idx_quiz_questions_question ON quiz_questions(question_id);
 
 -- ============================================================================
 -- 6. GAME_SESSIONS TABLE
@@ -125,10 +125,10 @@ CREATE TABLE IF NOT EXISTS game_sessions (
 );
 
 -- Indexes for room lookup and session management
-CREATE UNIQUE INDEX idx_game_sessions_room_code ON game_sessions(room_code);
-CREATE INDEX idx_game_sessions_quiz_id ON game_sessions(quiz_id);
-CREATE INDEX idx_game_sessions_status ON game_sessions(status);
-CREATE INDEX idx_game_sessions_created_at ON game_sessions(created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_game_sessions_room_code ON game_sessions(room_code);
+CREATE INDEX IF NOT EXISTS idx_game_sessions_quiz_id ON game_sessions(quiz_id);
+CREATE INDEX IF NOT EXISTS idx_game_sessions_status ON game_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_game_sessions_created_at ON game_sessions(created_at DESC);
 
 -- ============================================================================
 -- 7. SESSION_QUESTIONS TABLE
@@ -150,8 +150,8 @@ CREATE TABLE IF NOT EXISTS session_questions (
 );
 
 -- Indexes for session progress tracking
-CREATE INDEX idx_session_questions_session ON session_questions(game_session_id, presentation_order);
-CREATE INDEX idx_session_questions_progress ON session_questions(game_session_id, is_presented, is_revealed);
+CREATE INDEX IF NOT EXISTS idx_session_questions_session ON session_questions(game_session_id, presentation_order);
+CREATE INDEX IF NOT EXISTS idx_session_questions_progress ON session_questions(game_session_id, is_presented, is_revealed);
 
 -- ============================================================================
 -- 8. GAME_PARTICIPANTS TABLE
@@ -174,10 +174,10 @@ CREATE TABLE IF NOT EXISTS game_participants (
 );
 
 -- Indexes for participant lookup and connection management
-CREATE INDEX idx_game_participants_session ON game_participants(game_session_id);
-CREATE INDEX idx_game_participants_user ON game_participants(user_id);
-CREATE INDEX idx_game_participants_socket ON game_participants(socket_id);
-CREATE INDEX idx_game_participants_connected ON game_participants(game_session_id, is_connected);
+CREATE INDEX IF NOT EXISTS idx_game_participants_session ON game_participants(game_session_id);
+CREATE INDEX IF NOT EXISTS idx_game_participants_user ON game_participants(user_id);
+CREATE INDEX IF NOT EXISTS idx_game_participants_socket ON game_participants(socket_id);
+CREATE INDEX IF NOT EXISTS idx_game_participants_connected ON game_participants(game_session_id, is_connected);
 
 -- ============================================================================
 -- 9. PARTICIPANT_ANSWERS TABLE
@@ -197,9 +197,9 @@ CREATE TABLE IF NOT EXISTS participant_answers (
 );
 
 -- Indexes for answer retrieval and statistics
-CREATE INDEX idx_participant_answers_participant ON participant_answers(participant_id);
-CREATE INDEX idx_participant_answers_question ON participant_answers(question_id);
-CREATE INDEX idx_participant_answers_session_question ON participant_answers(participant_id, question_id);
+CREATE INDEX IF NOT EXISTS idx_participant_answers_participant ON participant_answers(participant_id);
+CREATE INDEX IF NOT EXISTS idx_participant_answers_question ON participant_answers(question_id);
+CREATE INDEX IF NOT EXISTS idx_participant_answers_session_question ON participant_answers(participant_id, question_id);
 
 -- ============================================================================
 -- 10. USER_SESSIONS TABLE
@@ -217,8 +217,8 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 );
 
 -- Indexes for session validation and cleanup
-CREATE INDEX idx_user_sessions_user_id ON user_sessions(user_id);
-CREATE INDEX idx_user_sessions_expires_at ON user_sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions(expires_at);
 
 -- ============================================================================
 -- TRIGGERS FOR AUTO-UPDATING updated_at TIMESTAMPS
@@ -234,18 +234,21 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Apply trigger to users table
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at
   BEFORE UPDATE ON users
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
 -- Apply trigger to questions table
+DROP TRIGGER IF EXISTS update_questions_updated_at ON questions;
 CREATE TRIGGER update_questions_updated_at
   BEFORE UPDATE ON questions
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
 -- Apply trigger to quizzes table
+DROP TRIGGER IF EXISTS update_quizzes_updated_at ON quizzes;
 CREATE TRIGGER update_quizzes_updated_at
   BEFORE UPDATE ON quizzes
   FOR EACH ROW
@@ -346,6 +349,7 @@ VALUES
 ON CONFLICT (setting_key) DO NOTHING;
 
 -- Trigger for auto-updating updated_at timestamp
+DROP TRIGGER IF EXISTS update_app_settings_updated_at ON app_settings;
 CREATE TRIGGER update_app_settings_updated_at
   BEFORE UPDATE ON app_settings
   FOR EACH ROW
