@@ -24,6 +24,7 @@
           <li>✓ Mobile-optimized interface</li>
           <li>✓ Spectator display mode</li>
           <li>✓ Auto-reveal when all answer</li>
+          <li>✓ Automatic database migrations</li>
         </ul>
       </div>
 
@@ -83,7 +84,7 @@
         With features like session resumption, user authentication, player connection monitoring, and mobile-optimized interfaces, TriviaForge provides a seamless experience for presenters and players. Whether you're running classroom quizzes, corporate events, or casual game nights, TriviaForge adapts to your needs.
       </p>
       <p>
-        Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. Version {{ VERSION }} ({{ VERSION_NAME }}) introduces multi-admin support with session isolation, allowing multiple administrators to manage their own quizzes and sessions independently. Root administrators can create and manage other admin accounts, while each admin only sees their own content.
+        Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. The v5.x series introduces multi-admin support with session isolation, automatic database migrations, and seamless upgrades between versions.
       </p>
     </div>
 
