@@ -2,7 +2,7 @@
 
 > **Purpose:** Current development priorities and pending tasks
 > **Last Updated:** 2026-01-26
-> **Version:** v5.0.0 (In Development)
+> **Version:** v5.1.0
 
 ---
 
@@ -32,6 +32,27 @@
 ---
 
 ## 🚀 Current Priorities (Active Development)
+
+### v5.1.0 Features - Auto Database Migrations ✅ COMPLETE
+
+**Status:** ✅ COMPLETE
+**Priority:** HIGH
+**Completed:** 2026-01-26
+**Branch:** `database-schema-fix-v5`
+
+#### Database Migration System ✅
+- [x] Version-based migration tracking in schema_migrations table
+- [x] Automatic schema updates when version changes
+- [x] Dynamic migration file detection (scans init/ directory)
+- [x] Fast startup when version unchanged (skips migration check)
+- [x] Individual migration tracking prevents re-running
+- [x] Idempotent migrations safe for existing databases
+
+**Files Modified:**
+- `app/db-init.js` - Complete rewrite with version-based migration logic
+- `app/src/config/version.js` - Updated to v5.1.0
+
+---
 
 ### v5.0.0 Features - Multi-Admin Support & UI Improvements ✅ COMPLETE
 

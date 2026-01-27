@@ -2,18 +2,18 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v5.0.0 - Multi-Admin Support: Session isolation, account management, and UI improvements
+**Latest Release**: v5.1.0 - Auto Database Migrations: Version-based migration tracking, automatic schema updates on deployment
 
 ### Key Highlights
 
-🎯 **Production-Ready**: Tested with simulated sessions of 50+ concurrent players
-⚡ **Persistent Player Sessions**: Dual-ID architecture (PlayerID + RoomSessionID) for seamless reconnection and state preservation
-📱 **Mobile-Optimized**: HTTP-compatible UUID generation, CORS/CSRF configured for cross-origin mobile access
-🏗️ **Modular Architecture**: Clean separation of concerns with controllers, services, middleware, and routes (v4.0.0)
-🧪 **Fully Tested**: Comprehensive automated testing suite with 8 scenarios (quick to extreme load)
-🔒 **Secure**: bcrypt password hashing, session-based auth, CSRF protection, rate limiting, SQL injection prevention
-📊 **Scalable**: PostgreSQL connection pooling optimized for concurrent sessions with in-memory session tracking
-🐳 **Easy Deploy**: Single-command Docker Compose setup with automatic database initialization
+- 🎯 **Production-Ready**: Tested with simulated sessions of 50+ concurrent players
+- ⚡ **Persistent Player Sessions**: Dual-ID architecture (PlayerID + RoomSessionID) for seamless reconnection and state preservation
+- 📱 **Mobile-Optimized**: HTTP-compatible UUID generation, CORS/CSRF configured for cross-origin mobile access
+- 🏗️ **Modular Architecture**: Clean separation of concerns with controllers, services, middleware, and routes (v4.0.0)
+- 🧪 **Fully Tested**: Comprehensive automated testing suite with 8 scenarios (quick to extreme load)
+- 🔒 **Secure**: bcrypt password hashing, session-based auth, CSRF protection, rate limiting, SQL injection prevention
+- 📊 **Scalable**: PostgreSQL connection pooling optimized for concurrent sessions with in-memory session tracking
+- 🐳 **Easy Deploy**: Single-command Docker Compose setup with automatic database initialization
 
 <!-- Screenshot Placeholder: Landing Page -->
 ![Landing Page](screenshots/landing-page.png?v=202511)
@@ -634,7 +634,17 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 
 ### Completed Features
 
+**v5.1.0 (Jan 2026) - Auto Database Migrations**
+- [x] Version-based database migration system
+- [x] Automatic schema updates on deployment
+- [x] Dynamic migration file detection (no hardcoded list)
+- [x] Fast startup when version unchanged (skips migration check)
+- [x] Individual migration tracking prevents re-running
+- [x] Idempotent migrations safe for existing databases
+
 **v5.0.0 (Jan 2026) - Multi-Admin Support**
+- [x] Media images now supported in questions via URL or local upload to container
+- [x] True/False option added for questions
 - [x] Multi-admin support with isolated quizzes and sessions per admin
 - [x] Root admin can create/delete admin accounts and reset passwords
 - [x] Session isolation - regular admins only see their own sessions
@@ -693,8 +703,6 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 ### Future Features
 
 **Under Consideration:**
-- [ ] Question media support (images, audio, video)
-- [ ] True/False question type
 - [ ] Advanced leaderboard and scoring systems
 - [ ] Timer-based questions with countdown
 - [ ] Team mode for collaborative play
@@ -704,7 +712,6 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 - [ ] Internationalization (i18n)
 - [ ] Player statistics dashboard
 - [ ] Performance analytics and insights
-- [ ] AI-powered question generation
 - [ ] Custom scoring algorithms
 - [ ] Powerups and game modifiers
 
