@@ -1194,7 +1194,6 @@ const handleJoinRoom = async () => {
       if (!hasToken) {
         if (DEBUG) console.log('[JOIN] No valid token, showing login modal')
         loginUsername.value = username
-        loginPassword.value = ''
         loginError.value = ''
         showLoginModal.value = true
         return
