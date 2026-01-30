@@ -5,6 +5,14 @@
       <div class="question-header">
         <strong>Q{{ qIdx + 1 }}:</strong> {{ question.text }}
       </div>
+      <div v-if="question.imageUrl" class="question-image">
+        <img
+          :src="question.imageUrl"
+          :alt="`Image for question ${qIdx + 1}`"
+          class="question-thumbnail"
+          @error="$event.target.style.display = 'none'"
+        />
+      </div>
       <div class="question-choices">
         <div
           v-for="(choice, cIdx) in question.choices"
@@ -90,6 +98,19 @@ defineEmits(['toggleQuestion']);
 
 .question-header strong {
   color: var(--info-light);
+}
+
+.question-image {
+  margin-bottom: 0.75rem;
+}
+
+.question-thumbnail {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-overlay-10);
 }
 
 .question-choices {

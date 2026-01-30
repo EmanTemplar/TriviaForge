@@ -4,9 +4,9 @@
  * Update this file to change version across the entire application
  */
 
-export const VERSION = '5.1.2'
-export const VERSION_NAME = 'Login Modal Fix'
-export const RELEASE_DATE = '2026-01-28'
+export const VERSION = '5.2.0'
+export const VERSION_NAME = 'Session Management & 2FA'
+export const RELEASE_DATE = '2026-01-30'
 
 export default {
   VERSION,

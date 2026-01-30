@@ -164,6 +164,16 @@ const registrationLimiter = rateLimit({
   skip: () => DEBUG_ENABLED
 });
 
+// Rate limiter for TOTP verification to prevent brute-force attacks
+const totpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per window
+  message: { error: 'Too many 2FA verification attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => DEBUG_ENABLED
+});
+
 // --------------------
 // CSRF Protection Configuration
 // --------------------
@@ -262,6 +272,7 @@ app.get('/api/csrf-token', (req, res) => {
 // Apply rate limiting and CSRF protection to specific auth routes
 app.use('/api/auth/player-login', authLimiter, doubleCsrfProtection);
 app.use('/api/auth/register-player', registrationLimiter, doubleCsrfProtection);
+app.use('/api/auth/totp/verify', totpLimiter);
 app.use('/api/auth', authRoutes);
 
 // --------------------

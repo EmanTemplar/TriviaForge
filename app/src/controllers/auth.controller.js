@@ -27,6 +27,7 @@ import {
   validatePassword,
   throwIfInvalid,
 } from '../utils/validators.js';
+import * as totpService from '../services/totp.service.js';
 
 // Debug logging (controlled by DEBUG_MODE or NODE_ENV)
 const DEBUG_ENABLED = process.env.NODE_ENV === 'development' || process.env.DEBUG_MODE === 'true';
@@ -36,6 +37,9 @@ const DEBUG_ENABLED = process.env.NODE_ENV === 'development' || process.env.DEBU
  *
  * POST /api/auth/login
  * Body: { username, password }
+ *
+ * If 2FA is enabled, returns { requires2FA: true, tempToken } instead of session token.
+ * Use /api/auth/totp/verify with the tempToken to complete login.
  */
 export async function adminLogin(req, res, next) {
   try {
@@ -46,9 +50,9 @@ export async function adminLogin(req, res, next) {
       throw new BadRequestError('Username and password required');
     }
 
-    // Find user
+    // Find user with 2FA fields
     const result = await query(
-      'SELECT id, username, password_hash, account_type FROM users WHERE username = $1',
+      'SELECT id, username, password_hash, account_type, totp_enabled, totp_secret FROM users WHERE username = $1',
       [username]
     );
 
@@ -70,7 +74,30 @@ export async function adminLogin(req, res, next) {
       throw new UnauthorizedError('Invalid credentials');
     }
 
-    // Create session token
+    // Check if 2FA is enabled
+    if (user.totp_enabled && user.totp_secret) {
+      // Create a temporary token for 2FA verification (expires in 5 minutes)
+      const tempSessionResult = await query(
+        `INSERT INTO user_sessions (user_id, expires_at)
+         VALUES ($1, NOW() + INTERVAL '5 minutes')
+         RETURNING token`,
+        [user.id]
+      );
+
+      const tempToken = tempSessionResult.rows[0].token;
+
+      // Return 2FA required response
+      return res.json({
+        requires2FA: true,
+        tempToken,
+        user: {
+          id: user.id,
+          username: user.username,
+        },
+      });
+    }
+
+    // No 2FA - create full session token
     const sessionResult = await query(
       `INSERT INTO user_sessions (user_id, expires_at)
        VALUES ($1, NOW() + INTERVAL '${env.sessionTimeout} milliseconds')
@@ -853,6 +880,378 @@ export async function resetAdminPassword(req, res, next) {
   }
 }
 
+// ============================================
+// 2FA TOTP Functions
+// ============================================
+
+/**
+ * Setup TOTP for the current admin
+ * Generates a secret and QR code for authenticator app setup
+ *
+ * POST /api/auth/totp/setup
+ * Headers: Authorization: Bearer <token>
+ * Returns: { secret, qrCode, uri }
+ */
+export async function setupTOTP(req, res, next) {
+  try {
+    const adminId = req.user.user_id;
+    const username = req.user.username;
+
+    // Check if 2FA is already enabled
+    const result = await query(
+      'SELECT totp_enabled FROM users WHERE id = $1',
+      [adminId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundError('User');
+    }
+
+    if (result.rows[0].totp_enabled) {
+      throw new BadRequestError('2FA is already enabled. Disable it first to set up again.');
+    }
+
+    // Generate secret and QR code
+    const { secret, uri } = totpService.generateSecret(username);
+    const qrCode = await totpService.generateQRCode(uri);
+
+    // Store secret temporarily (not enabled yet until verified)
+    await query(
+      'UPDATE users SET totp_secret = $1 WHERE id = $2',
+      [secret, adminId]
+    );
+
+    console.log(`[TOTP SETUP] Admin ${username} initiated 2FA setup`);
+
+    res.json({
+      secret,
+      qrCode,
+      uri,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Enable TOTP for the current admin
+ * Verifies the initial code and activates 2FA
+ *
+ * POST /api/auth/totp/enable
+ * Headers: Authorization: Bearer <token>
+ * Body: { token }
+ * Returns: { success, backupCodes }
+ */
+export async function enableTOTP(req, res, next) {
+  try {
+    const { token } = req.body;
+    const adminId = req.user.user_id;
+    const username = req.user.username;
+
+    if (!token) {
+      throw new BadRequestError('Verification code required');
+    }
+
+    // Get the stored secret
+    const result = await query(
+      'SELECT totp_secret, totp_enabled FROM users WHERE id = $1',
+      [adminId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundError('User');
+    }
+
+    const user = result.rows[0];
+
+    if (!user.totp_secret) {
+      throw new BadRequestError('Please set up 2FA first by calling /api/auth/totp/setup');
+    }
+
+    if (user.totp_enabled) {
+      throw new BadRequestError('2FA is already enabled');
+    }
+
+    // Verify the token
+    const isValid = totpService.verifyToken(user.totp_secret, token);
+
+    if (!isValid) {
+      throw new UnauthorizedError('Invalid verification code. Please try again.');
+    }
+
+    // Generate backup codes
+    const backupCodes = totpService.generateBackupCodes();
+    const hashedBackupCodes = await totpService.hashBackupCodes(backupCodes);
+
+    // Enable 2FA and store backup codes
+    await query(
+      `UPDATE users
+       SET totp_enabled = TRUE, totp_backup_codes = $1, totp_enabled_at = NOW()
+       WHERE id = $2`,
+      [hashedBackupCodes, adminId]
+    );
+
+    console.log(`[TOTP ENABLE] Admin ${username} enabled 2FA successfully`);
+
+    // Return formatted backup codes for display
+    const formattedCodes = totpService.formatBackupCodes(backupCodes);
+
+    res.json({
+      success: true,
+      message: '2FA has been enabled successfully',
+      backupCodes: formattedCodes,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Disable TOTP for the current admin
+ * Requires password confirmation
+ *
+ * POST /api/auth/totp/disable
+ * Headers: Authorization: Bearer <token>
+ * Body: { password }
+ * Returns: { success }
+ */
+export async function disableTOTP(req, res, next) {
+  try {
+    const { password } = req.body;
+    const adminId = req.user.user_id;
+    const username = req.user.username;
+
+    if (!password) {
+      throw new BadRequestError('Password required to disable 2FA');
+    }
+
+    // Verify password
+    const result = await query(
+      'SELECT password_hash, totp_enabled FROM users WHERE id = $1',
+      [adminId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundError('User');
+    }
+
+    const user = result.rows[0];
+
+    if (!user.totp_enabled) {
+      throw new BadRequestError('2FA is not enabled');
+    }
+
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    if (!isValid) {
+      throw new UnauthorizedError('Invalid password');
+    }
+
+    // Disable 2FA and clear all TOTP data
+    await query(
+      `UPDATE users
+       SET totp_enabled = FALSE, totp_secret = NULL, totp_backup_codes = NULL, totp_enabled_at = NULL
+       WHERE id = $1`,
+      [adminId]
+    );
+
+    console.log(`[TOTP DISABLE] Admin ${username} disabled 2FA`);
+
+    sendSuccess(res, null, '2FA has been disabled successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Verify TOTP code to complete login
+ * Call this after adminLogin returns requires2FA: true
+ *
+ * POST /api/auth/totp/verify
+ * Body: { tempToken, code, isBackupCode? }
+ * Returns: { token, user, expires_at }
+ */
+export async function verifyTOTP(req, res, next) {
+  try {
+    const { tempToken, code, isBackupCode } = req.body;
+
+    if (!tempToken || !code) {
+      throw new BadRequestError('Temporary token and verification code required');
+    }
+
+    // Verify temp token is valid
+    const sessionResult = await query(
+      `SELECT s.user_id, u.username, u.account_type, u.totp_secret, u.totp_backup_codes
+       FROM user_sessions s
+       JOIN users u ON s.user_id = u.id
+       WHERE s.token = $1 AND s.expires_at > NOW()`,
+      [tempToken]
+    );
+
+    if (sessionResult.rows.length === 0) {
+      throw new UnauthorizedError('Invalid or expired token. Please login again.');
+    }
+
+    const session = sessionResult.rows[0];
+
+    let verified = false;
+    let backupCodeIndex = -1;
+
+    if (isBackupCode) {
+      // Verify backup code
+      if (!session.totp_backup_codes || session.totp_backup_codes.length === 0) {
+        throw new BadRequestError('No backup codes available');
+      }
+
+      backupCodeIndex = await totpService.verifyBackupCode(code, session.totp_backup_codes);
+      verified = backupCodeIndex !== -1;
+
+      if (verified) {
+        // Remove used backup code
+        const updatedCodes = [...session.totp_backup_codes];
+        updatedCodes.splice(backupCodeIndex, 1);
+
+        await query(
+          'UPDATE users SET totp_backup_codes = $1 WHERE id = $2',
+          [updatedCodes.length > 0 ? updatedCodes : null, session.user_id]
+        );
+
+        console.log(`[TOTP VERIFY] Admin ${session.username} used backup code (${updatedCodes.length} remaining)`);
+      }
+    } else {
+      // Verify TOTP code
+      verified = totpService.verifyToken(session.totp_secret, code);
+    }
+
+    if (!verified) {
+      throw new UnauthorizedError('Invalid verification code');
+    }
+
+    // Delete the temp session
+    await query('DELETE FROM user_sessions WHERE token = $1', [tempToken]);
+
+    // Create a full session
+    const newSessionResult = await query(
+      `INSERT INTO user_sessions (user_id, expires_at)
+       VALUES ($1, NOW() + INTERVAL '${env.sessionTimeout} milliseconds')
+       RETURNING token, expires_at`,
+      [session.user_id]
+    );
+
+    const newSession = newSessionResult.rows[0];
+
+    console.log(`[TOTP VERIFY] Admin ${session.username} completed 2FA login`);
+
+    res.json({
+      token: newSession.token,
+      user: {
+        id: session.user_id,
+        username: session.username,
+        account_type: session.account_type,
+      },
+      expires_at: newSession.expires_at,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Regenerate backup codes for the current admin
+ * Requires password confirmation
+ *
+ * POST /api/auth/totp/backup-codes
+ * Headers: Authorization: Bearer <token>
+ * Body: { password }
+ * Returns: { backupCodes }
+ */
+export async function regenerateBackupCodes(req, res, next) {
+  try {
+    const { password } = req.body;
+    const adminId = req.user.user_id;
+    const username = req.user.username;
+
+    if (!password) {
+      throw new BadRequestError('Password required to regenerate backup codes');
+    }
+
+    // Verify password and check 2FA is enabled
+    const result = await query(
+      'SELECT password_hash, totp_enabled FROM users WHERE id = $1',
+      [adminId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundError('User');
+    }
+
+    const user = result.rows[0];
+
+    if (!user.totp_enabled) {
+      throw new BadRequestError('2FA is not enabled');
+    }
+
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    if (!isValid) {
+      throw new UnauthorizedError('Invalid password');
+    }
+
+    // Generate new backup codes
+    const backupCodes = totpService.generateBackupCodes();
+    const hashedBackupCodes = await totpService.hashBackupCodes(backupCodes);
+
+    // Store new backup codes
+    await query(
+      'UPDATE users SET totp_backup_codes = $1 WHERE id = $2',
+      [hashedBackupCodes, adminId]
+    );
+
+    console.log(`[TOTP BACKUP] Admin ${username} regenerated backup codes`);
+
+    // Return formatted backup codes
+    const formattedCodes = totpService.formatBackupCodes(backupCodes);
+
+    res.json({
+      success: true,
+      message: 'Backup codes regenerated successfully',
+      backupCodes: formattedCodes,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Get 2FA status for the current admin
+ *
+ * GET /api/auth/totp/status
+ * Headers: Authorization: Bearer <token>
+ * Returns: { enabled, enabledAt, backupCodesRemaining }
+ */
+export async function getTOTPStatus(req, res, next) {
+  try {
+    const adminId = req.user.user_id;
+
+    const result = await query(
+      'SELECT totp_enabled, totp_enabled_at, totp_backup_codes FROM users WHERE id = $1',
+      [adminId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundError('User');
+    }
+
+    const user = result.rows[0];
+
+    res.json({
+      enabled: user.totp_enabled || false,
+      enabledAt: user.totp_enabled_at || null,
+      backupCodesRemaining: user.totp_backup_codes ? user.totp_backup_codes.length : 0,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // Export all controller functions
 export default {
   adminLogin,
@@ -871,4 +1270,11 @@ export default {
   updateAdminEmail,
   changeAdminPassword,
   resetAdminPassword,
+  // TOTP 2FA functions
+  setupTOTP,
+  enableTOTP,
+  disableTOTP,
+  verifyTOTP,
+  regenerateBackupCodes,
+  getTOTPStatus,
 };

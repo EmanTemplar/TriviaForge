@@ -31,8 +31,18 @@
       />
     </div>
     <template #footer>
-      <button class="btn-danger" @click="$emit('deleteSession', session)">Delete Session</button>
-      <button class="btn-secondary" @click="$emit('close')">Close</button>
+      <div class="footer-left">
+        <button class="btn-export" @click="$emit('exportCSV', session)" title="Export as CSV">
+          <span class="export-icon">📊</span> CSV
+        </button>
+        <button class="btn-export" @click="$emit('exportPDF', session)" title="Export as Report">
+          <span class="export-icon">📄</span> Report
+        </button>
+      </div>
+      <div class="footer-right">
+        <button class="btn-danger" @click="$emit('deleteSession', session)">Delete Session</button>
+        <button class="btn-secondary" @click="$emit('close')">Close</button>
+      </div>
     </template>
   </Modal>
 </template>
@@ -50,7 +60,7 @@ const props = defineProps({
   formatDate: { type: Function, required: true }
 });
 
-defineEmits(['close', 'deleteSession', 'toggleQuestion']);
+defineEmits(['close', 'deleteSession', 'toggleQuestion', 'exportCSV', 'exportPDF']);
 
 const rankedPlayers = computed(() => {
   if (!props.session || !props.session.playerResults) return [];
@@ -161,6 +171,34 @@ const rankedPlayers = computed(() => {
 .btn-secondary:hover {
   background: var(--bg-overlay-30);
   color: var(--text-primary);
+}
+
+.footer-left,
+.footer-right {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-export {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--info-bg-20);
+  border: 1px solid var(--info-light);
+  color: var(--info-light);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-export:hover {
+  background: var(--info-bg-30);
+}
+
+.export-icon {
+  font-size: 1rem;
 }
 
 @media (max-width: 768px) {

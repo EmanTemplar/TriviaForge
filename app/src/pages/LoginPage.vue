@@ -5,7 +5,7 @@
       <p class="login-subtitle">Admin & Presenter Access</p>
 
       <!-- Login Form -->
-      <div v-if="!isLoggedIn" class="login-form">
+      <div v-if="!isLoggedIn && !requires2FA" class="login-form">
         <FormInput
           v-model="username"
           label="Username"
@@ -30,6 +30,69 @@
         >
           Login
         </Button>
+      </div>
+
+      <!-- 2FA Verification Form -->
+      <div v-else-if="requires2FA" class="two-factor-form">
+        <div class="totp-header">
+          <h3>Two-Factor Authentication</h3>
+          <p>Enter the 6-digit code from your authenticator app</p>
+        </div>
+
+        <FormInput
+          v-model="totpCode"
+          label="Verification Code"
+          type="text"
+          placeholder="000000"
+          maxlength="6"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          :error="totpError"
+          @keypress.enter="verifyTOTP"
+        />
+
+        <Button
+          :is-loading="isVerifying"
+          :disabled="totpCode.length !== 6"
+          full-width
+          @click="verifyTOTP"
+        >
+          Verify
+        </Button>
+
+        <div class="totp-options">
+          <button
+            type="button"
+            class="link-button"
+            @click="showBackupCodeInput = !showBackupCodeInput"
+          >
+            {{ showBackupCodeInput ? 'Use authenticator app' : 'Use backup code instead' }}
+          </button>
+        </div>
+
+        <div v-if="showBackupCodeInput" class="backup-code-section">
+          <FormInput
+            v-model="backupCode"
+            label="Backup Code"
+            type="text"
+            placeholder="XXXX-XXXX"
+            maxlength="9"
+            @keypress.enter="verifyBackupCode"
+          />
+          <Button
+            :is-loading="isVerifying"
+            :disabled="backupCode.length < 8"
+            full-width
+            variant="secondary"
+            @click="verifyBackupCode"
+          >
+            Use Backup Code
+          </Button>
+        </div>
+
+        <button type="button" class="link-button cancel-link" @click="cancelTwoFactor">
+          Cancel and start over
+        </button>
       </div>
 
       <!-- Access Buttons (After Login) -->
@@ -93,6 +156,16 @@ const error = ref(null)
 const isLoading = ref(false)
 const isLoggedIn = ref(false)
 
+// Two-Factor Authentication state
+const requires2FA = ref(false)
+const tempToken = ref(null)
+const pendingUser = ref(null)
+const totpCode = ref('')
+const totpError = ref(null)
+const isVerifying = ref(false)
+const showBackupCodeInput = ref(false)
+const backupCode = ref('')
+
 // Check if already authenticated
 onMounted(async () => {
   if (authStore.token && authStore.userRole === 'admin') {
@@ -121,6 +194,16 @@ const attemptLogin = async () => {
 
     const data = response.data
 
+    // Check if 2FA is required
+    if (data.requires2FA) {
+      requires2FA.value = true
+      tempToken.value = data.tempToken
+      pendingUser.value = data.user
+      password.value = '' // Clear password for security
+      isLoading.value = false
+      return
+    }
+
     // Check if user is admin
     if (data.user?.account_type !== 'admin') {
       error.value = 'Admin access required'
@@ -129,22 +212,8 @@ const attemptLogin = async () => {
       return
     }
 
-    // Store auth with user ID
-    authStore.setAuth(data.token, data.user.username, 'admin', data.user.id)
-    isLoggedIn.value = true
-
-    // Fetch admin info to check if root admin
-    try {
-      const adminInfoResponse = await get('/api/auth/admin-info')
-      if (adminInfoResponse.data?.user?.is_root_admin) {
-        authStore.setAuth(data.token, data.user.username, 'admin', data.user.id, true)
-      }
-    } catch (adminErr) {
-      console.warn('Could not fetch admin info:', adminErr)
-    }
-
-    // Show success notification
-    uiStore.addNotification(`Welcome back, ${data.user.username}!`, 'success')
+    // Complete login
+    await completeLogin(data)
   } catch (err) {
     const message = err.response?.data?.message || 'Invalid credentials'
     error.value = message
@@ -155,6 +224,86 @@ const attemptLogin = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+const verifyTOTP = async () => {
+  if (totpCode.value.length !== 6) return
+
+  totpError.value = null
+  isVerifying.value = true
+
+  try {
+    const response = await post('/api/auth/totp/verify', {
+      tempToken: tempToken.value,
+      code: totpCode.value,
+      isBackupCode: false
+    })
+
+    await completeLogin(response.data)
+    resetTwoFactorState()
+  } catch (err) {
+    totpError.value = err.response?.data?.message || 'Invalid verification code'
+    totpCode.value = ''
+  } finally {
+    isVerifying.value = false
+  }
+}
+
+const verifyBackupCode = async () => {
+  if (backupCode.value.length < 8) return
+
+  totpError.value = null
+  isVerifying.value = true
+
+  try {
+    const response = await post('/api/auth/totp/verify', {
+      tempToken: tempToken.value,
+      code: backupCode.value.replace('-', ''),
+      isBackupCode: true
+    })
+
+    await completeLogin(response.data)
+    resetTwoFactorState()
+  } catch (err) {
+    totpError.value = err.response?.data?.message || 'Invalid backup code'
+    backupCode.value = ''
+  } finally {
+    isVerifying.value = false
+  }
+}
+
+const completeLogin = async (data) => {
+  // Store auth with user ID
+  authStore.setAuth(data.token, data.user.username, 'admin', data.user.id)
+  isLoggedIn.value = true
+
+  // Fetch admin info to check if root admin
+  try {
+    const adminInfoResponse = await get('/api/auth/admin-info')
+    if (adminInfoResponse.data?.user?.is_root_admin) {
+      authStore.setAuth(data.token, data.user.username, 'admin', data.user.id, true)
+    }
+  } catch (adminErr) {
+    console.warn('Could not fetch admin info:', adminErr)
+  }
+
+  // Show success notification
+  uiStore.addNotification(`Welcome back, ${data.user.username}!`, 'success')
+}
+
+const cancelTwoFactor = () => {
+  resetTwoFactorState()
+  password.value = ''
+}
+
+const resetTwoFactorState = () => {
+  requires2FA.value = false
+  tempToken.value = null
+  pendingUser.value = null
+  totpCode.value = ''
+  totpError.value = null
+  showBackupCodeInput.value = false
+  backupCode.value = ''
 }
 
 const performLogout = async () => {
@@ -220,10 +369,62 @@ const performLogout = async () => {
   font-size: var(--font-base);
 }
 
-.login-form {
+.login-form,
+.two-factor-form {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+}
+
+.totp-header {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.totp-header h3 {
+  color: var(--info-light);
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+}
+
+.totp-header p {
+  color: var(--text-tertiary);
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.totp-options {
+  text-align: center;
+  margin-top: -0.5rem;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--info-light);
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+}
+
+.link-button:hover {
+  color: var(--text-primary);
+}
+
+.cancel-link {
+  color: var(--text-tertiary);
+  margin-top: 0.5rem;
+}
+
+.backup-code-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--bg-overlay-10);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
 }
 
 .access-buttons {

@@ -82,12 +82,22 @@
 
       <!-- Session Management Tab -->
       <div v-if="activeTab === 'sessions'" class="tab-content sessions-management">
+        <SessionFilters
+          :filters="sessionFilters"
+          :quizzes="quizzes"
+          @apply="applySessionFilters"
+          @clear="clearSessionFilters"
+        />
         <SessionsList
           :sessions="completedSessions"
           :formatDate="formatDate"
           :isRootAdmin="authStore.isRootAdmin"
+          :selectable="true"
           @viewSession="viewSessionDetails"
           @deleteSession="deleteSessionFromList"
+          @bulkDelete="confirmBulkDelete"
+          @bulkExportCSV="bulkExportCSV"
+          @bulkExportPDF="bulkExportPDF"
         />
       </div>
 
@@ -168,19 +178,30 @@
       @close="showSessionModal = false"
       @deleteSession="confirmDeleteSession"
       @toggleQuestion="toggleQuestionExpanded"
+      @exportCSV="exportSessionCSV"
+      @exportPDF="exportSessionPDF"
     />
 
     <!-- Delete Confirmation Modal -->
-    <Modal :isOpen="showDeleteConfirmModal" @close="showDeleteConfirmModal = false" title="Confirm Deletion">
-      <p class="modal-text-secondary">
-        Are you sure you want to delete session <strong class="modal-text-primary">{{ sessionToDelete?.quizTitle }}</strong> ({{ sessionToDelete?.roomCode }})?
-      </p>
+    <Modal :isOpen="showDeleteConfirmModal" @close="cancelDelete" title="Confirm Deletion">
+      <!-- Bulk delete message -->
+      <template v-if="bulkDeleteSessionIds.length > 0">
+        <p class="modal-text-secondary">
+          Are you sure you want to delete <strong class="modal-text-primary">{{ bulkDeleteSessionIds.length }} session(s)</strong>?
+        </p>
+      </template>
+      <!-- Single delete message -->
+      <template v-else>
+        <p class="modal-text-secondary">
+          Are you sure you want to delete session <strong class="modal-text-primary">{{ sessionToDelete?.quizTitle }}</strong> ({{ sessionToDelete?.roomCode }})?
+        </p>
+      </template>
       <p class="modal-text-danger">
         This action cannot be undone.
       </p>
       <template #footer>
         <Button variant="danger" @click="confirmDelete">Delete</Button>
-        <Button variant="secondary" @click="showDeleteConfirmModal = false">Cancel</Button>
+        <Button variant="secondary" @click="cancelDelete">Cancel</Button>
       </template>
     </Modal>
 
@@ -237,6 +258,49 @@
         </div>
         <p class="settings-hint">Leave password fields empty to keep your current password.</p>
 
+        <div class="settings-divider"></div>
+        <h4 class="settings-section-title">Two-Factor Authentication</h4>
+
+        <div class="two-factor-status">
+          <div v-if="totpStatus.enabled" class="totp-enabled">
+            <span class="status-badge enabled">Enabled</span>
+            <span class="totp-info">
+              {{ totpStatus.backupCodesRemaining }} backup codes remaining
+            </span>
+          </div>
+          <div v-else class="totp-disabled">
+            <span class="status-badge disabled">Disabled</span>
+            <span class="totp-info">Add an extra layer of security to your account</span>
+          </div>
+        </div>
+
+        <div class="two-factor-actions">
+          <Button
+            v-if="!totpStatus.enabled"
+            variant="primary"
+            size="small"
+            @click="startTwoFactorSetup"
+          >
+            Enable 2FA
+          </Button>
+          <template v-else>
+            <Button
+              variant="secondary"
+              size="small"
+              @click="showRegenerateBackupCodesModal = true"
+            >
+              Regenerate Backup Codes
+            </Button>
+            <Button
+              variant="danger"
+              size="small"
+              @click="showDisableTwoFactorModal = true"
+            >
+              Disable 2FA
+            </Button>
+          </template>
+        </div>
+
         <div v-if="accountSettingsError" class="settings-error">{{ accountSettingsError }}</div>
         <div v-if="accountSettingsSuccess" class="settings-success">{{ accountSettingsSuccess }}</div>
       </div>
@@ -245,6 +309,95 @@
         <Button variant="success" @click="saveAccountSettings" :disabled="isSavingAccountSettings">
           {{ isSavingAccountSettings ? 'Saving...' : 'Save Changes' }}
         </Button>
+      </template>
+    </Modal>
+
+    <!-- Two-Factor Setup Modal -->
+    <TwoFactorSetupModal
+      :isOpen="showTwoFactorSetupModal"
+      @close="showTwoFactorSetupModal = false"
+      @enabled="onTwoFactorEnabled"
+    />
+
+    <!-- Disable Two-Factor Modal -->
+    <Modal :isOpen="showDisableTwoFactorModal" @close="showDisableTwoFactorModal = false" title="Disable Two-Factor Authentication" size="small">
+      <div class="disable-2fa-content">
+        <p class="warning-text">
+          Disabling two-factor authentication will make your account less secure.
+          Are you sure you want to continue?
+        </p>
+        <div class="settings-field">
+          <label for="disable2faPassword">Enter your password to confirm:</label>
+          <FormInput
+            id="disable2faPassword"
+            v-model="disable2faPassword"
+            type="password"
+            placeholder="Enter your password"
+            :showPasswordToggle="true"
+          />
+        </div>
+        <div v-if="disable2faError" class="settings-error">{{ disable2faError }}</div>
+      </div>
+      <template #footer>
+        <Button variant="secondary" @click="showDisableTwoFactorModal = false">Cancel</Button>
+        <Button
+          variant="danger"
+          :disabled="!disable2faPassword || isDisabling2fa"
+          @click="disableTwoFactor"
+        >
+          {{ isDisabling2fa ? 'Disabling...' : 'Disable 2FA' }}
+        </Button>
+      </template>
+    </Modal>
+
+    <!-- Regenerate Backup Codes Modal -->
+    <Modal :isOpen="showRegenerateBackupCodesModal" @close="closeRegenerateModal" title="Regenerate Backup Codes" size="small">
+      <div v-if="!newBackupCodes.length" class="regenerate-content">
+        <p class="warning-text">
+          This will invalidate your current backup codes and generate new ones.
+          Make sure to save the new codes in a secure location.
+        </p>
+        <div class="settings-field">
+          <label for="regeneratePassword">Enter your password to confirm:</label>
+          <FormInput
+            id="regeneratePassword"
+            v-model="regeneratePassword"
+            type="password"
+            placeholder="Enter your password"
+            :showPasswordToggle="true"
+          />
+        </div>
+        <div v-if="regenerateError" class="settings-error">{{ regenerateError }}</div>
+      </div>
+      <div v-else class="new-codes-content">
+        <div class="success-banner">
+          <span class="success-icon">✓</span>
+          <span>New backup codes generated!</span>
+        </div>
+        <p class="backup-warning">Save these codes in a secure location:</p>
+        <div class="backup-codes-grid">
+          <div v-for="code in newBackupCodes" :key="code" class="backup-code">{{ code }}</div>
+        </div>
+        <div class="backup-actions">
+          <Button variant="secondary" size="small" @click="downloadNewBackupCodes">
+            Download Codes
+          </Button>
+        </div>
+      </div>
+      <template #footer>
+        <template v-if="!newBackupCodes.length">
+          <Button variant="secondary" @click="showRegenerateBackupCodesModal = false">Cancel</Button>
+          <Button
+            variant="primary"
+            :disabled="!regeneratePassword || isRegenerating"
+            @click="regenerateBackupCodes"
+          >
+            {{ isRegenerating ? 'Regenerating...' : 'Regenerate Codes' }}
+          </Button>
+        </template>
+        <template v-else>
+          <Button variant="success" @click="closeRegenerateModal">Done</Button>
+        </template>
       </template>
     </Modal>
   </div>
@@ -257,6 +410,7 @@ import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import FormInput from '@/components/common/FormInput.vue'
 import Card from '@/components/common/Card.vue'
+import TwoFactorSetupModal from '@/components/modals/TwoFactorSetupModal.vue'
 import { useApi } from '@/composables/useApi.js'
 import { useAuthStore } from '@/stores/auth.js'
 import { useTheme } from '@/composables/useTheme.js'
@@ -268,6 +422,7 @@ import QuizSidebar from '@/components/admin/QuizSidebar.vue'
 import QuestionEditor from '@/components/admin/QuestionEditor.vue'
 import QuestionsList from '@/components/admin/QuestionsList.vue'
 import SessionsList from '@/components/admin/SessionsList.vue'
+import SessionFilters from '@/components/admin/SessionFilters.vue'
 import QuizOptionsPanel from '@/components/admin/QuizOptionsPanel.vue'
 import ThemeSettingsPanel from '@/components/admin/ThemeSettingsPanel.vue'
 import UserManagementPanel from '@/components/admin/UserManagementPanel.vue'
@@ -298,6 +453,19 @@ const confirmPassword = ref('')
 const accountSettingsError = ref(null)
 const accountSettingsSuccess = ref(null)
 const isSavingAccountSettings = ref(false)
+
+// Two-Factor Authentication
+const showTwoFactorSetupModal = ref(false)
+const showDisableTwoFactorModal = ref(false)
+const showRegenerateBackupCodesModal = ref(false)
+const totpStatus = ref({ enabled: false, enabledAt: null, backupCodesRemaining: 0 })
+const disable2faPassword = ref('')
+const disable2faError = ref(null)
+const isDisabling2fa = ref(false)
+const regeneratePassword = ref('')
+const regenerateError = ref(null)
+const isRegenerating = ref(false)
+const newBackupCodes = ref([])
 
 // Column resizing
 const col1Width = ref(280)
@@ -335,6 +503,16 @@ const dragOverChoiceIdx = ref(null)
 const completedSessions = ref([])
 const selectedSession = ref(null)
 const expandedQuestions = ref(new Set())
+
+// Session Filters
+const sessionFilters = ref({
+  dateFrom: '',
+  dateTo: '',
+  quizId: '',
+  status: '',
+  search: '',
+})
+const bulkDeleteSessionIds = ref([])
 
 // Options
 const answerDisplayTime = ref(30)
@@ -888,11 +1066,121 @@ const shuffleAllChoices = async () => {
 // Sessions functions
 const loadSessions = async () => {
   try {
-    const response = await get('/api/sessions')
+    // Build query params from filters
+    const params = new URLSearchParams()
+    if (sessionFilters.value.dateFrom) params.append('dateFrom', sessionFilters.value.dateFrom)
+    if (sessionFilters.value.dateTo) params.append('dateTo', sessionFilters.value.dateTo)
+    if (sessionFilters.value.quizId) params.append('quizId', sessionFilters.value.quizId)
+    if (sessionFilters.value.status) params.append('status', sessionFilters.value.status)
+    if (sessionFilters.value.search) params.append('search', sessionFilters.value.search)
+
+    const url = params.toString() ? `/api/sessions?${params.toString()}` : '/api/sessions'
+    const response = await get(url)
     completedSessions.value = response.data
   } catch (err) {
     console.error('Error loading sessions:', err)
   }
+}
+
+const applySessionFilters = (filters) => {
+  sessionFilters.value = { ...filters }
+  loadSessions()
+}
+
+const clearSessionFilters = () => {
+  sessionFilters.value = {
+    dateFrom: '',
+    dateTo: '',
+    quizId: '',
+    status: '',
+    search: '',
+  }
+  loadSessions()
+}
+
+const confirmBulkDelete = (sessionIds) => {
+  bulkDeleteSessionIds.value = sessionIds
+  showDeleteConfirmModal.value = true
+}
+
+const executeBulkDelete = async () => {
+  if (bulkDeleteSessionIds.value.length === 0) return
+
+  try {
+    await post('/api/sessions/bulk-delete', { sessionIds: bulkDeleteSessionIds.value })
+    showDeleteConfirmModal.value = false
+    bulkDeleteSessionIds.value = []
+    showAlert(`${bulkDeleteSessionIds.value.length} sessions deleted successfully`)
+    await loadSessions()
+  } catch (err) {
+    console.error('Error deleting sessions:', err)
+    showAlert('Failed to delete sessions', 'Error')
+  }
+}
+
+// Single session export functions
+const exportSessionCSV = async (session) => {
+  try {
+    const response = await get(`/api/sessions/${session.filename}/export/csv`, { responseType: 'blob' })
+    downloadFile(response.data, `triviaforge_session_${session.sessionId}.csv`, 'text/csv')
+  } catch (err) {
+    console.error('Error exporting CSV:', err)
+    showAlert('Failed to export CSV', 'Error')
+  }
+}
+
+const exportSessionPDF = async (session) => {
+  try {
+    const response = await get(`/api/sessions/${session.filename}/export/pdf`, { responseType: 'blob' })
+    downloadFile(response.data, `triviaforge_session_${session.sessionId}_report.txt`, 'text/plain')
+  } catch (err) {
+    console.error('Error exporting report:', err)
+    showAlert('Failed to export report', 'Error')
+  }
+}
+
+// Bulk export functions
+const bulkExportCSV = async (sessionIds) => {
+  if (!sessionIds || sessionIds.length === 0) {
+    showAlert('No sessions selected', 'Info')
+    return
+  }
+  try {
+    const response = await post('/api/sessions/export/bulk/csv', { sessionIds }, { responseType: 'blob' })
+    downloadFile(response.data, `triviaforge_sessions_bulk_${Date.now()}.csv`, 'text/csv')
+    showAlert(`Exported ${sessionIds.length} session(s) to CSV`, 'Export Complete')
+  } catch (err) {
+    console.error('Error exporting bulk CSV:', err)
+    showAlert('Failed to export sessions', 'Error')
+  }
+}
+
+const bulkExportPDF = async (sessionIds) => {
+  if (!sessionIds || sessionIds.length === 0) {
+    showAlert('No sessions selected', 'Info')
+    return
+  }
+  try {
+    const response = await post('/api/sessions/export/bulk/pdf', { sessionIds }, { responseType: 'blob' })
+    downloadFile(response.data, `triviaforge_sessions_bulk_${Date.now()}_report.txt`, 'text/plain')
+    showAlert(`Exported ${sessionIds.length} session(s) to report`, 'Export Complete')
+  } catch (err) {
+    console.error('Error exporting bulk report:', err)
+    showAlert('Failed to export sessions', 'Error')
+  }
+}
+
+// Helper function to trigger file download
+const downloadFile = (data, filename, mimeType) => {
+  const blob = new Blob([data], { type: mimeType })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  link.parentNode.removeChild(link)
+  window.URL.revokeObjectURL(url)
 }
 
 const viewSessionDetails = async (session) => {
@@ -932,7 +1220,32 @@ const deleteSessionFromList = (session) => {
   showDeleteConfirmModal.value = true
 }
 
+const cancelDelete = () => {
+  showDeleteConfirmModal.value = false
+  sessionToDelete.value = null
+  bulkDeleteSessionIds.value = []
+}
+
 const confirmDelete = async () => {
+  // Handle bulk delete if there are bulk session IDs
+  if (bulkDeleteSessionIds.value.length > 0) {
+    try {
+      const count = bulkDeleteSessionIds.value.length
+      await post('/api/sessions/bulk-delete', { sessionIds: bulkDeleteSessionIds.value })
+      showDeleteConfirmModal.value = false
+      bulkDeleteSessionIds.value = []
+      showAlert(`${count} session(s) deleted successfully`)
+      await loadSessions()
+    } catch (err) {
+      console.error('Error deleting sessions:', err)
+      showDeleteConfirmModal.value = false
+      bulkDeleteSessionIds.value = []
+      showAlert('Failed to delete sessions', 'Error')
+    }
+    return
+  }
+
+  // Handle single session delete
   if (!sessionToDelete.value) return
 
   try {
@@ -1246,13 +1559,20 @@ const openAccountSettings = async () => {
   currentPassword.value = ''
   newPassword.value = ''
   confirmPassword.value = ''
-  // Fetch current email from admin info
+  // Reset 2FA modal states
+  disable2faPassword.value = ''
+  disable2faError.value = null
+  regeneratePassword.value = ''
+  regenerateError.value = null
+  newBackupCodes.value = []
+  // Fetch current email and 2FA status
   try {
     const response = await get('/api/auth/admin-info')
     accountEmail.value = response.data?.user?.email || ''
   } catch (err) {
     accountEmail.value = ''
   }
+  await loadTOTPStatus()
   showAccountSettingsModal.value = true
 }
 
@@ -1312,6 +1632,83 @@ const saveAccountSettings = async () => {
   } finally {
     isSavingAccountSettings.value = false
   }
+}
+
+// Two-Factor Authentication functions
+const loadTOTPStatus = async () => {
+  try {
+    const response = await get('/api/auth/totp/status')
+    totpStatus.value = response.data
+  } catch (err) {
+    console.error('Error loading TOTP status:', err)
+    totpStatus.value = { enabled: false, enabledAt: null, backupCodesRemaining: 0 }
+  }
+}
+
+const startTwoFactorSetup = () => {
+  showAccountSettingsModal.value = false
+  showTwoFactorSetupModal.value = true
+}
+
+const onTwoFactorEnabled = async () => {
+  await loadTOTPStatus()
+  showAlert('Two-factor authentication has been enabled!', '2FA Enabled')
+}
+
+const disableTwoFactor = async () => {
+  if (!disable2faPassword.value) return
+
+  isDisabling2fa.value = true
+  disable2faError.value = null
+
+  try {
+    await post('/api/auth/totp/disable', { password: disable2faPassword.value })
+    showDisableTwoFactorModal.value = false
+    disable2faPassword.value = ''
+    await loadTOTPStatus()
+    showAlert('Two-factor authentication has been disabled.', '2FA Disabled')
+  } catch (err) {
+    disable2faError.value = err.response?.data?.message || 'Failed to disable 2FA'
+  } finally {
+    isDisabling2fa.value = false
+  }
+}
+
+const regenerateBackupCodes = async () => {
+  if (!regeneratePassword.value) return
+
+  isRegenerating.value = true
+  regenerateError.value = null
+
+  try {
+    const response = await post('/api/auth/totp/backup-codes', { password: regeneratePassword.value })
+    newBackupCodes.value = response.data.backupCodes
+    regeneratePassword.value = ''
+    await loadTOTPStatus()
+  } catch (err) {
+    regenerateError.value = err.response?.data?.message || 'Failed to regenerate backup codes'
+  } finally {
+    isRegenerating.value = false
+  }
+}
+
+const downloadNewBackupCodes = () => {
+  const codesText = `TriviaForge Backup Codes\n========================\n\nSave these codes in a secure location.\nEach code can only be used once.\n\n${newBackupCodes.value.join('\n')}\n\nGenerated: ${new Date().toLocaleString()}`
+
+  const blob = new Blob([codesText], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'triviaforge-backup-codes.txt'
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+const closeRegenerateModal = () => {
+  showRegenerateBackupCodesModal.value = false
+  regeneratePassword.value = ''
+  regenerateError.value = null
+  newBackupCodes.value = []
 }
 
 // Column resizing utilities
@@ -2517,6 +2914,118 @@ onUnmounted(() => {
   padding: 0.75rem;
   border-radius: 6px;
   font-size: 0.9rem;
+}
+
+/* Two-Factor Authentication Styles */
+.two-factor-status {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--bg-overlay-10);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.totp-enabled,
+.totp-disabled {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.enabled {
+  background: var(--secondary-bg-30);
+  color: var(--secondary-light);
+  border: 1px solid var(--secondary-light);
+}
+
+.status-badge.disabled {
+  background: var(--bg-overlay-20);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-color);
+}
+
+.totp-info {
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
+}
+
+.two-factor-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Disable 2FA / Regenerate Backup Codes Modals */
+.disable-2fa-content,
+.regenerate-content,
+.new-codes-content {
+  padding: 0.5rem 0;
+}
+
+.warning-text {
+  color: var(--warning-light);
+  background: var(--warning-bg-10);
+  border: 1px solid var(--warning-light);
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+}
+
+.success-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: var(--secondary-bg-20);
+  border: 1px solid var(--secondary-light);
+  color: var(--secondary-light);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+.success-icon {
+  font-size: 1.5rem;
+}
+
+.backup-warning {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.backup-codes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.backup-code {
+  font-family: monospace;
+  font-size: 0.95rem;
+  background: var(--bg-overlay-20);
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.backup-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
 }
 
 .settings-divider {

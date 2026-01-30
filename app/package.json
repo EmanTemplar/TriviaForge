@@ -32,6 +32,7 @@
     "express-rate-limit": "^8.2.1",
     "multer": "^2.0.2",
     "node-fetch": "^3.3.0",
+    "otpauth": "^9.2.0",
     "pg": "^8.11.0",
     "pinia": "^2.1.0",
     "qrcode": "^1.5.1",

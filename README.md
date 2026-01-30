@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v5.1.0 - Auto Database Migrations: Version-based migration tracking, automatic schema updates on deployment
+**Latest Release**: v5.1.2 - Login modal fix, idempotent migrations, auto database migrations with version tracking
 
 ### Key Highlights
 
@@ -25,6 +25,8 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 
 ### For Administrators
 - **Quiz Management**: Create, edit, and delete custom quizzes with an intuitive interface
+- **Question Types**: Support for Multiple Choice and True/False questions
+- **Image Support**: Add images to questions via file upload or external URL
 - **Drag-and-Drop Reordering**: Reorganize questions and answer choices with visual drag-and-drop or arrow buttons
 - **Smart Answer Tracking**: Correct answer automatically updates when reordering choices
 - **Excel Import**: Bulk import quizzes from professionally formatted Excel templates (supports 2-10 answer choices)

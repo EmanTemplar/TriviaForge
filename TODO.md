@@ -1,8 +1,8 @@
 # TriviaForge - Active Development Tasks (2026)
 
 > **Purpose:** Current development priorities and pending tasks
-> **Last Updated:** 2026-01-26
-> **Version:** v5.1.0
+> **Last Updated:** 2026-01-29
+> **Version:** v5.1.2
 
 ---
 
@@ -296,13 +296,42 @@ Add notification to presenter when all connected players have answered the curre
 
 ---
 
+---
+
+### v5.2.0 Features - Session Management & Security (PLANNED)
+
+**Status:** 🔄 IN PROGRESS
+**Priority:** HIGH
+
+#### Session Management Improvements
+- [ ] Session results export (CSV format)
+- [ ] Session results export (PDF format with formatting)
+- [ ] Bulk export for multiple sessions
+- [ ] Session filtering by date range
+- [ ] Session filtering by quiz name
+- [ ] Session filtering by status
+- [ ] Player search within session results
+- [ ] Bulk selection and delete for sessions
+- [ ] Question images displayed in session details
+
+#### Two-Factor Authentication (TOTP)
+- [ ] Database migration for TOTP fields
+- [ ] TOTP service with otpauth library
+- [ ] QR code generation for authenticator apps
+- [ ] Two-step login flow (password → TOTP)
+- [ ] Backup codes generation and storage
+- [ ] 2FA setup UI in Account Settings
+- [ ] Rate limiting on TOTP verification
+
+---
+
 ## 📋 Long-term / Future Enhancements
 
 > **Note:** These are planned features but not immediate priorities. See archived TODO-2025.md for detailed specifications.
 
 ### Database & Infrastructure
 - [ ] Database backup/restore strategy
-- [ ] Database migration versioning
+- [x] Database migration versioning - v5.1.0 ✅
 - [ ] Performance monitoring and query optimization
 - [ ] GitHub Actions - Docker Auto-Build & Push to Docker Hub
 
@@ -310,14 +339,19 @@ Add notification to presenter when all connected players have answered the curre
 - [ ] Implement Phase 1 security fixes from SECURITY-AUDIT.md (if not done)
 - [ ] Ban Player Account system (permanent/temporary bans)
 - [ ] Enhanced Player Security & Management (needs re-review post v3.2.1 improvements)
-- [x] Multi-Admin Support System (isolated instances) - v5.0.0
+- [x] Multi-Admin Support System (isolated instances) - v5.0.0 ✅
 - [ ] Email verification for admin accounts
-- [ ] Two-Factor Authentication (2FA) for admins
+
+### Question Types & Media
+- [x] True/False question type - v5.0.0 ✅
+- [x] Question images (upload + URL reference) - v5.0.0 ✅
+- [ ] Video/audio media support (future consideration)
 
 ### Player & Presenter Features
 - [ ] Automated Presenter Mode with Timers (auto-reveal, auto-advance)
 - [ ] Solo-Play Mode for Players (self-study without presenter)
 - [ ] mDNS Service Discovery + Smart QR Code URLs (design phase complete, ready for implementation)
+- [ ] Session analytics with charts/graphs (future)
 
 ### Bug Investigations
 - [ ] Incorrect Answer Notification Bug (may be fixed by reconnection changes - needs testing)
@@ -327,12 +361,14 @@ Add notification to presenter when all connected players have answered the curre
 
 ## 📝 Development Notes
 
-### Current Focus Areas (v5.0.0)
+### Current Focus Areas (v5.2.0)
 1. ~~**Bug Fixes:** Logout button functionality on Admin/Presenter pages~~ ✅ COMPLETE
-2. **Answer Types:** True/False question support (future)
-3. **Media Support:** Question images (upload + URL reference) (future)
+2. ~~**Answer Types:** True/False question support~~ ✅ COMPLETE (v5.0.0)
+3. ~~**Media Support:** Question images (upload + URL reference)~~ ✅ COMPLETE (v5.0.0)
 4. ~~**Multi-Admin:** Isolated instances per admin account~~ ✅ COMPLETE
-5. **Security Research:** Email verification and 2FA options (future)
+5. **2FA TOTP:** Two-Factor Authentication for admins (in progress)
+6. **Session Export:** CSV and PDF export of session results (planned)
+7. **Session Filtering:** Date range, quiz, status, and player search filters (planned)
 
 ### Testing Priorities
 - Mobile browser testing (iOS Safari, Chrome Mobile, Firefox Mobile)
@@ -344,8 +380,11 @@ Add notification to presenter when all connected players have answered the curre
 - **v4.2.2 (Released):** Stay-awake fix + Answer confirmation modal ✅
 - **v4.2.3 (Released):** Presenter connected players visual improvements ✅
 - **v4.3.0 (Released):** All players answered notification with auto-reveal ✅
-- **v5.0.0 (Complete):** Multi-admin support, session isolation, account settings, UI improvements ✅
-- **v5.1.0 (Planned):** True/False question type, media support, security research
+- **v5.0.0 (Released):** Multi-admin support, session isolation, account settings, True/False questions, Media/image support ✅
+- **v5.1.0 (Released):** Auto database migrations with version tracking ✅
+- **v5.1.1 (Released):** Idempotent migrations fix ✅
+- **v5.1.2 (Released):** Login modal fix for registered accounts ✅
+- **v5.2.0 (Planned):** Session export (CSV/PDF), session filtering, 2FA TOTP authentication
 
 ---
 
@@ -364,5 +403,5 @@ Before marking a task as complete:
 
 **Archive:** See [archive/TODO-2025.md](archive/TODO-2025.md) for historical tasks and completed features from 2025.
 
-**Last Updated:** 2026-01-26
+**Last Updated:** 2026-01-29
 **Maintained By:** TriviaForge Development Team

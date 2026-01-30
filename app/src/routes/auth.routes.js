@@ -166,4 +166,67 @@ router.put('/change-password', requireAdmin, asyncHandler(authController.changeA
  */
 router.post('/admins/:id/reset-password', requireRootAdmin, asyncHandler(authController.resetAdminPassword));
 
+// ============================================
+// 2FA TOTP Routes
+// ============================================
+
+/**
+ * Get 2FA status for current admin
+ * GET /api/auth/totp/status
+ *
+ * Headers: Authorization: Bearer <token>
+ * Returns: { enabled, enabledAt, backupCodesRemaining }
+ */
+router.get('/totp/status', requireAdmin, asyncHandler(authController.getTOTPStatus));
+
+/**
+ * Setup TOTP for the current admin (generates secret and QR code)
+ * POST /api/auth/totp/setup
+ *
+ * Headers: Authorization: Bearer <token>
+ * Returns: { secret, qrCode, uri }
+ */
+router.post('/totp/setup', requireAdmin, asyncHandler(authController.setupTOTP));
+
+/**
+ * Enable TOTP for the current admin (verify initial code)
+ * POST /api/auth/totp/enable
+ *
+ * Headers: Authorization: Bearer <token>
+ * Body: { token }
+ * Returns: { success, backupCodes }
+ */
+router.post('/totp/enable', requireAdmin, asyncHandler(authController.enableTOTP));
+
+/**
+ * Disable TOTP for the current admin
+ * POST /api/auth/totp/disable
+ *
+ * Headers: Authorization: Bearer <token>
+ * Body: { password }
+ * Returns: { success }
+ */
+router.post('/totp/disable', requireAdmin, asyncHandler(authController.disableTOTP));
+
+/**
+ * Verify TOTP code to complete login
+ * POST /api/auth/totp/verify
+ *
+ * Body: { tempToken, code, isBackupCode? }
+ * Returns: { token, user, expires_at }
+ *
+ * Note: Uses totpLimiter middleware (applied in server.js)
+ */
+router.post('/totp/verify', asyncHandler(authController.verifyTOTP));
+
+/**
+ * Regenerate backup codes for current admin
+ * POST /api/auth/totp/backup-codes
+ *
+ * Headers: Authorization: Bearer <token>
+ * Body: { password }
+ * Returns: { backupCodes }
+ */
+router.post('/totp/backup-codes', requireAdmin, asyncHandler(authController.regenerateBackupCodes));
+
 export default router;
