@@ -12,14 +12,14 @@
       <li class="account-dropdown">
         <button class="account-button" @click.stop="toggleDropdown">
           <span class="account-name">{{ username || 'Admin' }}</span>
-          <span class="dropdown-arrow">{{ dropdownOpen ? '▲' : '▼' }}</span>
+          <AppIcon :name="dropdownOpen ? 'chevron-up' : 'chevron-down'" size="xs" class="dropdown-arrow" />
         </button>
         <div v-if="dropdownOpen" class="dropdown-menu">
           <a href="#" @click.prevent="handleSettings" class="dropdown-item">
-            <span class="dropdown-icon">⚙️</span> Account Settings
+            <AppIcon name="settings" size="md" class="dropdown-icon" /> Account Settings
           </a>
           <a href="#" @click.prevent="handleLogout" class="dropdown-item logout-item">
-            <span class="dropdown-icon">🚪</span> Logout
+            <AppIcon name="log-out" size="md" class="dropdown-icon" /> Logout
           </a>
         </div>
       </li>
@@ -30,6 +30,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 defineProps({
   currentRoomCode: { type: String, default: null },

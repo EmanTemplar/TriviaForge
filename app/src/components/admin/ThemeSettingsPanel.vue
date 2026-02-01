@@ -22,7 +22,7 @@
           </div>
           <div class="theme-label">
             <span class="theme-name">Light</span>
-            <span v-if="currentTheme === 'light'" class="check-icon">✓</span>
+            <AppIcon v-if="currentTheme === 'light'" name="check" size="lg" class="check-icon" />
           </div>
           <div class="theme-description">Soft grays and blues</div>
         </div>
@@ -42,7 +42,7 @@
           </div>
           <div class="theme-label">
             <span class="theme-name">Dark</span>
-            <span v-if="currentTheme === 'dark'" class="check-icon">✓</span>
+            <AppIcon v-if="currentTheme === 'dark'" name="check" size="lg" class="check-icon" />
           </div>
           <div class="theme-description">Default dark blue (Admin)</div>
         </div>
@@ -62,7 +62,7 @@
           </div>
           <div class="theme-label">
             <span class="theme-name">Grey</span>
-            <span v-if="currentTheme === 'grey'" class="check-icon">✓</span>
+            <AppIcon v-if="currentTheme === 'grey'" name="check" size="lg" class="check-icon" />
           </div>
           <div class="theme-description">Muted grey-blue (Player)</div>
         </div>
@@ -85,7 +85,7 @@
           </div>
           <div class="theme-label">
             <span class="theme-name">System</span>
-            <span v-if="currentTheme === 'system'" class="check-icon">✓</span>
+            <AppIcon v-if="currentTheme === 'system'" name="check" size="lg" class="check-icon" />
           </div>
           <div class="theme-description">Follows OS preference</div>
         </div>
@@ -102,6 +102,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useTheme } from '../../composables/useTheme'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const { currentTheme, setTheme } = useTheme('ADMIN')
 

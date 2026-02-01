@@ -14,9 +14,9 @@
       <tbody>
         <tr v-for="(result, idx) in rankedPlayers" :key="idx">
           <td class="rank-cell">
-            <span v-if="idx === 0" class="medal gold">🥇</span>
-            <span v-else-if="idx === 1" class="medal silver">🥈</span>
-            <span v-else-if="idx === 2" class="medal bronze">🥉</span>
+            <AppIcon v-if="idx === 0" name="medal" size="lg" class="medal gold" />
+            <AppIcon v-else-if="idx === 1" name="medal" size="lg" class="medal silver" />
+            <AppIcon v-else-if="idx === 2" name="medal" size="lg" class="medal bronze" />
             <span v-else class="rank-number">{{ idx + 1 }}</span>
           </td>
           <td>{{ result.name }}</td>
@@ -30,6 +30,8 @@
 </template>
 
 <script setup>
+import AppIcon from '@/components/common/AppIcon.vue';
+
 defineProps({
   rankedPlayers: { type: Array, required: true }
 });
@@ -91,6 +93,18 @@ const getAccuracy = (result) => {
 
 .medal {
   font-size: 1.2rem;
+}
+
+.medal.gold {
+  color: #FFD700;
+}
+
+.medal.silver {
+  color: #C0C0C0;
+}
+
+.medal.bronze {
+  color: #CD7F32;
 }
 
 .rank-number {

@@ -1,8 +1,8 @@
 # TriviaForge - Active Development Tasks (2026)
 
 > **Purpose:** Current development priorities and pending tasks
-> **Last Updated:** 2026-01-29
-> **Version:** v5.1.2
+> **Last Updated:** 2026-02-01
+> **Version:** v5.2.2
 
 ---
 
@@ -298,30 +298,76 @@ Add notification to presenter when all connected players have answered the curre
 
 ---
 
-### v5.2.0 Features - Session Management & Security (PLANNED)
+### v5.2.2 Features - Lucide Icons & UI Polish ✅ COMPLETE
 
-**Status:** 🔄 IN PROGRESS
+**Status:** ✅ COMPLETE
 **Priority:** HIGH
+**Completed:** 2026-02-01
 
-#### Session Management Improvements
-- [ ] Session results export (CSV format)
-- [ ] Session results export (PDF format with formatting)
-- [ ] Bulk export for multiple sessions
-- [ ] Session filtering by date range
-- [ ] Session filtering by quiz name
-- [ ] Session filtering by status
-- [ ] Player search within session results
-- [ ] Bulk selection and delete for sessions
-- [ ] Question images displayed in session details
+#### Icon System Overhaul ✅
+- [x] Replaced all emojis with Lucide icons via Iconify
+- [x] Created AppIcon wrapper component for consistent icon usage
+- [x] Size presets (xs, sm, md, lg, xl, 2xl) for standardized sizing
+- [x] Theme-aware icon colors across all components
+- [x] Fixed icon color inheritance in FormInput, ThemeSelector, WakeLockIndicator, etc.
 
-#### Two-Factor Authentication (TOTP)
-- [ ] Database migration for TOTP fields
-- [ ] TOTP service with otpauth library
-- [ ] QR code generation for authenticator apps
-- [ ] Two-step login flow (password → TOTP)
-- [ ] Backup codes generation and storage
-- [ ] 2FA setup UI in Account Settings
-- [ ] Rate limiting on TOTP verification
+**Files Created:**
+- `app/src/components/common/AppIcon.vue` - Icon wrapper component
+
+**Files Modified:**
+- 15+ Vue components updated to use AppIcon instead of emojis
+- `app/package.json` - Added @iconify/vue dependency
+
+---
+
+### v5.2.1 Features - Quick Fixes ✅ COMPLETE
+
+**Status:** ✅ COMPLETE
+**Priority:** HIGH
+**Completed:** 2026-01-31
+
+#### UI Improvements ✅
+- [x] Widened Account Settings modal from small (400px) to medium (600px)
+- [x] Removed placeholder PDF export (text file masquerading as PDF)
+- [x] CSV export is sufficient for current needs
+
+---
+
+### v5.2.0 Features - Session Management & 2FA ✅ COMPLETE
+
+**Status:** ✅ COMPLETE
+**Priority:** HIGH
+**Completed:** 2026-01-30
+
+#### Session Management Improvements ✅
+- [x] Session results export (CSV format)
+- [x] Bulk export for multiple sessions (CSV)
+- [x] Session filtering by date range
+- [x] Session filtering by quiz name
+- [x] Session filtering by status
+- [x] Bulk selection and delete for sessions
+- [x] Question images displayed in session details
+- [x] Question breakdown with player responses
+
+#### Two-Factor Authentication (TOTP) ✅
+- [x] Database migration for TOTP fields (08-totp-support.sql)
+- [x] TOTP service with otpauth library
+- [x] QR code generation for authenticator apps
+- [x] Two-step login flow (password → TOTP)
+- [x] Backup codes generation and storage
+- [x] 2FA setup UI in Account Settings
+- [x] Rate limiting on TOTP verification
+
+**Files Created:**
+- `app/src/services/totp.service.js` - TOTP generation and verification
+- `app/src/services/export.service.js` - CSV export functionality
+- `app/src/components/admin/SessionFilters.vue` - Filter UI component
+- `app/src/components/modals/TwoFactorSetupModal.vue` - 2FA setup modal
+- `app/init/08-totp-support.sql` - Database migration for 2FA
+
+**Future Consideration:**
+- [ ] Remember device for 2FA (30-day trusted devices) - deferred to v5.3.0
+- [ ] PDF export with proper formatting - deferred to future version
 
 ---
 
@@ -340,6 +386,8 @@ Add notification to presenter when all connected players have answered the curre
 - [ ] Ban Player Account system (permanent/temporary bans)
 - [ ] Enhanced Player Security & Management (needs re-review post v3.2.1 improvements)
 - [x] Multi-Admin Support System (isolated instances) - v5.0.0 ✅
+- [x] Two-Factor Authentication (TOTP) for admins - v5.2.0 ✅
+- [ ] Remember device for 2FA (30-day trusted devices) - planned v5.3.0
 - [ ] Email verification for admin accounts
 
 ### Question Types & Media
@@ -361,20 +409,20 @@ Add notification to presenter when all connected players have answered the curre
 
 ## 📝 Development Notes
 
-### Current Focus Areas (v5.2.0)
-1. ~~**Bug Fixes:** Logout button functionality on Admin/Presenter pages~~ ✅ COMPLETE
-2. ~~**Answer Types:** True/False question support~~ ✅ COMPLETE (v5.0.0)
-3. ~~**Media Support:** Question images (upload + URL reference)~~ ✅ COMPLETE (v5.0.0)
-4. ~~**Multi-Admin:** Isolated instances per admin account~~ ✅ COMPLETE
-5. **2FA TOTP:** Two-Factor Authentication for admins (in progress)
-6. **Session Export:** CSV and PDF export of session results (planned)
-7. **Session Filtering:** Date range, quiz, status, and player search filters (planned)
+### Current Focus Areas (v5.3.0)
+1. ~~**2FA TOTP:** Two-Factor Authentication for admins~~ ✅ COMPLETE (v5.2.0)
+2. ~~**Session Export:** CSV export of session results~~ ✅ COMPLETE (v5.2.0)
+3. ~~**Session Filtering:** Date range, quiz, status filters~~ ✅ COMPLETE (v5.2.0)
+4. ~~**Icons:** Replace emojis with Lucide icons~~ ✅ COMPLETE (v5.2.2)
+5. **Remember Device:** 30-day trusted device for 2FA (planned v5.3.0)
+6. **PDF Export:** Proper PDF formatting for session results (future)
+7. **Solo-Play Mode:** Self-study without presenter (future)
 
 ### Testing Priorities
 - Mobile browser testing (iOS Safari, Chrome Mobile, Firefox Mobile)
 - Cross-browser compatibility (Edge, Firefox, Chrome, Safari)
-- Admin isolation verification (quizzes/sessions per admin)
-- Image upload and display across devices
+- 2FA flow testing across devices
+- Session export with large datasets
 
 ### Version Planning
 - **v4.2.2 (Released):** Stay-awake fix + Answer confirmation modal ✅
@@ -384,7 +432,10 @@ Add notification to presenter when all connected players have answered the curre
 - **v5.1.0 (Released):** Auto database migrations with version tracking ✅
 - **v5.1.1 (Released):** Idempotent migrations fix ✅
 - **v5.1.2 (Released):** Login modal fix for registered accounts ✅
-- **v5.2.0 (Planned):** Session export (CSV/PDF), session filtering, 2FA TOTP authentication
+- **v5.2.0 (Released):** Session export (CSV), session filtering, 2FA TOTP authentication ✅
+- **v5.2.1 (Released):** Widened modals, removed placeholder PDF export ✅
+- **v5.2.2 (Released):** Lucide icons via Iconify, theme-aware icon colors ✅
+- **v5.3.0 (Planned):** Remember device for 2FA, PDF export improvements
 
 ---
 
@@ -403,5 +454,5 @@ Before marking a task as complete:
 
 **Archive:** See [archive/TODO-2025.md](archive/TODO-2025.md) for historical tasks and completed features from 2025.
 
-**Last Updated:** 2026-01-29
+**Last Updated:** 2026-02-01
 **Maintained By:** TriviaForge Development Team

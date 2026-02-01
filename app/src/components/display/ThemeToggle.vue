@@ -5,7 +5,7 @@
       @click="toggleTheme"
       :title="`Switch to ${nextTheme} theme`"
     >
-      <span class="icon">{{ themeIcon }}</span>
+      <AppIcon :name="themeIcon" size="md" class="icon" />
       <span class="label">{{ themeLabel }}</span>
     </button>
   </div>
@@ -14,18 +14,19 @@
 <script setup>
 import { computed } from 'vue'
 import { useTheme } from '../../composables/useTheme.js'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const { currentTheme, setTheme } = useTheme('DISPLAY')
 
 // Cycle through: grey → dark → light → grey
 const themeConfig = {
-  grey: { next: 'dark', icon: '🌫️', label: 'Grey' },
-  dark: { next: 'light', icon: '🌙', label: 'Dark' },
-  light: { next: 'grey', icon: '☀️', label: 'Light' },
-  system: { next: 'grey', icon: '⚙️', label: 'System' }
+  grey: { next: 'dark', icon: 'cloud', label: 'Grey' },
+  dark: { next: 'light', icon: 'moon', label: 'Dark' },
+  light: { next: 'grey', icon: 'sun', label: 'Light' },
+  system: { next: 'grey', icon: 'settings', label: 'System' }
 }
 
-const themeIcon = computed(() => themeConfig[currentTheme.value]?.icon || '🎨')
+const themeIcon = computed(() => themeConfig[currentTheme.value]?.icon || 'palette')
 const themeLabel = computed(() => themeConfig[currentTheme.value]?.label || 'Theme')
 const nextTheme = computed(() => themeConfig[currentTheme.value]?.next || 'grey')
 

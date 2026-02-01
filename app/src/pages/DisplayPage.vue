@@ -7,7 +7,7 @@
     <div class="main-display">
       <!-- Waiting State -->
       <div v-if="!isQuestionDisplaying" class="waiting-display">
-        <h1 class="waiting-title">🎮 Trivia Forge</h1>
+        <h1 class="waiting-title"><AppIcon name="gamepad-2" size="2xl" /> Trivia Forge</h1>
         <p class="waiting-text">Waiting for questions...</p>
       </div>
 
@@ -55,7 +55,7 @@
       <!-- Status -->
       <div class="status-display">
         <div v-if="isConnected" class="status-connected">
-          ✓ Connected to room
+          <AppIcon name="check" size="sm" /> Connected to room
         </div>
         <div v-else class="status-disconnected">
           ○ Waiting for connection
@@ -92,6 +92,7 @@ import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import FormInput from '@/components/common/FormInput.vue'
 import ThemeToggle from '@/components/display/ThemeToggle.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const route = useRoute()
 const socket = useSocket()
@@ -145,7 +146,7 @@ const getConnectionSymbol = (player) => {
     case 'connected': return '●' // Green
     case 'away': return '●' // Orange
     case 'disconnected': return '●' // Red
-    case 'warning': return '⚠' // Yellow warning
+    case 'warning': return '!' // Yellow warning
     default: return '○'
   }
 }

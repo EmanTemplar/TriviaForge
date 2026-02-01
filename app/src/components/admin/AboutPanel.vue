@@ -11,26 +11,26 @@
     <div class="about-grid">
       <!-- Features Column -->
       <div class="about-card">
-        <h3>✨ Key Features</h3>
+        <h3><AppIcon name="sparkles" size="lg" /> Key Features</h3>
         <ul>
-          <li>✓ Vue 3 modern interface</li>
-          <li>✓ Real-time quiz presentations</li>
-          <li>✓ Live leaderboards & rankings</li>
-          <li>✓ Multi-admin support with isolation</li>
-          <li>✓ Player connection monitoring</li>
-          <li>✓ Player authentication & accounts</li>
-          <li>✓ Excel bulk import</li>
-          <li>✓ Session resumption</li>
-          <li>✓ Mobile-optimized interface</li>
-          <li>✓ Spectator display mode</li>
-          <li>✓ Auto-reveal when all answer</li>
-          <li>✓ Automatic database migrations</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Vue 3 modern interface</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Real-time quiz presentations</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Live leaderboards & rankings</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Multi-admin support with isolation</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Player connection monitoring</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Player authentication & accounts</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Excel bulk import</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Session resumption</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Mobile-optimized interface</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Spectator display mode</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Auto-reveal when all answer</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Automatic database migrations</li>
         </ul>
       </div>
 
       <!-- Getting Started Column -->
       <div class="about-card">
-        <h3>🚀 Quick Start</h3>
+        <h3><AppIcon name="rocket" size="lg" /> Quick Start</h3>
         <ol>
           <li><strong>Create a Quiz</strong> - Use the Quiz Management tab to create or import quizzes</li>
           <li><strong>Launch Session</strong> - Go to Presenter page and make a quiz live</li>
@@ -41,19 +41,19 @@
 
       <!-- Support Column -->
       <div class="about-card">
-        <h3>💡 Getting Help</h3>
+        <h3><AppIcon name="lightbulb" size="lg" /> Getting Help</h3>
         <ul>
-          <li>📖 <a href="https://github.com/EmanTemplar/TriviaForge" target="_blank">View Documentation</a></li>
-          <li>🐛 <a href="https://github.com/EmanTemplar/TriviaForge/issues" target="_blank">Report Issues</a></li>
-          <li>💬 <a href="https://github.com/EmanTemplar/TriviaForge/discussions" target="_blank">Ask Questions</a></li>
-          <li>⭐ <a href="https://github.com/EmanTemplar/TriviaForge" target="_blank">Star on GitHub</a></li>
+          <li><AppIcon name="book-open" size="sm" /> <a href="https://github.com/EmanTemplar/TriviaForge" target="_blank">View Documentation</a></li>
+          <li><AppIcon name="bug" size="sm" /> <a href="https://github.com/EmanTemplar/TriviaForge/issues" target="_blank">Report Issues</a></li>
+          <li><AppIcon name="message-square" size="sm" /> <a href="https://github.com/EmanTemplar/TriviaForge/discussions" target="_blank">Ask Questions</a></li>
+          <li><AppIcon name="star" size="sm" /> <a href="https://github.com/EmanTemplar/TriviaForge" target="_blank">Star on GitHub</a></li>
         </ul>
       </div>
     </div>
 
     <!-- System Information -->
     <div class="system-info-box">
-      <h3>📊 System Information</h3>
+      <h3><AppIcon name="bar-chart-3" size="lg" /> System Information</h3>
       <div class="system-grid">
         <div class="system-item">
           <div class="system-label">Application</div>
@@ -99,6 +99,7 @@
 
 <script setup>
 import { VERSION, VERSION_NAME } from '@/config/version.js'
+import AppIcon from '@/components/common/AppIcon.vue'
 </script>
 
 <style scoped>

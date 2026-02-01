@@ -5,7 +5,7 @@
 
     <div class="banned-names-header">
       <button @click="$emit('addBannedName')" class="btn-primary">+ Add Banned Name</button>
-      <button @click="$emit('refresh')" class="btn-refresh">🔄 Refresh</button>
+      <button @click="$emit('refresh')" class="btn-refresh"><AppIcon name="refresh-cw" size="sm" /> Refresh</button>
       <div class="banned-count">{{ bannedNames.length }} banned pattern(s)</div>
     </div>
 
@@ -23,7 +23,7 @@
           <span class="banned-date">{{ formatDate(name.created_at) }}</span>
         </div>
         <div class="banned-actions">
-          <button @click="$emit('removeBannedName', name)" class="btn-delete" title="Remove Ban">🗑️</button>
+          <button @click="$emit('removeBannedName', name)" class="btn-delete" title="Remove Ban"><AppIcon name="trash-2" size="sm" /></button>
         </div>
       </div>
     </div>
@@ -31,6 +31,8 @@
 </template>
 
 <script setup>
+import AppIcon from '@/components/common/AppIcon.vue';
+
 defineProps({
   bannedNames: { type: Array, required: true },
   formatDate: { type: Function, required: true }

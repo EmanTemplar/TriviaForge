@@ -4,23 +4,23 @@
     <div class="player-summary">
       <div class="summary-counts">
         <span class="count-item count-connected" title="Connected players">
-          <span class="count-icon">✅</span>
+          <AppIcon name="check-circle" size="md" class="count-icon" />
           <span class="count-number">{{ connectedPlayers.length }}</span>
         </span>
         <span class="count-separator">•</span>
         <span class="count-item count-away" title="Away players">
-          <span class="count-icon">⚠️</span>
+          <AppIcon name="alert-triangle" size="md" class="count-icon" />
           <span class="count-number">{{ awayPlayers.length }}</span>
         </span>
         <span class="count-separator">•</span>
         <span class="count-item count-disconnected" title="Disconnected players">
-          <span class="count-icon">❌</span>
+          <AppIcon name="x-circle" size="md" class="count-icon" />
           <span class="count-number">{{ disconnectedPlayers.length }}</span>
         </span>
       </div>
     </div>
 
-    <button v-if="currentRoomCode" class="btn-standings" @click="$emit('showPresenterProgress')">📊 Standings</button>
+    <button v-if="currentRoomCode" class="btn-standings" @click="$emit('showPresenterProgress')"><AppIcon name="bar-chart-3" size="sm" /> Standings</button>
 
     <div class="live-feed">
       <div v-if="nonSpectatorPlayers.length === 0" class="empty-state"><em>No players yet</em></div>
@@ -28,23 +28,23 @@
       <!-- Connected Players Group -->
       <div v-if="connectedPlayers.length > 0" class="player-group">
         <div class="group-header" @click="toggleGroup('connected')">
-          <span class="group-icon">{{ groupCollapsed.connected ? '▶' : '▼' }}</span>
-          <span class="group-title">✅ Connected ({{ connectedPlayers.length }})</span>
+          <AppIcon :name="groupCollapsed.connected ? 'chevron-right' : 'chevron-down'" size="sm" class="group-icon" />
+          <span class="group-title"><AppIcon name="check-circle" size="sm" /> Connected ({{ connectedPlayers.length }})</span>
         </div>
         <div v-if="!groupCollapsed.connected" class="group-content">
           <div v-for="player in connectedPlayers" :key="player.name" class="player-item">
             <span class="player-status" :class="getConnectionStateClass(player)">{{ getConnectionSymbol(player) }}</span>
             {{ player.name }}
-            <span v-if="player.connectionState === 'warning'" class="player-warning-icon" title="Rapid switching detected">⚠️</span>
-            <span v-if="player.choice !== null" class="player-answered">✓</span>
+            <AppIcon v-if="player.connectionState === 'warning'" name="alert-triangle" size="sm" class="player-warning-icon" title="Rapid switching detected" />
+            <AppIcon v-if="player.choice !== null" name="check" size="sm" class="player-answered" />
             <div class="player-menu-container">
               <button class="btn-player-menu" @click="togglePlayerMenu(player.name)" title="Player actions">⋮</button>
               <div v-if="playerMenuOpen === player.name" class="player-menu">
                 <button @click="$emit('kickPlayer', player.name)" class="menu-item menu-item-kick">
-                  <span class="menu-icon">👢</span> Kick Player
+                  <AppIcon name="user-x" size="md" class="menu-icon" /> Kick Player
                 </button>
                 <button @click="$emit('banDisplayName', player.name)" class="menu-item menu-item-ban">
-                  <span class="menu-icon">🚫</span> Ban Display Name
+                  <AppIcon name="ban" size="md" class="menu-icon" /> Ban Display Name
                 </button>
               </div>
             </div>
@@ -55,23 +55,23 @@
       <!-- Away Players Group -->
       <div v-if="awayPlayers.length > 0" class="player-group">
         <div class="group-header" @click="toggleGroup('away')">
-          <span class="group-icon">{{ groupCollapsed.away ? '▶' : '▼' }}</span>
-          <span class="group-title">⚠️ Away ({{ awayPlayers.length }})</span>
+          <AppIcon :name="groupCollapsed.away ? 'chevron-right' : 'chevron-down'" size="sm" class="group-icon" />
+          <span class="group-title"><AppIcon name="alert-triangle" size="sm" /> Away ({{ awayPlayers.length }})</span>
         </div>
         <div v-if="!groupCollapsed.away" class="group-content">
           <div v-for="player in awayPlayers" :key="player.name" class="player-item">
             <span class="player-status" :class="getConnectionStateClass(player)">{{ getConnectionSymbol(player) }}</span>
             {{ player.name }}
-            <span v-if="player.connectionState === 'warning'" class="player-warning-icon" title="Rapid switching detected">⚠️</span>
-            <span v-if="player.choice !== null" class="player-answered">✓</span>
+            <AppIcon v-if="player.connectionState === 'warning'" name="alert-triangle" size="sm" class="player-warning-icon" title="Rapid switching detected" />
+            <AppIcon v-if="player.choice !== null" name="check" size="sm" class="player-answered" />
             <div class="player-menu-container">
               <button class="btn-player-menu" @click="togglePlayerMenu(player.name)" title="Player actions">⋮</button>
               <div v-if="playerMenuOpen === player.name" class="player-menu">
                 <button @click="$emit('kickPlayer', player.name)" class="menu-item menu-item-kick">
-                  <span class="menu-icon">👢</span> Kick Player
+                  <AppIcon name="user-x" size="md" class="menu-icon" /> Kick Player
                 </button>
                 <button @click="$emit('banDisplayName', player.name)" class="menu-item menu-item-ban">
-                  <span class="menu-icon">🚫</span> Ban Display Name
+                  <AppIcon name="ban" size="md" class="menu-icon" /> Ban Display Name
                 </button>
               </div>
             </div>
@@ -82,23 +82,23 @@
       <!-- Disconnected Players Group -->
       <div v-if="disconnectedPlayers.length > 0" class="player-group">
         <div class="group-header" @click="toggleGroup('disconnected')">
-          <span class="group-icon">{{ groupCollapsed.disconnected ? '▶' : '▼' }}</span>
-          <span class="group-title">❌ Disconnected ({{ disconnectedPlayers.length }})</span>
+          <AppIcon :name="groupCollapsed.disconnected ? 'chevron-right' : 'chevron-down'" size="sm" class="group-icon" />
+          <span class="group-title"><AppIcon name="x-circle" size="sm" /> Disconnected ({{ disconnectedPlayers.length }})</span>
         </div>
         <div v-if="!groupCollapsed.disconnected" class="group-content">
           <div v-for="player in disconnectedPlayers" :key="player.name" class="player-item">
             <span class="player-status" :class="getConnectionStateClass(player)">{{ getConnectionSymbol(player) }}</span>
             {{ player.name }}
-            <span v-if="player.connectionState === 'warning'" class="player-warning-icon" title="Rapid switching detected">⚠️</span>
-            <span v-if="player.choice !== null" class="player-answered">✓</span>
+            <AppIcon v-if="player.connectionState === 'warning'" name="alert-triangle" size="sm" class="player-warning-icon" title="Rapid switching detected" />
+            <AppIcon v-if="player.choice !== null" name="check" size="sm" class="player-answered" />
             <div class="player-menu-container">
               <button class="btn-player-menu" @click="togglePlayerMenu(player.name)" title="Player actions">⋮</button>
               <div v-if="playerMenuOpen === player.name" class="player-menu">
                 <button @click="$emit('kickPlayer', player.name)" class="menu-item menu-item-kick">
-                  <span class="menu-icon">👢</span> Kick Player
+                  <AppIcon name="user-x" size="md" class="menu-icon" /> Kick Player
                 </button>
                 <button @click="$emit('banDisplayName', player.name)" class="menu-item menu-item-ban">
-                  <span class="menu-icon">🚫</span> Ban Display Name
+                  <AppIcon name="ban" size="md" class="menu-icon" /> Ban Display Name
                 </button>
               </div>
             </div>
@@ -111,6 +111,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
   nonSpectatorPlayers: { type: Array, default: () => [] },
@@ -166,7 +167,7 @@ const getConnectionSymbol = (player) => {
     case 'connected': return '●' // Green
     case 'away': return '●' // Orange
     case 'disconnected': return '●' // Red
-    case 'warning': return '⚠' // Yellow warning
+    case 'warning': return '!' // Yellow warning
     default: return '○'
   }
 }

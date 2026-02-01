@@ -1,7 +1,7 @@
 <template>
   <div class="user-category">
     <div class="category-header" :class="categoryClass">
-      <h3>{{ icon }} {{ title }}</h3>
+      <h3><AppIcon :name="icon" size="lg" /> {{ title }}</h3>
       <span class="category-count">{{ users.length }}</span>
     </div>
     <div class="users-list-scrollable">
@@ -23,32 +23,32 @@
             @click="$emit('resetPassword', user)"
             class="btn-reset"
             title="Reset Password"
-          >🔑</button>
+          ><AppIcon name="key" size="md" /></button>
           <button
             v-if="showResetPasswordAdmin && !user.isRootAdmin"
             @click="$emit('resetPasswordAdmin', user)"
             class="btn-reset"
             title="Reset Password"
-          >🔑</button>
+          ><AppIcon name="key" size="md" /></button>
           <button
             v-if="showDowngrade"
             @click="$emit('downgrade', user)"
             class="btn-downgrade"
             title="Downgrade to Guest"
-          >⬇️</button>
+          ><AppIcon name="arrow-down" size="md" /></button>
           <button
             v-if="showDeleteAdmin && !user.isRootAdmin"
             @click="$emit('deleteAdmin', user)"
             class="btn-delete"
             title="Delete Admin"
-          >🗑️</button>
+          ><AppIcon name="trash-2" size="md" /></button>
           <button
             v-else-if="showDelete && !user.isRootAdmin"
             @click="$emit('delete', user)"
             class="btn-delete"
             title="Delete User"
-          >🗑️</button>
-          <span v-if="user.isRootAdmin" class="root-badge" title="Root Administrator">👑</span>
+          ><AppIcon name="trash-2" size="md" /></button>
+          <span v-if="user.isRootAdmin" class="root-badge" title="Root Administrator"><AppIcon name="crown" size="lg" /></span>
         </div>
       </div>
     </div>
@@ -56,6 +56,8 @@
 </template>
 
 <script setup>
+import AppIcon from '@/components/common/AppIcon.vue';
+
 defineProps({
   title: { type: String, required: true },
   icon: { type: String, required: true },

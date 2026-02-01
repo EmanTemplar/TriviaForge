@@ -21,10 +21,10 @@ services:
     image: emancodetemplar/triviaforge:latest
 
     # LOCAL DEVELOPMENT: Uncomment below to build from local Dockerfile
-    #build:
-    #    context: ./app
-    #    dockerfile: Dockerfile
-    #image: triviaforge:local
+    # build:
+    #     context: ./app
+    #     dockerfile: Dockerfile
+    # image: triviaforge:local
 
     container_name: triviagame-app
     ports:

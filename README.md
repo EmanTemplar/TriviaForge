@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v5.1.2 - Login modal fix, idempotent migrations, auto database migrations with version tracking
+**Latest Release**: v5.2.2 - Lucide Icons & UI Polish, Session Management, CSV Export, 2FA Support
 
 ### Key Highlights
 
@@ -636,6 +636,25 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 
 ### Completed Features
 
+**v5.2.2 (Feb 2026) - Lucide Icons & UI Polish**
+- [x] Replaced all emojis with Lucide icons via Iconify for consistent UI
+- [x] Created AppIcon wrapper component for standardized icon usage
+- [x] Theme-aware icon colors across all components
+- [x] Professional icon set throughout the application
+
+**v5.2.1 (Jan 2026) - Quick Fixes**
+- [x] Widened Account Settings modal for better usability
+- [x] Removed placeholder PDF export (CSV is sufficient)
+
+**v5.2.0 (Jan 2026) - Session Management & 2FA**
+- [x] Two-Factor Authentication (TOTP) with QR code setup
+- [x] Backup codes generation for 2FA recovery
+- [x] Session filtering by date range, quiz name, and status
+- [x] CSV export for individual and bulk sessions
+- [x] Bulk session selection and deletion
+- [x] Question images displayed in session details
+- [x] Session breakdown with player responses per question
+
 **v5.1.0 (Jan 2026) - Auto Database Migrations**
 - [x] Version-based database migration system
 - [x] Automatic schema updates on deployment
@@ -708,9 +727,9 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 - [ ] Advanced leaderboard and scoring systems
 - [ ] Timer-based questions with countdown
 - [ ] Team mode for collaborative play
-- [ ] Export results to CSV/PDF
+- [ ] PDF export with proper formatting
 - [ ] Email verification for admin accounts
-- [ ] Two-Factor Authentication (2FA) for admins
+- [ ] Remember device for 2FA (30-day trusted devices)
 - [ ] Internationalization (i18n)
 - [ ] Player statistics dashboard
 - [ ] Performance analytics and insights

@@ -21,7 +21,7 @@
           <div class="secret-code">
             <code>{{ secret }}</code>
             <button type="button" class="btn-copy" @click="copySecret" title="Copy to clipboard">
-              {{ copied ? '✓' : '📋' }}
+              <AppIcon :name="copied ? 'check' : 'clipboard-copy'" size="sm" />
             </button>
           </div>
         </div>
@@ -48,7 +48,7 @@
       <!-- Step 2: Save Backup Codes -->
       <div v-if="step === 'backup'" class="backup-step">
         <div class="success-banner">
-          <span class="success-icon">✓</span>
+          <AppIcon name="check-circle" size="lg" class="success-icon" />
           <span>Two-factor authentication is now enabled!</span>
         </div>
 
@@ -112,6 +112,7 @@ import { ref, onMounted, watch } from 'vue';
 import Modal from '@/components/common/Modal.vue';
 import Button from '@/components/common/Button.vue';
 import FormInput from '@/components/common/FormInput.vue';
+import AppIcon from '@/components/common/AppIcon.vue';
 import { useApi } from '@/composables/useApi.js';
 
 const props = defineProps({
@@ -320,6 +321,7 @@ function resetState() {
   cursor: pointer;
   font-size: 1rem;
   padding: 0.25rem;
+  color: var(--text-primary);
 }
 
 .verification-section {

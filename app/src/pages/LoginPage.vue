@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <div class="login-box">
-      <h1 class="login-title">🎮 Trivia Forge</h1>
+      <h1 class="login-title"><AppIcon name="gamepad-2" size="2xl" /> Trivia Forge</h1>
       <p class="login-subtitle">Admin & Presenter Access</p>
 
       <!-- Login Form -->
@@ -97,19 +97,19 @@
 
       <!-- Access Buttons (After Login) -->
       <div v-else class="access-buttons">
-        <h3 class="success-message">✓ Access Granted</h3>
+        <h3 class="success-message"><AppIcon name="check" size="lg" /> Access Granted</h3>
 
         <div class="button-group">
           <RouterLink to="/admin" class="access-link admin-link">
-            📝 Admin Panel - Manage Quizzes
+            <AppIcon name="clipboard-list" size="lg" /> Admin Panel - Manage Quizzes
           </RouterLink>
 
           <RouterLink to="/presenter" class="access-link presenter-link">
-            🎯 Presenter - Host Game
+            <AppIcon name="presentation" size="lg" /> Presenter - Host Game
           </RouterLink>
 
           <RouterLink to="/display" class="access-link display-link">
-            📺 Display Screen - For Audience
+            <AppIcon name="monitor" size="lg" /> Display Screen - For Audience
           </RouterLink>
         </div>
 
@@ -125,7 +125,7 @@
       <hr class="divider">
 
       <RouterLink to="/player" class="player-link">
-        👥 Join as Player
+        <AppIcon name="users" size="lg" /> Join as Player
       </RouterLink>
     </div>
   </div>
@@ -140,6 +140,7 @@ import { useApi } from '@/composables/useApi.js'
 import { useTheme } from '@/composables/useTheme.js'
 import Button from '@/components/common/Button.vue'
 import FormInput from '@/components/common/FormInput.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

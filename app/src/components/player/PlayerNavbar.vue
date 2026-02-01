@@ -5,7 +5,7 @@
     <!-- Progress button in navbar -->
     <div class="nav-progress-container">
       <button v-if="inRoom" id="progressBtn" class="progress-btn" @click="$emit('showProgress')">
-        📊 Progress
+        <AppIcon name="bar-chart-3" size="sm" /> Progress
       </button>
     </div>
 
@@ -29,7 +29,7 @@
             <span>{{ idx + 1 }}.</span>
             <span class="player-status" :class="{ online: player.connected, offline: !player.connected }">●</span>
             <span>{{ player.name }}</span>
-            <span v-if="player.choice !== null">✓</span>
+            <AppIcon v-if="player.choice !== null" name="check" size="sm" class="player-answered" />
           </div>
           <em v-if="nonSpectatorPlayers.length === 0">Not in a room yet</em>
         </div>
@@ -44,6 +44,7 @@
 <script setup>
 import { RouterLink } from 'vue-router';
 import ThemeSelector from './ThemeSelector.vue';
+import AppIcon from '@/components/common/AppIcon.vue';
 
 defineProps({
   inRoom: { type: Boolean, required: true },
@@ -230,6 +231,10 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
 
 .player-status.offline {
   color: var(--danger-light);
+}
+
+.player-answered {
+  color: var(--secondary-light);
 }
 
 /* Mobile styles */

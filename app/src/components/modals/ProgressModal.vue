@@ -3,7 +3,7 @@
     :isOpen="isOpen"
     @close="$emit('close')"
     size="large"
-    title="📊 Your Progress"
+    title="Your Progress"
   >
     <template #default>
       <div class="progress-content">
@@ -51,7 +51,7 @@
               </div>
             </div>
             <div class="history-status" :class="getQuestionStatusClass(q)">
-              <div class="status-icon">{{ getQuestionStatusIcon(q) }}</div>
+              <AppIcon :name="getQuestionStatusIcon(q)" size="xl" class="status-icon" />
               <div class="status-text">{{ getQuestionStatusText(q) }}</div>
             </div>
           </div>
@@ -59,7 +59,7 @@
 
         <!-- Empty State -->
         <div v-else class="progress-empty">
-          <div class="empty-icon">📝</div>
+          <AppIcon name="clipboard-list" size="2xl" class="empty-icon" />
           <p>No questions answered yet!</p>
           <p class="empty-hint">Your progress will appear here once the presenter starts the quiz.</p>
         </div>
@@ -71,6 +71,7 @@
 <script setup>
 import { computed } from 'vue';
 import Modal from '@/components/common/Modal.vue';
+import AppIcon from '@/components/common/AppIcon.vue';
 
 const props = defineProps({
   isOpen: { type: Boolean, required: true },
@@ -96,11 +97,11 @@ const getQuestionStatusClass = (q) => {
 };
 
 const getQuestionStatusIcon = (q) => {
-  if (q.missedWhileAway && q.revealed) return '⚠';
-  if (q.revealed && q.isCorrect) return '✓';
-  if (q.revealed && !q.isCorrect) return '✗';
-  if (q.playerChoice !== null) return '⏳';
-  return '○';
+  if (q.missedWhileAway && q.revealed) return 'alert-triangle';
+  if (q.revealed && q.isCorrect) return 'check';
+  if (q.revealed && !q.isCorrect) return 'x';
+  if (q.playerChoice !== null) return 'clock';
+  return 'circle';
 };
 
 const getQuestionStatusText = (q) => {

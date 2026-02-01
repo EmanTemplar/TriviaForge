@@ -11,13 +11,13 @@
             <strong>Q{{ idx + 1 }}:</strong> {{ question.text }}
             <div class="status-badges">
               <span v-if="idx === presentedQuestionIndex" class="status-badge live">● LIVE</span>
-              <span v-else-if="presentedQuestions.includes(idx)" class="status-badge presented">✓ Presented</span>
-              <span v-if="revealedQuestions.includes(idx)" class="status-badge revealed">✓ Revealed</span>
+              <span v-else-if="presentedQuestions.includes(idx)" class="status-badge presented"><AppIcon name="check" size="xs" /> Presented</span>
+              <span v-if="revealedQuestions.includes(idx)" class="status-badge revealed"><AppIcon name="check" size="xs" /> Revealed</span>
             </div>
           </div>
           <!-- Question Image (if present) - with hover to enlarge -->
           <div v-if="question.imageUrl" class="question-image-wrapper" @mouseenter="showImagePreview($event, question.imageUrl)" @mouseleave="hideImagePreview">
-            <span class="image-icon" title="Hover to enlarge image">🖼️</span>
+            <AppIcon name="image" size="md" class="image-icon" title="Hover to enlarge image" />
             <img :src="question.imageUrl" alt="Question image" class="question-thumbnail" />
           </div>
           <ul>
@@ -45,7 +45,7 @@
         <!-- All Players Answered Notification -->
         <div v-if="allAnswered && presentedQuestionIndex !== null" class="all-answered-notification">
           <div class="notification-content">
-            <span class="notification-icon">🎯</span>
+            <AppIcon name="target" size="lg" class="notification-icon" />
             <span class="notification-text">All players have answered!</span>
             <span v-if="autoRevealCountdown !== null" class="countdown-badge">Auto-revealing in {{ autoRevealCountdown }}s</span>
             <button v-if="autoRevealCountdown !== null" @click="$emit('cancelAutoReveal')" class="btn-cancel-auto">Cancel</button>
@@ -86,6 +86,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 // Image preview state
 const previewImage = ref(null)

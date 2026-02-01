@@ -9,7 +9,7 @@
 
 import { getClient, query } from '../config/database.js';
 import { NotFoundError, BadRequestError } from '../utils/errors.js';
-import { generateCSV, generateTextReport } from '../services/export.service.js';
+import { generateCSV } from '../services/export.service.js';
 
 /**
  * Helper: List sessions from database with optional filtering
@@ -676,27 +676,6 @@ export async function exportCSV(req, res, next) {
 }
 
 /**
- * Export session as PDF/Report
- * GET /api/sessions/:filename/export/pdf
- */
-export async function exportPDF(req, res, next) {
-  try {
-    const sessionId = parseSessionId(req.params.filename);
-    const sessionData = await getFullSessionData(sessionId);
-    const report = generateTextReport(sessionData);
-
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="triviaforge_session_${sessionId}_report.txt"`
-    );
-    res.send(report);
-  } catch (err) {
-    next(err);
-  }
-}
-
-/**
  * Bulk export sessions as CSV
  * POST /api/sessions/export/bulk/csv
  */
@@ -741,51 +720,6 @@ export async function exportBulkCSV(req, res, next) {
   }
 }
 
-/**
- * Bulk export sessions as PDF/Report
- * POST /api/sessions/export/bulk/pdf
- */
-export async function exportBulkPDF(req, res, next) {
-  try {
-    const { sessionIds } = req.body;
-
-    if (!Array.isArray(sessionIds) || sessionIds.length === 0) {
-      throw new BadRequestError('sessionIds must be a non-empty array');
-    }
-
-    // Combine reports with page breaks
-    const reportParts = [];
-
-    for (const id of sessionIds) {
-      try {
-        const sessionId = parseInt(id, 10);
-        if (isNaN(sessionId)) continue;
-
-        const sessionData = await getFullSessionData(sessionId);
-        reportParts.push(generateTextReport(sessionData));
-      } catch (err) {
-        // Skip sessions that fail to load
-        console.error(`Failed to export session ${id}:`, err.message);
-      }
-    }
-
-    if (reportParts.length === 0) {
-      throw new BadRequestError('No valid sessions found to export');
-    }
-
-    const combinedReport = reportParts.join('\n\n\n' + '═'.repeat(60) + '\n\n\n');
-
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="triviaforge_sessions_bulk_${Date.now()}_report.txt"`
-    );
-    res.send(combinedReport);
-  } catch (err) {
-    next(err);
-  }
-}
-
 // Export all controller functions
 export default {
   listSessions,
@@ -795,7 +729,5 @@ export default {
   deleteSession,
   bulkDeleteSessions,
   exportCSV,
-  exportPDF,
   exportBulkCSV,
-  exportBulkPDF,
 };

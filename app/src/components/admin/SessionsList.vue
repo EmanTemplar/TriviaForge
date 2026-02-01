@@ -20,13 +20,10 @@
       <span class="selected-count">{{ selectedCount }} selected</span>
       <div class="action-buttons">
         <button class="btn-export" @click="$emit('bulkExportCSV', selectedSessionIds)" title="Export CSV">
-          📄 Export CSV
-        </button>
-        <button class="btn-export" @click="$emit('bulkExportPDF', selectedSessionIds)" title="Export PDF">
-          📑 Export PDF
+          <AppIcon name="file-text" size="sm" /> Export CSV
         </button>
         <button class="btn-danger-sm" @click="$emit('bulkDelete', selectedSessionIds)" title="Delete Selected">
-          🗑️ Delete Selected
+          <AppIcon name="trash-2" size="sm" /> Delete Selected
         </button>
       </div>
       <button class="btn-clear" @click="clearSelection">Clear Selection</button>
@@ -55,7 +52,7 @@
           </div>
           <div class="session-stats">{{ session.playerCount || 0 }} players · {{ session.presentedCount || 0 }}/{{ session.questionCount || 0 }} presented</div>
         </div>
-        <button class="btn-delete-inline" @click.stop="$emit('deleteSession', session)" title="Delete Session">🗑️</button>
+        <button class="btn-delete-inline" @click.stop="$emit('deleteSession', session)" title="Delete Session"><AppIcon name="trash-2" size="md" /></button>
       </div>
     </div>
   </section>
@@ -63,6 +60,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+import AppIcon from '@/components/common/AppIcon.vue';
 
 const props = defineProps({
   sessions: { type: Array, required: true },
@@ -71,7 +69,7 @@ const props = defineProps({
   selectable: { type: Boolean, default: true }
 });
 
-const emit = defineEmits(['viewSession', 'deleteSession', 'bulkDelete', 'bulkExportCSV', 'bulkExportPDF']);
+const emit = defineEmits(['viewSession', 'deleteSession', 'bulkDelete', 'bulkExportCSV']);
 
 // Track selected session IDs
 const selectedIds = ref(new Set());

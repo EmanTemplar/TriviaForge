@@ -7,7 +7,7 @@
     <div class="excel-import-box">
       <h3>Import from Excel</h3>
       <p>Upload an Excel file to create a quiz</p>
-      <button class="btn-download" @click="$emit('downloadTemplate')">📥 Download Template</button>
+      <button class="btn-download" @click="$emit('downloadTemplate')"><AppIcon name="download" size="sm" /> Download Template</button>
       <input
         ref="excelFileInput"
         type="file"
@@ -15,7 +15,7 @@
         style="display: none"
         @change="handleFileChange"
       />
-      <button class="btn-upload" @click="$refs.excelFileInput.click()">📤 Upload Excel File</button>
+      <button class="btn-upload" @click="$refs.excelFileInput.click()"><AppIcon name="upload" size="sm" /> Upload Excel File</button>
       <div v-if="importStatus" class="import-status">{{ importStatus }}</div>
     </div>
 
@@ -46,6 +46,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import AppIcon from '@/components/common/AppIcon.vue';
 
 defineProps({
   quizTitle: { type: String, required: true },

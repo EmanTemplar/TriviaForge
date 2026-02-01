@@ -20,7 +20,7 @@
       <!-- Connection Lost Banner -->
       <div v-if="showConnectionLostBanner" class="connection-lost-banner">
         <div class="banner-content">
-          <span class="icon">⚠️</span>
+          <AppIcon name="alert-triangle" size="lg" class="icon" />
           <div class="text">
             <strong>Connection Lost</strong>
             <p>Attempting to reconnect... ({{ reconnectionAttempts }} attempt{{ reconnectionAttempts !== 1 ? 's' : '' }})</p>
@@ -31,7 +31,7 @@
 
       <!-- Missed Questions Banner -->
       <div v-if="missedQuestionsBanner" class="missed-questions-banner">
-        ⚠️ You have missed Questions while Away
+        <AppIcon name="alert-triangle" size="md" /> You have missed Questions while Away
       </div>
 
       <!-- Left/Top: Question Display -->
@@ -177,6 +177,7 @@ import RoomInfoSection from '@/components/player/RoomInfoSection.vue'
 import PlayersList from '@/components/player/PlayersList.vue'
 import StatusMessage from '@/components/player/StatusMessage.vue'
 import WakeLockIndicator from '@/components/player/WakeLockIndicator.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -284,7 +285,7 @@ const connectionStateSymbol = computed(() => {
     case 'connected': return '●' // Green
     case 'away': return '●' // Orange
     case 'disconnected': return '●' // Red
-    case 'warning': return '⚠' // Yellow warning triangle
+    case 'warning': return '!' // Yellow warning triangle
     default: return '○'
   }
 })

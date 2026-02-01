@@ -7,7 +7,7 @@
         :class="['notification', `notification-${notification.type}`]"
       >
         <div class="notification-content">
-          <span class="notification-icon">{{ getIcon(notification.type) }}</span>
+          <AppIcon :name="getIconName(notification.type)" size="lg" class="notification-icon" />
           <span class="notification-message">{{ notification.message }}</span>
         </div>
         <button
@@ -15,7 +15,7 @@
           aria-label="Close notification"
           @click="removeNotification(notification.id)"
         >
-          ✕
+          <AppIcon name="x" size="sm" />
         </button>
       </div>
     </transition-group>
@@ -25,19 +25,20 @@
 <script setup>
 import { computed } from 'vue'
 import { useUIStore } from '@/stores/ui.js'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const uiStore = useUIStore()
 
 const notifications = computed(() => uiStore.notifications)
 
-const getIcon = (type) => {
+const getIconName = (type) => {
   const icons = {
-    info: 'ℹ️',
-    success: '✓',
-    warning: '⚠',
-    error: '✕'
+    info: 'info',
+    success: 'check',
+    warning: 'alert-triangle',
+    error: 'x'
   }
-  return icons[type] || 'ℹ️'
+  return icons[type] || 'info'
 }
 
 const removeNotification = (id) => {

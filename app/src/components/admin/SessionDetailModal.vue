@@ -33,10 +33,7 @@
     <template #footer>
       <div class="footer-left">
         <button class="btn-export" @click="$emit('exportCSV', session)" title="Export as CSV">
-          <span class="export-icon">📊</span> CSV
-        </button>
-        <button class="btn-export" @click="$emit('exportPDF', session)" title="Export as Report">
-          <span class="export-icon">📄</span> Report
+          <AppIcon name="bar-chart-3" size="md" class="export-icon" /> Export CSV
         </button>
       </div>
       <div class="footer-right">
@@ -52,6 +49,7 @@ import { computed } from 'vue';
 import Modal from '@/components/common/Modal.vue';
 import PlayerResultsTable from './PlayerResultsTable.vue';
 import QuestionBreakdown from './QuestionBreakdown.vue';
+import AppIcon from '@/components/common/AppIcon.vue';
 
 const props = defineProps({
   isOpen: { type: Boolean, required: true },
@@ -60,7 +58,7 @@ const props = defineProps({
   formatDate: { type: Function, required: true }
 });
 
-defineEmits(['close', 'deleteSession', 'toggleQuestion', 'exportCSV', 'exportPDF']);
+defineEmits(['close', 'deleteSession', 'toggleQuestion', 'exportCSV']);
 
 const rankedPlayers = computed(() => {
   if (!props.session || !props.session.playerResults) return [];

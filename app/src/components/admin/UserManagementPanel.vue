@@ -5,7 +5,7 @@
 
     <div class="users-header">
       <div class="header-buttons">
-        <button @click="$emit('refresh')" class="btn-refresh">🔄 Refresh Users</button>
+        <button @click="$emit('refresh')" class="btn-refresh"><AppIcon name="refresh-cw" size="sm" /> Refresh Users</button>
         <button v-if="isRootAdmin" @click="showCreateAdminModal = true" class="btn-create-admin">+ Create Admin</button>
       </div>
       <div class="user-count">{{ totalUsers }} total user(s)</div>
@@ -58,7 +58,7 @@
           <div class="password-box">
             <code>{{ generatedPassword }}</code>
             <button type="button" @click="copyPassword" class="btn-copy" title="Copy to clipboard">
-              {{ passwordCopied ? '✓' : '📋' }}
+              <AppIcon :name="passwordCopied ? 'check' : 'clipboard-copy'" size="md" />
             </button>
           </div>
           <p class="password-warning">This password will only be shown once. Please save it securely.</p>
@@ -72,7 +72,7 @@
     <!-- Admins Section -->
     <UserCategorySection
       title="Administrators"
-      icon="🔐"
+      icon="key"
       :users="adminUsers"
       categoryClass="admin-header"
       itemClass="admin-item"
@@ -91,7 +91,7 @@
     <!-- Registered Players Section -->
     <UserCategorySection
       title="Registered Players"
-      icon="👤"
+      icon="user"
       :users="playerUsers"
       categoryClass="player-header"
       itemClass="player-item"
@@ -110,7 +110,7 @@
     <!-- Guests Section -->
     <UserCategorySection
       title="Guest Users"
-      icon="👥"
+      icon="users"
       :users="guestUsers"
       categoryClass="guest-header"
       itemClass="guest-item"
@@ -127,6 +127,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue';
 import UserCategorySection from './UserCategorySection.vue';
+import AppIcon from '@/components/common/AppIcon.vue';
 
 const props = defineProps({
   adminUsers: { type: Array, required: true },

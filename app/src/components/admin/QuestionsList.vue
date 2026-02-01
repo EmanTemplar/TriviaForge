@@ -3,8 +3,8 @@
     <div class="questions-list-header">
       <h2>Questions</h2>
       <div v-if="selectedQuiz" class="shuffle-controls">
-        <button @click="$emit('shuffleQuestions')" class="btn-shuffle" title="Shuffle Questions">🔀</button>
-        <button @click="$emit('shuffleAllChoices')" class="btn-shuffle" title="Shuffle All Choices">🎲</button>
+        <button @click="$emit('shuffleQuestions')" class="btn-shuffle" title="Shuffle Questions"><AppIcon name="shuffle" size="md" /></button>
+        <button @click="$emit('shuffleAllChoices')" class="btn-shuffle" title="Shuffle All Choices"><AppIcon name="dices" size="md" /></button>
       </div>
     </div>
     <div class="questions-list">
@@ -31,12 +31,12 @@
         </div>
         <div class="question-actions">
           <div class="reorder-buttons">
-            <button @click.stop="$emit('moveQuestionToFirst', idx)" class="btn-reorder" :disabled="idx === 0" title="Move to First">⇈</button>
-            <button @click.stop="$emit('moveQuestionUp', idx)" class="btn-reorder" :disabled="idx === 0" title="Move Up">↑</button>
-            <button @click.stop="$emit('moveQuestionDown', idx)" class="btn-reorder" :disabled="idx === questions.length - 1" title="Move Down">↓</button>
-            <button @click.stop="$emit('moveQuestionToLast', idx)" class="btn-reorder" :disabled="idx === questions.length - 1" title="Move to Last">⇊</button>
+            <button @click.stop="$emit('moveQuestionToFirst', idx)" class="btn-reorder" :disabled="idx === 0" title="Move to First"><AppIcon name="chevrons-up" size="sm" /></button>
+            <button @click.stop="$emit('moveQuestionUp', idx)" class="btn-reorder" :disabled="idx === 0" title="Move Up"><AppIcon name="chevron-up" size="sm" /></button>
+            <button @click.stop="$emit('moveQuestionDown', idx)" class="btn-reorder" :disabled="idx === questions.length - 1" title="Move Down"><AppIcon name="chevron-down" size="sm" /></button>
+            <button @click.stop="$emit('moveQuestionToLast', idx)" class="btn-reorder" :disabled="idx === questions.length - 1" title="Move to Last"><AppIcon name="chevrons-down" size="sm" /></button>
           </div>
-          <button @click.stop="$emit('deleteQuestion', idx)" class="btn-delete" title="Delete">🗑️</button>
+          <button @click.stop="$emit('deleteQuestion', idx)" class="btn-delete" title="Delete"><AppIcon name="trash-2" size="sm" /></button>
         </div>
       </div>
     </div>
@@ -44,6 +44,8 @@
 </template>
 
 <script setup>
+import AppIcon from '@/components/common/AppIcon.vue';
+
 defineProps({
   questions: { type: Array, required: true },
   selectedQuiz: { type: Object, default: null },

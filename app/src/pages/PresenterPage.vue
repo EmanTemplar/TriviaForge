@@ -88,7 +88,7 @@
     />
 
     <!-- Account Settings Modal -->
-    <Modal :isOpen="showAccountSettingsModal" @close="showAccountSettingsModal = false" title="Account Settings" size="small">
+    <Modal :isOpen="showAccountSettingsModal" @close="showAccountSettingsModal = false" title="Account Settings" size="medium">
       <div class="account-settings-content">
         <div class="settings-field">
           <label>Username</label>

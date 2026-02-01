@@ -28,7 +28,7 @@
         :disabled="answeredCurrentQuestion || answerRevealed"
         @click="$emit('selectAnswer', idx)"
       >
-        <span class="tf-icon">{{ idx === 0 ? '✓' : '✗' }}</span>
+        <AppIcon :name="idx === 0 ? 'check' : 'x'" size="2xl" class="tf-icon" />
         <span class="tf-text">{{ choice }}</span>
       </button>
     </div>
@@ -53,8 +53,8 @@
     </div>
 
     <div v-if="answerRevealed" class="answer-feedback" :class="{ correct: playerGotCorrect, incorrect: !playerGotCorrect }">
-      <span v-if="playerGotCorrect">✓ Correct!</span>
-      <span v-else>✗ Incorrect.</span>
+      <span v-if="playerGotCorrect"><AppIcon name="check" size="md" /> Correct!</span>
+      <span v-else><AppIcon name="x" size="md" /> Incorrect.</span>
       The correct answer was: <strong>{{ currentQuestion?.choices[currentQuestion?.correctChoice] }}</strong>
     </div>
   </div>
@@ -62,6 +62,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import AppIcon from '@/components/common/AppIcon.vue';
 
 const props = defineProps({
   currentQuestion: { type: Object, default: null },

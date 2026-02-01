@@ -6,12 +6,13 @@
     :title="tooltipText"
     @click="showDiagnostic"
   >
-    {{ wakeLockActive ? '🔆' : '🌙' }}
+    <AppIcon :name="wakeLockActive ? 'sun' : 'moon'" size="lg" />
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue';
+import AppIcon from '@/components/common/AppIcon.vue';
 
 const props = defineProps({
   inRoom: { type: Boolean, required: true },
@@ -93,6 +94,7 @@ const showDiagnostic = () => {
   padding: 0.5rem;
   border-radius: 50%;
   line-height: 1;
+  color: var(--text-primary);
 }
 
 .wake-lock-floating:hover {

@@ -6,7 +6,7 @@
         <span class="player-number">{{ idx + 1 }}.</span>
         <span class="player-status" :class="{ online: player.connected, offline: !player.connected }">●</span>
         <span class="player-name">{{ player.name }}</span>
-        <span v-if="player.choice !== null" class="player-answer">✓</span>
+        <AppIcon v-if="player.choice !== null" name="check" size="sm" class="player-answer" />
       </div>
       <em v-if="nonSpectatorPlayers.length === 0">Not in a room yet</em>
     </div>
@@ -14,6 +14,8 @@
 </template>
 
 <script setup>
+import AppIcon from '@/components/common/AppIcon.vue';
+
 defineProps({
   nonSpectatorPlayers: { type: Array, required: true }
 });

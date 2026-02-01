@@ -1,7 +1,7 @@
 <template>
   <div class="theme-selector-wrapper">
     <button class="theme-toggle-btn" @click="showSelector = !showSelector" title="Change Theme">
-      🎨
+      <AppIcon name="palette" size="md" />
     </button>
 
     <!-- Theme Selector Dropdown -->
@@ -9,7 +9,7 @@
       <div v-if="showSelector" class="theme-dropdown">
         <div class="theme-dropdown-header">
           <span>Choose Theme</span>
-          <button class="close-btn" @click="showSelector = false">✕</button>
+          <button class="close-btn" @click="showSelector = false"><AppIcon name="x" size="sm" /></button>
         </div>
 
         <div class="theme-options">
@@ -20,9 +20,9 @@
             :class="{ active: currentTheme === theme.value }"
             @click="selectTheme(theme.value)"
           >
-            <span class="theme-icon">{{ theme.icon }}</span>
+            <AppIcon :name="theme.icon" size="md" class="theme-icon" />
             <span class="theme-name">{{ theme.label }}</span>
-            <span v-if="currentTheme === theme.value" class="check-mark">✓</span>
+            <AppIcon v-if="currentTheme === theme.value" name="check" size="md" class="check-mark" />
           </button>
         </div>
       </div>
@@ -40,16 +40,17 @@
 <script setup>
 import { ref } from 'vue'
 import { useTheme } from '../../composables/useTheme.js'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const { currentTheme, setTheme } = useTheme('PLAYER')
 
 const showSelector = ref(false)
 
 const themes = [
-  { value: 'grey', label: 'Grey (Default)', icon: '🌫️' },
-  { value: 'dark', label: 'Dark Blue', icon: '🌙' },
-  { value: 'light', label: 'Light', icon: '☀️' },
-  { value: 'system', label: 'System', icon: '⚙️' }
+  { value: 'grey', label: 'Grey (Default)', icon: 'cloud' },
+  { value: 'dark', label: 'Dark Blue', icon: 'moon' },
+  { value: 'light', label: 'Light', icon: 'sun' },
+  { value: 'system', label: 'System', icon: 'settings' }
 ]
 
 const selectTheme = (theme) => {
@@ -74,6 +75,7 @@ const selectTheme = (theme) => {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--text-primary);
 }
 
 .theme-toggle-btn:hover {

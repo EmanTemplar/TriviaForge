@@ -20,13 +20,13 @@
           :class="['choice-item', { 'choice-correct': cIdx === question.correctChoice }]"
         >
           <strong>{{ String.fromCharCode(65 + cIdx) }}.</strong> {{ choice }}
-          <span v-if="cIdx === question.correctChoice" class="correct-indicator">✓ Correct</span>
+          <span v-if="cIdx === question.correctChoice" class="correct-indicator"><AppIcon name="check" size="sm" /> Correct</span>
         </div>
       </div>
       <div v-if="presentedQuestions && presentedQuestions.includes(qIdx)" class="player-answers">
         <div class="player-answers-header" @click="$emit('toggleQuestion', qIdx)">
           <strong>Player Responses:</strong>
-          <span class="toggle-arrow" :class="{ expanded: expandedQuestions.has(qIdx) }">▼</span>
+          <AppIcon name="chevron-down" size="sm" class="toggle-arrow" :class="{ expanded: expandedQuestions.has(qIdx) }" />
         </div>
         <div v-if="expandedQuestions.has(qIdx)" class="player-responses-grid">
           <div
@@ -42,8 +42,8 @@
             <span class="player-answer">
               <template v-if="player.answers[qIdx] !== undefined">
                 {{ String.fromCharCode(65 + player.answers[qIdx]) }}
-                <span v-if="player.answers[qIdx] === question.correctChoice" class="answer-result">✓</span>
-                <span v-else class="answer-result">✗</span>
+                <AppIcon v-if="player.answers[qIdx] === question.correctChoice" name="check" size="sm" class="answer-result" />
+                <AppIcon v-else name="x" size="sm" class="answer-result" />
               </template>
               <template v-else>
                 <em>No answer</em>
@@ -60,6 +60,8 @@
 </template>
 
 <script setup>
+import AppIcon from '@/components/common/AppIcon.vue';
+
 defineProps({
   questions: { type: Array, required: true },
   playerResults: { type: Array, required: true },

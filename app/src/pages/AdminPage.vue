@@ -97,7 +97,6 @@
           @deleteSession="deleteSessionFromList"
           @bulkDelete="confirmBulkDelete"
           @bulkExportCSV="bulkExportCSV"
-          @bulkExportPDF="bulkExportPDF"
         />
       </div>
 
@@ -179,7 +178,6 @@
       @deleteSession="confirmDeleteSession"
       @toggleQuestion="toggleQuestionExpanded"
       @exportCSV="exportSessionCSV"
-      @exportPDF="exportSessionPDF"
     />
 
     <!-- Delete Confirmation Modal -->
@@ -206,7 +204,7 @@
     </Modal>
 
     <!-- Account Settings Modal -->
-    <Modal :isOpen="showAccountSettingsModal" @close="showAccountSettingsModal = false" title="Account Settings" size="small">
+    <Modal :isOpen="showAccountSettingsModal" @close="showAccountSettingsModal = false" title="Account Settings" size="medium">
       <div class="account-settings-content">
         <div class="settings-field">
           <label>Username</label>
@@ -371,7 +369,7 @@
       </div>
       <div v-else class="new-codes-content">
         <div class="success-banner">
-          <span class="success-icon">✓</span>
+          <AppIcon name="check-circle" size="lg" class="success-icon" />
           <span>New backup codes generated!</span>
         </div>
         <p class="backup-warning">Save these codes in a secure location:</p>
@@ -410,6 +408,7 @@ import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import FormInput from '@/components/common/FormInput.vue'
 import Card from '@/components/common/Card.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 import TwoFactorSetupModal from '@/components/modals/TwoFactorSetupModal.vue'
 import { useApi } from '@/composables/useApi.js'
 import { useAuthStore } from '@/stores/auth.js'
@@ -1129,16 +1128,6 @@ const exportSessionCSV = async (session) => {
   }
 }
 
-const exportSessionPDF = async (session) => {
-  try {
-    const response = await get(`/api/sessions/${session.filename}/export/pdf`, { responseType: 'blob' })
-    downloadFile(response.data, `triviaforge_session_${session.sessionId}_report.txt`, 'text/plain')
-  } catch (err) {
-    console.error('Error exporting report:', err)
-    showAlert('Failed to export report', 'Error')
-  }
-}
-
 // Bulk export functions
 const bulkExportCSV = async (sessionIds) => {
   if (!sessionIds || sessionIds.length === 0) {
@@ -1151,21 +1140,6 @@ const bulkExportCSV = async (sessionIds) => {
     showAlert(`Exported ${sessionIds.length} session(s) to CSV`, 'Export Complete')
   } catch (err) {
     console.error('Error exporting bulk CSV:', err)
-    showAlert('Failed to export sessions', 'Error')
-  }
-}
-
-const bulkExportPDF = async (sessionIds) => {
-  if (!sessionIds || sessionIds.length === 0) {
-    showAlert('No sessions selected', 'Info')
-    return
-  }
-  try {
-    const response = await post('/api/sessions/export/bulk/pdf', { sessionIds }, { responseType: 'blob' })
-    downloadFile(response.data, `triviaforge_sessions_bulk_${Date.now()}_report.txt`, 'text/plain')
-    showAlert(`Exported ${sessionIds.length} session(s) to report`, 'Export Complete')
-  } catch (err) {
-    console.error('Error exporting bulk report:', err)
     showAlert('Failed to export sessions', 'Error')
   }
 }

@@ -79,7 +79,7 @@
       <div v-if="imageUrl" class="image-preview">
         <img v-if="!imageLoadError" :src="imageUrl" alt="Question image preview" @error="handleImageError" @load="handleImageLoad" />
         <div v-else class="image-error">
-          <span class="error-icon">⚠️</span>
+          <AppIcon name="alert-triangle" size="2xl" class="error-icon" />
           <span class="error-text">Image failed to load</span>
           <span class="error-url">{{ imageUrl }}</span>
         </div>
@@ -156,6 +156,7 @@
 
 <script setup>
 import { ref, watch, toRef } from 'vue';
+import AppIcon from '@/components/common/AppIcon.vue';
 
 const props = defineProps({
   questionText: { type: String, required: true },

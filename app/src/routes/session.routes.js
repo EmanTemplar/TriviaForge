@@ -58,30 +58,13 @@ router.post('/bulk-delete', requireAdmin, asyncHandler(sessionController.bulkDel
 router.get('/:filename/export/csv', requireAdmin, asyncHandler(sessionController.exportCSV));
 
 /**
- * Export session as PDF/Report
- * GET /api/sessions/:filename/export/pdf
- *
- * Returns: Text report file download (PDF in future)
- */
-router.get('/:filename/export/pdf', requireAdmin, asyncHandler(sessionController.exportPDF));
-
-/**
- * Bulk export sessions as CSV (returns ZIP)
+ * Bulk export sessions as CSV
  * POST /api/sessions/export/bulk/csv
  *
  * Body: { sessionIds: [1, 2, 3] }
- * Returns: ZIP file containing multiple CSV files
+ * Returns: Combined CSV file
  */
 router.post('/export/bulk/csv', requireAdmin, asyncHandler(sessionController.exportBulkCSV));
-
-/**
- * Bulk export sessions as PDF/Report
- * POST /api/sessions/export/bulk/pdf
- *
- * Body: { sessionIds: [1, 2, 3] }
- * Returns: Combined text report file
- */
-router.post('/export/bulk/pdf', requireAdmin, asyncHandler(sessionController.exportBulkPDF));
 
 /**
  * Get single session by ID

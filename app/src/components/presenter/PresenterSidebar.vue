@@ -19,7 +19,7 @@
       <select v-model="selectedSessionValue" @change="$emit('update:selectedSessionFilename', selectedSessionValue)">
         <option value="">{{ incompleteSessions.length === 0 ? 'No incomplete sessions' : 'Select session to resume' }}</option>
         <option v-for="session in incompleteSessions" :key="session.filename" :value="session.filename">
-          {{ session.quizTitle }} ({{ session.roomCode }}) - {{ session.status === 'interrupted' ? '⚠️ Interrupted' : '⏸️ In Progress' }} - {{ formatSessionDate(session) }}
+          {{ session.quizTitle }} ({{ session.roomCode }}) - {{ session.status === 'interrupted' ? 'Interrupted' : 'In Progress' }} - {{ formatSessionDate(session) }}
         </option>
       </select>
       <button @click="$emit('resumeSession')" :disabled="incompleteSessions.length === 0 || !selectedSessionFilename">Resume</button>

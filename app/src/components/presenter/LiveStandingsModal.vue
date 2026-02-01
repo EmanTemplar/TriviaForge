@@ -1,5 +1,5 @@
 <template>
-  <Modal :isOpen="isOpen" size="large" title="📊 Live Standings" @close="$emit('close')">
+  <Modal :isOpen="isOpen" size="large" title="Live Standings" @close="$emit('close')">
     <template #default>
       <div class="progress-modal-content">
         <!-- Overall Stats Summary -->
@@ -42,7 +42,7 @@
             </thead>
             <tbody>
               <tr v-for="(player, idx) in sortedPlayers" :key="player.name" :class="['standings-row', getRankClass(idx)]">
-                <td class="rank">{{ getMedal(idx) || idx + 1 }}</td>
+                <td class="rank"><AppIcon v-if="getMedalIcon(idx)" :name="getMedalIcon(idx)" size="md" :class="getMedalClass(idx)" />{{ !getMedalIcon(idx) ? idx + 1 : '' }}</td>
                 <td class="player-name">{{ player.name }}</td>
                 <td class="correct">{{ player.correct }}</td>
                 <td class="incorrect">{{ player.answered - player.correct }}</td>
@@ -55,7 +55,7 @@
 
         <!-- Empty state -->
         <div v-else class="empty-state-standings">
-          <div class="empty-icon">📝</div>
+          <AppIcon name="clipboard-list" size="2xl" class="empty-icon" />
           <p>No players have answered yet!</p>
           <p class="empty-hint">Standings will appear here once you present questions and players start answering.</p>
         </div>
@@ -86,7 +86,7 @@
                 :class="['choice-item', { 'choice-correct': cIdx === question.correctChoice && revealedQuestions.includes(qIdx) }]"
               >
                 <strong>{{ String.fromCharCode(65 + cIdx) }}.</strong> {{ choice }}
-                <span v-if="cIdx === question.correctChoice && revealedQuestions.includes(qIdx)" class="correct-indicator">✓ Correct</span>
+                <span v-if="cIdx === question.correctChoice && revealedQuestions.includes(qIdx)" class="correct-indicator"><AppIcon name="check" size="sm" /> Correct</span>
               </div>
             </div>
 
@@ -94,7 +94,7 @@
             <div v-if="presentedQuestions.includes(qIdx)" class="player-answers">
               <div class="player-answers-header" @click="toggleQuestion(qIdx)">
                 <strong>Player Responses ({{ getAnswerCount(qIdx) }}/{{ sortedPlayers.length }})</strong>
-                <span class="toggle-arrow" :class="{ expanded: expandedQuestions.has(qIdx) }">▼</span>
+                <AppIcon name="chevron-down" size="sm" class="toggle-arrow" :class="{ expanded: expandedQuestions.has(qIdx) }" />
               </div>
               <div v-if="expandedQuestions.has(qIdx)" class="player-responses-grid">
                 <div
@@ -107,8 +107,8 @@
                     <template v-if="player.answers && player.answers[qIdx] !== undefined">
                       {{ String.fromCharCode(65 + player.answers[qIdx]) }}
                       <template v-if="revealedQuestions.includes(qIdx)">
-                        <span v-if="player.answers[qIdx] === question.correctChoice" class="answer-result correct">✓</span>
-                        <span v-else class="answer-result incorrect">✗</span>
+                        <AppIcon v-if="player.answers[qIdx] === question.correctChoice" name="check" size="sm" class="answer-result correct" />
+                        <AppIcon v-else name="x" size="sm" class="answer-result incorrect" />
                       </template>
                     </template>
                     <template v-else>
@@ -131,6 +131,7 @@
 <script setup>
 import { ref } from 'vue'
 import Modal from '@/components/common/Modal.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
   isOpen: { type: Boolean, required: true },
@@ -191,11 +192,16 @@ const getRankClass = (idx) => {
   return ''
 }
 
-const getMedal = (idx) => {
-  if (idx === 0) return '🥇'
-  if (idx === 1) return '🥈'
-  if (idx === 2) return '🥉'
+const getMedalIcon = (idx) => {
+  if (idx <= 2) return 'medal'
   return null
+}
+
+const getMedalClass = (idx) => {
+  if (idx === 0) return 'medal-gold'
+  if (idx === 1) return 'medal-silver'
+  if (idx === 2) return 'medal-bronze'
+  return ''
 }
 </script>
 
@@ -586,6 +592,19 @@ const getMedal = (idx) => {
   border: 1px dashed var(--border-color);
   border-radius: 6px;
   font-style: italic;
+}
+
+/* Medal colors */
+.medal-gold {
+  color: #FFD700;
+}
+
+.medal-silver {
+  color: #C0C0C0;
+}
+
+.medal-bronze {
+  color: #CD7F32;
 }
 
 @media (max-width: 768px) {

@@ -27,7 +27,7 @@
               <tr v-for="result in answerRevealData.results" :key="result.name" :class="getResultRowClass(result)">
                 <td class="player-name">{{ result.name }}</td>
                 <td class="answer-text">{{ result.choice !== null ? answerRevealData.question.choices[result.choice] : 'No answer' }}</td>
-                <td class="result-icon">{{ getResultIcon(result) }}</td>
+                <td class="result-icon"><AppIcon v-if="getResultIcon(result)" :name="getResultIcon(result)" size="md" /></td>
               </tr>
             </tbody>
           </table>
@@ -44,6 +44,7 @@
 
 <script setup>
 import Modal from '@/components/common/Modal.vue'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 defineProps({
   isOpen: { type: Boolean, required: true },
@@ -54,9 +55,9 @@ defineEmits(['close'])
 
 // Helper functions
 const getResultIcon = (result) => {
-  if (result.is_correct) return '✓'
-  if (result.choice !== null) return '✗'
-  return '—'
+  if (result.is_correct) return 'check'
+  if (result.choice !== null) return 'x'
+  return null
 }
 
 const getResultRowClass = (result) => {

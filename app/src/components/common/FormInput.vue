@@ -25,7 +25,7 @@
         :title="passwordVisible ? 'Hide password' : 'Show password'"
         tabindex="-1"
       >
-        {{ passwordVisible ? '🙈' : '👁️' }}
+        <AppIcon :name="passwordVisible ? 'eye-off' : 'eye'" size="sm" />
       </button>
     </div>
 
@@ -86,6 +86,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { generateRoomCode } from '@/utils/helpers.js'
+import AppIcon from '@/components/common/AppIcon.vue'
 
 // Password visibility state
 const passwordVisible = ref(false)
@@ -214,6 +215,7 @@ const handleInput = (event) => {
   padding: 0.25rem;
   opacity: 0.7;
   transition: opacity 0.2s;
+  color: var(--text-primary);
 }
 
 .password-toggle:hover {
