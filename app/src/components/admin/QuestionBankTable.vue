@@ -8,7 +8,7 @@
 
     <!-- Empty State -->
     <div v-else-if="questions.length === 0" class="empty-state">
-      <AppIcon icon="lucide:inbox" size="2xl" />
+      <AppIcon name="inbox" size="2xl" />
       <h3>No Questions Found</h3>
       <p>Try adjusting your filters or import some quizzes to get started.</p>
     </div>
@@ -85,10 +85,10 @@
                 </span>
                 <div class="question-meta">
                   <span v-if="question.image_url" class="meta-badge has-image">
-                    <AppIcon icon="lucide:image" size="xs" />
+                    <AppIcon name="image" size="xs" />
                   </span>
                   <span v-if="question.is_archived" class="meta-badge archived-badge">
-                    <AppIcon icon="lucide:archive" size="xs" />
+                    <AppIcon name="archive" size="xs" />
                     Archived
                   </span>
                 </div>
@@ -128,7 +128,7 @@
                 title="View Details"
                 @click="$emit('viewDetails', question)"
               >
-                <AppIcon icon="lucide:eye" size="sm" />
+                <AppIcon name="eye" size="sm" />
               </button>
             </td>
           </tr>

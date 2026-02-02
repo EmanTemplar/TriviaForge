@@ -15,7 +15,7 @@
           @click="removeTag(tag.id)"
           type="button"
         >
-          <AppIcon icon="lucide:x" size="xs" />
+          <AppIcon name="x" size="xs" />
         </button>
       </span>
       <button
@@ -24,7 +24,7 @@
         @click="showDropdown = !showDropdown"
         type="button"
       >
-        <AppIcon icon="lucide:plus" size="sm" />
+        <AppIcon name="plus" size="sm" />
         Add Tag
       </button>
     </div>

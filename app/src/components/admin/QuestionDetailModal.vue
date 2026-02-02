@@ -4,7 +4,7 @@
       <div class="modal-header">
         <h2>Question Details</h2>
         <button class="close-btn" @click="$emit('close')">
-          <AppIcon icon="lucide:x" size="md" />
+          <AppIcon name="x" size="md" />
         </button>
       </div>
 
@@ -35,7 +35,7 @@
               <span class="answer-text">{{ answer.answer_text }}</span>
               <AppIcon
                 v-if="answer.is_correct"
-                icon="lucide:check"
+                name="check"
                 size="sm"
                 class="correct-icon"
               />
@@ -59,7 +59,7 @@
           </div>
           <div v-if="question.is_archived" class="meta-row">
             <span class="archived-badge">
-              <AppIcon icon="lucide:archive" size="sm" />
+              <AppIcon name="archive" size="sm" />
               Archived
             </span>
           </div>
@@ -105,7 +105,7 @@
             class="btn-secondary"
             @click="$emit('restore', question.id)"
           >
-            <AppIcon icon="lucide:archive-restore" size="sm" />
+            <AppIcon name="archive-restore" size="sm" />
             Restore
           </button>
           <button
@@ -113,11 +113,11 @@
             class="btn-secondary"
             @click="$emit('archive', question.id)"
           >
-            <AppIcon icon="lucide:archive" size="sm" />
+            <AppIcon name="archive" size="sm" />
             Archive
           </button>
           <button class="btn-danger" @click="$emit('delete', question.id)">
-            <AppIcon icon="lucide:trash-2" size="sm" />
+            <AppIcon name="trash-2" size="sm" />
             Delete Permanently
           </button>
         </div>

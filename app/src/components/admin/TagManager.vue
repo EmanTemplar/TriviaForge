@@ -4,7 +4,7 @@
       <div class="modal-header">
         <h2>Manage Tags</h2>
         <button class="close-btn" @click="$emit('close')">
-          <AppIcon icon="lucide:x" size="md" />
+          <AppIcon name="x" size="md" />
         </button>
       </div>
 
@@ -27,7 +27,7 @@
             </select>
             <input v-model="newTagColor" type="color" class="color-picker" />
             <button class="btn-primary" :disabled="!newTagName.trim()" @click="createTag">
-              <AppIcon icon="lucide:plus" size="sm" />
+              <AppIcon name="plus" size="sm" />
               Add
             </button>
           </div>
@@ -49,14 +49,14 @@
                   title="Edit"
                   @click="startEdit(tag)"
                 >
-                  <AppIcon icon="lucide:edit-2" size="sm" />
+                  <AppIcon name="edit-2" size="sm" />
                 </button>
                 <button
                   class="btn-icon btn-danger-icon"
                   title="Delete"
                   @click="deleteTag(tag)"
                 >
-                  <AppIcon icon="lucide:trash-2" size="sm" />
+                  <AppIcon name="trash-2" size="sm" />
                 </button>
               </div>
             </div>

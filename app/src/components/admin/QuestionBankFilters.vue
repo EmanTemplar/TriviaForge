@@ -95,11 +95,11 @@
       <!-- Actions -->
       <div class="filter-actions">
         <button class="btn-secondary" @click="clearFilters">
-          <AppIcon icon="lucide:x" size="sm" />
+          <AppIcon name="x" size="sm" />
           Clear
         </button>
         <button class="btn-primary" @click="applyFilters">
-          <AppIcon icon="lucide:search" size="sm" />
+          <AppIcon name="search" size="sm" />
           Apply Filters
         </button>
       </div>

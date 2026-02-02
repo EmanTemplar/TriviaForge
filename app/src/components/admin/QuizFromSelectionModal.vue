@@ -4,7 +4,7 @@
       <div class="modal-header">
         <h2>Create Quiz from Selected Questions</h2>
         <button class="close-btn" @click="$emit('close')">
-          <AppIcon icon="lucide:x" size="md" />
+          <AppIcon name="x" size="md" />
         </button>
       </div>
 
@@ -48,7 +48,7 @@
               @drop="handleDrop($event, index)"
             >
               <span class="drag-handle">
-                <AppIcon icon="lucide:grip-vertical" size="sm" />
+                <AppIcon name="grip-vertical" size="sm" />
               </span>
               <span class="question-number">{{ index + 1 }}.</span>
               <span class="question-text">{{ truncate(question.question_text, 60) }}</span>
@@ -59,7 +59,7 @@
                   @click="moveUp(index)"
                   title="Move up"
                 >
-                  <AppIcon icon="lucide:chevron-up" size="sm" />
+                  <AppIcon name="chevron-up" size="sm" />
                 </button>
                 <button
                   class="btn-icon"
@@ -67,10 +67,10 @@
                   @click="moveDown(index)"
                   title="Move down"
                 >
-                  <AppIcon icon="lucide:chevron-down" size="sm" />
+                  <AppIcon name="chevron-down" size="sm" />
                 </button>
                 <button class="btn-icon btn-remove" @click="removeQuestion(index)" title="Remove">
-                  <AppIcon icon="lucide:x" size="sm" />
+                  <AppIcon name="x" size="sm" />
                 </button>
               </div>
             </div>
@@ -85,7 +85,7 @@
           :disabled="!canCreate || creating"
           @click="createQuiz"
         >
-          <AppIcon v-if="creating" icon="lucide:loader-2" size="sm" class="spinning" />
+          <AppIcon v-if="creating" name="loader-2" size="sm" class="spinning" />
           {{ creating ? 'Creating...' : 'Create Quiz' }}
         </button>
       </div>

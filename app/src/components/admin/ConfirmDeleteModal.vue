@@ -2,7 +2,7 @@
   <div class="modal-overlay" @click.self="$emit('cancel')">
     <div class="modal-content">
       <div class="modal-header">
-        <AppIcon icon="lucide:alert-triangle" size="lg" class="warning-icon" />
+        <AppIcon name="alert-triangle" size="lg" class="warning-icon" />
         <h2>{{ title }}</h2>
       </div>
 
@@ -11,19 +11,19 @@
 
         <div v-if="usage" class="usage-info">
           <div v-if="usage.quizCount || usage.totalQuizzes" class="usage-row">
-            <AppIcon icon="lucide:file-text" size="sm" />
+            <AppIcon name="file-text" size="sm" />
             <span>
               Used in <strong>{{ usage.quizCount || usage.totalQuizzes }}</strong> quiz{{ (usage.quizCount || usage.totalQuizzes) !== 1 ? 'zes' : '' }}
             </span>
           </div>
           <div v-if="usage.sessionCount || usage.totalSessions" class="usage-row">
-            <AppIcon icon="lucide:play-circle" size="sm" />
+            <AppIcon name="play-circle" size="sm" />
             <span>
               Presented in <strong>{{ usage.sessionCount || usage.totalSessions }}</strong> session{{ (usage.sessionCount || usage.totalSessions) !== 1 ? 's' : '' }}
             </span>
           </div>
           <div v-if="usage.questionCount" class="usage-row">
-            <AppIcon icon="lucide:help-circle" size="sm" />
+            <AppIcon name="help-circle" size="sm" />
             <span>
               <strong>{{ usage.questionCount }}</strong> question{{ usage.questionCount !== 1 ? 's' : '' }} selected
             </span>
@@ -43,7 +43,7 @@
           :disabled="!confirmed"
           @click="$emit('confirm')"
         >
-          <AppIcon icon="lucide:trash-2" size="sm" />
+          <AppIcon name="trash-2" size="sm" />
           Delete Permanently
         </button>
       </div>

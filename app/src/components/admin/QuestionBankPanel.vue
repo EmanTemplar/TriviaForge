@@ -17,7 +17,7 @@
           :disabled="selectedCount === 0"
           @click="showBulkTagModal = true"
         >
-          <AppIcon icon="lucide:tags" size="sm" />
+          <AppIcon name="tags" size="sm" />
           Tag Selected
         </button>
         <button
@@ -25,7 +25,7 @@
           :disabled="selectedCount === 0"
           @click="showQuizFromSelectionModal = true"
         >
-          <AppIcon icon="lucide:file-plus" size="sm" />
+          <AppIcon name="file-plus" size="sm" />
           Create Quiz
         </button>
         <button
@@ -33,7 +33,7 @@
           :disabled="selectedCount === 0"
           @click="bulkArchiveSelected"
         >
-          <AppIcon icon="lucide:archive" size="sm" />
+          <AppIcon name="archive" size="sm" />
           Archive
         </button>
         <button
@@ -41,13 +41,13 @@
           :disabled="selectedCount === 0"
           @click="confirmBulkDelete"
         >
-          <AppIcon icon="lucide:trash-2" size="sm" />
+          <AppIcon name="trash-2" size="sm" />
           Delete
         </button>
       </div>
       <div class="toolbar-right">
         <button class="btn-secondary" @click="showTagManagerModal = true">
-          <AppIcon icon="lucide:settings" size="sm" />
+          <AppIcon name="settings" size="sm" />
           Manage Tags
         </button>
       </div>
@@ -94,7 +94,7 @@
         :disabled="!pagination.hasPrev"
         @click="goToPage(pagination.page - 1)"
       >
-        <AppIcon icon="lucide:chevron-left" size="sm" />
+        <AppIcon name="chevron-left" size="sm" />
         Previous
       </button>
       <div class="page-numbers">
@@ -114,7 +114,7 @@
         @click="goToPage(pagination.page + 1)"
       >
         Next
-        <AppIcon icon="lucide:chevron-right" size="sm" />
+        <AppIcon name="chevron-right" size="sm" />
       </button>
     </div>
 

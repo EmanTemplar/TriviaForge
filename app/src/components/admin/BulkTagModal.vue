@@ -4,7 +4,7 @@
       <div class="modal-header">
         <h2>Tag {{ selectedCount }} Question{{ selectedCount !== 1 ? 's' : '' }}</h2>
         <button class="close-btn" @click="$emit('close')">
-          <AppIcon icon="lucide:x" size="md" />
+          <AppIcon name="x" size="md" />
         </button>
       </div>
 
