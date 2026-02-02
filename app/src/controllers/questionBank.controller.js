@@ -17,6 +17,11 @@ import {
   BadRequestError,
   ConflictError,
 } from '../utils/errors.js';
+import {
+  findSimilarQuestions,
+  findDuplicateGroups,
+  generateTextHash,
+} from '../utils/similarity.js';
 
 /**
  * List all questions with pagination, filtering, and sorting
@@ -816,6 +821,331 @@ export async function createQuizFromSelection(req, res) {
   }
 }
 
+/**
+ * Check for duplicate/similar questions
+ * POST /api/questions/check-duplicates
+ *
+ * Body:
+ *   - questionText: Text to check for duplicates
+ *   - excludeId: Optional question ID to exclude (when editing)
+ *   - threshold: Optional similarity threshold (default: 0.8)
+ */
+export async function checkDuplicates(req, res) {
+  const { questionText, excludeId, threshold = 0.8 } = req.body;
+
+  if (!questionText?.trim()) {
+    throw new BadRequestError('Question text is required');
+  }
+
+  // Skip duplicate check for very short questions
+  if (questionText.trim().length < 10) {
+    return res.json({
+      success: true,
+      hasDuplicates: false,
+      exactMatch: null,
+      similarQuestions: [],
+    });
+  }
+
+  // First, check for exact hash match (fast)
+  const newHash = generateTextHash(questionText);
+  let exactMatch = null;
+
+  if (newHash) {
+    const exactResult = await query(
+      `SELECT q.id, q.question_text, q.question_type, q.text_hash,
+              COUNT(DISTINCT qq.quiz_id) as usage_count,
+              COALESCE(
+                json_agg(
+                  DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'color', t.color)
+                ) FILTER (WHERE t.id IS NOT NULL),
+                '[]'
+              ) as tags
+       FROM questions q
+       LEFT JOIN quiz_questions qq ON q.id = qq.question_id
+       LEFT JOIN question_tags qt ON q.id = qt.question_id
+       LEFT JOIN tags t ON qt.tag_id = t.id
+       WHERE q.text_hash = $1 AND q.is_archived = FALSE
+       ${excludeId ? 'AND q.id != $2' : ''}
+       GROUP BY q.id
+       LIMIT 1`,
+      excludeId ? [newHash, excludeId] : [newHash]
+    );
+
+    if (exactResult.rows.length > 0) {
+      exactMatch = {
+        ...exactResult.rows[0],
+        usage_count: parseInt(exactResult.rows[0].usage_count, 10),
+        similarity: 1.0,
+        isExactMatch: true,
+      };
+    }
+  }
+
+  // If exact match found, return it
+  if (exactMatch) {
+    return res.json({
+      success: true,
+      hasDuplicates: true,
+      exactMatch,
+      similarQuestions: [],
+    });
+  }
+
+  // Fetch all non-archived questions for fuzzy matching
+  // In production with large datasets, this should be optimized
+  const questionsResult = await query(
+    `SELECT q.id, q.question_text, q.question_type, q.text_hash,
+            COUNT(DISTINCT qq.quiz_id) as usage_count,
+            COALESCE(
+              json_agg(
+                DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'color', t.color)
+              ) FILTER (WHERE t.id IS NOT NULL),
+              '[]'
+            ) as tags
+     FROM questions q
+     LEFT JOIN quiz_questions qq ON q.id = qq.question_id
+     LEFT JOIN question_tags qt ON q.id = qt.question_id
+     LEFT JOIN tags t ON qt.tag_id = t.id
+     WHERE q.is_archived = FALSE
+     ${excludeId ? 'AND q.id != $1' : ''}
+     GROUP BY q.id`,
+    excludeId ? [excludeId] : []
+  );
+
+  const existingQuestions = questionsResult.rows.map((q) => ({
+    ...q,
+    usage_count: parseInt(q.usage_count, 10),
+  }));
+
+  // Find similar questions
+  const similarQuestions = findSimilarQuestions(
+    questionText,
+    existingQuestions,
+    threshold,
+    excludeId
+  );
+
+  res.json({
+    success: true,
+    hasDuplicates: similarQuestions.length > 0,
+    exactMatch: null,
+    similarQuestions: similarQuestions.slice(0, 10), // Limit to top 10
+  });
+}
+
+/**
+ * Check multiple questions for duplicates (batch)
+ * POST /api/questions/check-duplicates/batch
+ *
+ * Body:
+ *   - questions: Array of { text, rowIndex }
+ *   - threshold: Optional similarity threshold (default: 0.8)
+ */
+export async function checkDuplicatesBatch(req, res) {
+  const { questions, threshold = 0.8 } = req.body;
+
+  if (!Array.isArray(questions) || questions.length === 0) {
+    throw new BadRequestError('Questions array is required');
+  }
+
+  // Fetch all existing questions
+  const existingResult = await query(
+    `SELECT q.id, q.question_text, q.question_type, q.text_hash,
+            COUNT(DISTINCT qq.quiz_id) as usage_count,
+            COALESCE(
+              json_agg(
+                DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'color', t.color)
+              ) FILTER (WHERE t.id IS NOT NULL),
+              '[]'
+            ) as tags
+     FROM questions q
+     LEFT JOIN quiz_questions qq ON q.id = qq.question_id
+     LEFT JOIN question_tags qt ON q.id = qt.question_id
+     LEFT JOIN tags t ON qt.tag_id = t.id
+     WHERE q.is_archived = FALSE
+     GROUP BY q.id`
+  );
+
+  const existingQuestions = existingResult.rows.map((q) => ({
+    ...q,
+    usage_count: parseInt(q.usage_count, 10),
+  }));
+
+  // Check each incoming question
+  const results = [];
+  let totalDuplicates = 0;
+
+  for (const item of questions) {
+    const { text, rowIndex } = item;
+
+    if (!text?.trim() || text.trim().length < 10) {
+      results.push({
+        rowIndex,
+        hasDuplicates: false,
+        similarQuestions: [],
+      });
+      continue;
+    }
+
+    const similarQuestions = findSimilarQuestions(
+      text,
+      existingQuestions,
+      threshold,
+      null
+    );
+
+    const hasDuplicates = similarQuestions.length > 0;
+    if (hasDuplicates) totalDuplicates++;
+
+    results.push({
+      rowIndex,
+      questionText: text,
+      hasDuplicates,
+      similarQuestions: similarQuestions.slice(0, 3), // Top 3 per question
+    });
+  }
+
+  res.json({
+    success: true,
+    results,
+    totalDuplicates,
+  });
+}
+
+/**
+ * Find all duplicate groups in the question bank
+ * GET /api/questions/find-duplicates
+ *
+ * Query params:
+ *   - threshold: Similarity threshold (default: 0.8)
+ *   - limit: Max groups to return (default: 50)
+ */
+export async function findDuplicates(req, res) {
+  const { threshold = 0.8, limit = 50 } = req.query;
+
+  const thresholdNum = parseFloat(threshold);
+  if (isNaN(thresholdNum) || thresholdNum < 0 || thresholdNum > 1) {
+    throw new BadRequestError('Threshold must be a number between 0 and 1');
+  }
+
+  // Fetch all non-archived questions
+  const questionsResult = await query(
+    `SELECT q.id, q.question_text, q.question_type, q.text_hash, q.created_at,
+            COUNT(DISTINCT qq.quiz_id) as usage_count,
+            COALESCE(
+              json_agg(
+                DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'color', t.color)
+              ) FILTER (WHERE t.id IS NOT NULL),
+              '[]'
+            ) as tags
+     FROM questions q
+     LEFT JOIN quiz_questions qq ON q.id = qq.question_id
+     LEFT JOIN question_tags qt ON q.id = qt.question_id
+     LEFT JOIN tags t ON qt.tag_id = t.id
+     WHERE q.is_archived = FALSE
+     GROUP BY q.id
+     ORDER BY q.created_at DESC`
+  );
+
+  const questions = questionsResult.rows.map((q) => ({
+    ...q,
+    usage_count: parseInt(q.usage_count, 10),
+  }));
+
+  // Find duplicate groups
+  const groups = findDuplicateGroups(questions, thresholdNum);
+
+  res.json({
+    success: true,
+    groups: groups.slice(0, parseInt(limit, 10)),
+    totalGroups: groups.length,
+    totalQuestions: questions.length,
+  });
+}
+
+/**
+ * Merge duplicate questions
+ * POST /api/questions/merge
+ *
+ * Body:
+ *   - keepId: Question ID to keep
+ *   - mergeIds: Array of question IDs to merge into keepId
+ */
+export async function mergeQuestions(req, res) {
+  const { keepId, mergeIds } = req.body;
+
+  if (!keepId || !Array.isArray(mergeIds) || mergeIds.length === 0) {
+    throw new BadRequestError('keepId and mergeIds array are required');
+  }
+
+  // Verify keep question exists
+  const keepResult = await query(
+    'SELECT id, question_text FROM questions WHERE id = $1 AND is_archived = FALSE',
+    [keepId]
+  );
+
+  if (keepResult.rows.length === 0) {
+    throw new NotFoundError('Question to keep not found');
+  }
+
+  const client = await getClient();
+
+  try {
+    await client.query('BEGIN');
+
+    for (const mergeId of mergeIds) {
+      if (mergeId === keepId) continue;
+
+      // Update quiz_questions to point to the kept question
+      // Use ON CONFLICT to handle cases where the kept question is already in the quiz
+      await client.query(
+        `UPDATE quiz_questions
+         SET question_id = $1
+         WHERE question_id = $2
+         AND NOT EXISTS (
+           SELECT 1 FROM quiz_questions
+           WHERE quiz_id = quiz_questions.quiz_id AND question_id = $1
+         )`,
+        [keepId, mergeId]
+      );
+
+      // Delete any remaining references (where kept question already exists in quiz)
+      await client.query(
+        'DELETE FROM quiz_questions WHERE question_id = $1',
+        [mergeId]
+      );
+
+      // Copy tags from merged question to kept question (if not already present)
+      await client.query(
+        `INSERT INTO question_tags (question_id, tag_id)
+         SELECT $1, tag_id FROM question_tags WHERE question_id = $2
+         ON CONFLICT (question_id, tag_id) DO NOTHING`,
+        [keepId, mergeId]
+      );
+
+      // Archive the merged question (don't hard delete to preserve history)
+      await client.query(
+        'UPDATE questions SET is_archived = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+        [mergeId]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `Successfully merged ${mergeIds.length} question(s)`,
+      keptQuestion: keepResult.rows[0],
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export default {
   listQuestions,
   getQuestionDetails,
@@ -828,4 +1158,8 @@ export default {
   bulkArchiveQuestions,
   bulkDeleteQuestions,
   createQuizFromSelection,
+  checkDuplicates,
+  checkDuplicatesBatch,
+  findDuplicates,
+  mergeQuestions,
 };

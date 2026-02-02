@@ -46,6 +46,10 @@
         </button>
       </div>
       <div class="toolbar-right">
+        <button class="btn-secondary" @click="showFindDuplicatesModal = true">
+          <AppIcon name="copy" size="sm" />
+          Find Duplicates
+        </button>
         <button class="btn-secondary" @click="showTagManagerModal = true">
           <AppIcon name="settings" size="sm" />
           Manage Tags
@@ -167,6 +171,13 @@
       @confirm="executeDelete"
       @cancel="showDeleteConfirmModal = false"
     />
+
+    <!-- Find Duplicates Modal -->
+    <FindDuplicatesPanel
+      :isVisible="showFindDuplicatesModal"
+      @close="showFindDuplicatesModal = false"
+      @merged="handleDuplicatesMerged"
+    />
   </div>
 </template>
 
@@ -181,6 +192,7 @@ import TagManager from './TagManager.vue'
 import QuizFromSelectionModal from './QuizFromSelectionModal.vue'
 import BulkTagModal from './BulkTagModal.vue'
 import ConfirmDeleteModal from './ConfirmDeleteModal.vue'
+import FindDuplicatesPanel from './FindDuplicatesPanel.vue'
 
 const props = defineProps({
   authStore: {
@@ -225,6 +237,7 @@ const showTagManagerModal = ref(false)
 const showQuizFromSelectionModal = ref(false)
 const showBulkTagModal = ref(false)
 const showDeleteConfirmModal = ref(false)
+const showFindDuplicatesModal = ref(false)
 const selectedQuestion = ref(null)
 const deleteConfirmTitle = ref('')
 const deleteConfirmMessage = ref('')
@@ -530,6 +543,12 @@ const handleTagUpdated = async () => {
 const handleTagDeleted = async () => {
   await loadTags()
   await loadQuestions()
+}
+
+const handleDuplicatesMerged = async () => {
+  // Refresh questions list after duplicates are merged
+  await loadQuestions()
+  selectedIds.value = new Set()
 }
 
 // Lifecycle

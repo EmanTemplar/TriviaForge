@@ -144,6 +144,62 @@ router.post('/bulk-archive', requireAdmin, asyncHandler(questionBankController.b
 router.post('/bulk-delete', requireAdmin, asyncHandler(questionBankController.bulkDeleteQuestions));
 
 // ============================================================================
+// DUPLICATE DETECTION
+// ============================================================================
+
+/**
+ * Check for duplicate/similar questions
+ * POST /api/questions/check-duplicates
+ *
+ * Body: {
+ *   questionText: string,
+ *   excludeId?: number,   // Exclude when editing
+ *   threshold?: number    // Similarity threshold (default: 0.8)
+ * }
+ *
+ * Returns: { hasDuplicates, exactMatch?, similarQuestions: [...] }
+ */
+router.post('/check-duplicates', requireAdmin, asyncHandler(questionBankController.checkDuplicates));
+
+/**
+ * Check multiple questions for duplicates (batch)
+ * POST /api/questions/check-duplicates/batch
+ *
+ * Body: {
+ *   questions: Array<{ text: string, rowIndex: number }>,
+ *   threshold?: number
+ * }
+ *
+ * Returns: { results: [...], totalDuplicates }
+ */
+router.post('/check-duplicates/batch', requireAdmin, asyncHandler(questionBankController.checkDuplicatesBatch));
+
+/**
+ * Find all duplicate groups in the question bank
+ * GET /api/questions/find-duplicates
+ *
+ * Query params:
+ *   - threshold: Similarity threshold (default: 0.8)
+ *   - limit: Max groups to return (default: 50)
+ *
+ * Returns: { groups: [...], totalGroups, totalQuestions }
+ */
+router.get('/find-duplicates', requireAdmin, asyncHandler(questionBankController.findDuplicates));
+
+/**
+ * Merge duplicate questions
+ * POST /api/questions/merge
+ *
+ * Body: {
+ *   keepId: number,       // Question to keep
+ *   mergeIds: number[]    // Questions to merge into keepId
+ * }
+ *
+ * Returns: { success, message, keptQuestion }
+ */
+router.post('/merge', requireAdmin, asyncHandler(questionBankController.mergeQuestions));
+
+// ============================================================================
 // QUIZ GENERATION
 // ============================================================================
 
