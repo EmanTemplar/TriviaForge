@@ -80,6 +80,14 @@
         />
       </div>
 
+      <!-- Question Bank Tab -->
+      <div v-if="activeTab === 'question-bank'" class="tab-content question-bank-management">
+        <QuestionBankPanel
+          :authStore="authStore"
+          @createQuizFromSelection="handleCreateQuizFromSelection"
+        />
+      </div>
+
       <!-- Session Management Tab -->
       <div v-if="activeTab === 'sessions'" class="tab-content sessions-management">
         <SessionFilters
@@ -428,6 +436,7 @@ import UserManagementPanel from '@/components/admin/UserManagementPanel.vue'
 import BannedNamesPanel from '@/components/admin/BannedNamesPanel.vue'
 import AboutPanel from '@/components/admin/AboutPanel.vue'
 import SessionDetailModal from '@/components/admin/SessionDetailModal.vue'
+import QuestionBankPanel from '@/components/admin/QuestionBankPanel.vue'
 
 const router = useRouter()
 const { get, post, put, delete: delete_, upload } = useApi()
@@ -532,6 +541,7 @@ const guestUsers = computed(() => users.value.filter(user => user.accountType ==
 // Tabs
 const tabs = [
   { id: 'quiz', label: 'Quiz Management' },
+  { id: 'question-bank', label: 'Question Bank' },
   { id: 'sessions', label: 'Session Management' },
   { id: 'options', label: 'Quiz Options' },
   { id: 'users', label: 'User Management' },
@@ -559,6 +569,20 @@ const loadQuizzes = async () => {
     quizzes.value = response.data
   } catch (err) {
     console.error('Error loading quizzes:', err)
+  }
+}
+
+// Handle quiz creation from Question Bank
+const handleCreateQuizFromSelection = async (quiz) => {
+  // Refresh the quizzes list
+  await loadQuizzes()
+  // Switch to quiz management tab and select the new quiz
+  activeTab.value = 'quiz'
+  if (quiz?.id) {
+    const newQuiz = quizzes.value.find(q => q.id === quiz.id)
+    if (newQuiz) {
+      selectQuiz(newQuiz)
+    }
   }
 }
 
@@ -1814,7 +1838,8 @@ onUnmounted(() => {
   padding: 1rem;
 }
 
-/* Scrollable tabs: Sessions, Options, Users, Settings, About */
+/* Scrollable tabs: Question Bank, Sessions, Options, Users, Settings, About */
+.question-bank-management,
 .sessions-management,
 .options-management,
 .users-management,

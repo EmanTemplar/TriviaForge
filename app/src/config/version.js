@@ -4,9 +4,9 @@
  * Update this file to change version across the entire application
  */
 
-export const VERSION = '5.2.2'
-export const VERSION_NAME = 'Lucide Icons & UI Polish'
-export const RELEASE_DATE = '2026-02-01'
+export const VERSION = '5.3.0'
+export const VERSION_NAME = 'Question Bank & Tagging System'
+export const RELEASE_DATE = '2026-02-02'
 
 export default {
   VERSION,

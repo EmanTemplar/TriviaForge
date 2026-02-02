@@ -10,6 +10,7 @@ import { Router } from 'express';
 import path from 'path';
 import multer from 'multer';
 import * as quizController from '../controllers/quiz.controller.js';
+import * as questionBankController from '../controllers/questionBank.controller.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
@@ -123,6 +124,23 @@ router.put('/:filename', requireAdmin, asyncHandler(quizController.updateQuiz));
  * Note: Uses doubleCsrfProtection middleware (applied in server.js)
  */
 router.delete('/:filename', requireAdmin, asyncHandler(quizController.deleteQuiz));
+
+/**
+ * Create quiz from selected questions (Question Bank feature)
+ * POST /api/quizzes/from-selection
+ *
+ * Body: {
+ *   title: string,
+ *   description?: string,
+ *   questionIds: number[],
+ *   answerDisplayTimeout?: number
+ * }
+ *
+ * Returns: { success: true, quiz: {...} }
+ *
+ * Note: Uses doubleCsrfProtection middleware (applied in server.js)
+ */
+router.post('/from-selection', requireAdmin, asyncHandler(questionBankController.createQuizFromSelection));
 
 export default router;
 

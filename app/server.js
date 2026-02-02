@@ -20,6 +20,8 @@ import authRoutes from './src/routes/auth.routes.js';
 import quizRoutes, { templateRouter, importRouter } from './src/routes/quiz.routes.js';
 import sessionRoutes from './src/routes/session.routes.js';
 import userRoutes from './src/routes/user.routes.js';
+import tagRoutes from './src/routes/tag.routes.js';
+import questionBankRoutes from './src/routes/questionBank.routes.js';
 import { requireAuth, requireAdmin } from './src/middleware/auth.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { env } from './src/config/environment.js';
@@ -311,6 +313,19 @@ app.use('/api/users', (req, res, next) => {
   next();
 });
 app.use('/api/users', userRoutes);
+
+// Tag routes (Question Bank tagging system)
+app.use('/api/tags', tagRoutes);
+
+// Question Bank routes
+app.use('/api/questions', (req, res, next) => {
+  // Apply CSRF protection to mutation operations
+  if (['DELETE', 'POST', 'PUT'].includes(req.method)) {
+    return doubleCsrfProtection(req, res, next);
+  }
+  next();
+});
+app.use('/api/questions', questionBankRoutes);
 
 // Simple password check
 app.post('/api/auth/check', authLimiter, doubleCsrfProtection, (req, res) => {
