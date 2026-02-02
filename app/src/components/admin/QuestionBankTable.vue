@@ -26,38 +26,50 @@
                 @change="$emit('selectAll')"
               />
             </th>
-            <th class="col-question sortable" @click="$emit('sort', 'question_text')">
-              Question
-              <AppIcon
-                v-if="sortBy === 'question_text'"
-                :icon="sortOrder === 'asc' ? 'lucide:chevron-up' : 'lucide:chevron-down'"
-                size="sm"
-              />
+            <th class="col-question sortable" :class="{ active: sortBy === 'question_text' }" @click="$emit('sort', 'question_text')">
+              <span class="header-content">
+                Question
+                <AppIcon
+                  class="sort-icon"
+                  :class="{ visible: sortBy === 'question_text' }"
+                  :name="sortOrder === 'asc' ? 'chevron-up' : 'chevron-down'"
+                  size="sm"
+                />
+              </span>
             </th>
-            <th class="col-type sortable" @click="$emit('sort', 'question_type')">
-              Type
-              <AppIcon
-                v-if="sortBy === 'question_type'"
-                :icon="sortOrder === 'asc' ? 'lucide:chevron-up' : 'lucide:chevron-down'"
-                size="sm"
-              />
+            <th class="col-type sortable" :class="{ active: sortBy === 'question_type' }" @click="$emit('sort', 'question_type')">
+              <span class="header-content">
+                Type
+                <AppIcon
+                  class="sort-icon"
+                  :class="{ visible: sortBy === 'question_type' }"
+                  :name="sortOrder === 'asc' ? 'chevron-up' : 'chevron-down'"
+                  size="sm"
+                />
+              </span>
             </th>
             <th class="col-tags">Tags</th>
-            <th class="col-usage sortable" @click="$emit('sort', 'usage_count')">
-              Used
-              <AppIcon
-                v-if="sortBy === 'usage_count'"
-                :icon="sortOrder === 'asc' ? 'lucide:chevron-up' : 'lucide:chevron-down'"
-                size="sm"
-              />
+            <th class="col-usage sortable" :class="{ active: sortBy === 'usage_count' }" @click="$emit('sort', 'usage_count')">
+              <span class="header-content">
+                Used
+                <AppIcon
+                  class="sort-icon"
+                  :class="{ visible: sortBy === 'usage_count' }"
+                  :name="sortOrder === 'asc' ? 'chevron-up' : 'chevron-down'"
+                  size="sm"
+                />
+              </span>
             </th>
-            <th class="col-date sortable" @click="$emit('sort', 'created_at')">
-              Created
-              <AppIcon
-                v-if="sortBy === 'created_at'"
-                :icon="sortOrder === 'asc' ? 'lucide:chevron-up' : 'lucide:chevron-down'"
-                size="sm"
-              />
+            <th class="col-date sortable" :class="{ active: sortBy === 'created_at' }" @click="$emit('sort', 'created_at')">
+              <span class="header-content">
+                Created
+                <AppIcon
+                  class="sort-icon"
+                  :class="{ visible: sortBy === 'created_at' }"
+                  :name="sortOrder === 'asc' ? 'chevron-up' : 'chevron-down'"
+                  size="sm"
+                />
+              </span>
             </th>
             <th class="col-actions">Actions</th>
           </tr>
@@ -75,7 +87,7 @@
               <input
                 type="checkbox"
                 :checked="selectedIds.has(question.id)"
-                @change="$emit('select', question.id)"
+                @click="handleRowSelect($event, question.id)"
               />
             </td>
             <td class="col-question">
@@ -128,7 +140,7 @@
                 title="View Details"
                 @click="$emit('viewDetails', question)"
               >
-                <AppIcon name="eye" size="sm" />
+                <AppIcon name="settings" size="sm" />
               </button>
             </td>
           </tr>
@@ -139,7 +151,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
@@ -165,7 +177,27 @@ const props = defineProps({
   }
 })
 
-defineEmits(['select', 'selectAll', 'sort', 'viewDetails'])
+const emit = defineEmits(['select', 'selectAll', 'selectRange', 'sort', 'viewDetails'])
+
+// Track last selected index for shift-click
+const lastSelectedIndex = ref(null)
+
+// Handle row selection with shift-click support
+const handleRowSelect = (event, questionId) => {
+  const currentIndex = props.questions.findIndex(q => q.id === questionId)
+
+  if (event.shiftKey && lastSelectedIndex.value !== null) {
+    // Shift-click: select range
+    const start = Math.min(lastSelectedIndex.value, currentIndex)
+    const end = Math.max(lastSelectedIndex.value, currentIndex)
+    const rangeIds = props.questions.slice(start, end + 1).map(q => q.id)
+    emit('selectRange', rangeIds)
+  } else {
+    // Normal click: toggle single selection
+    emit('select', questionId)
+    lastSelectedIndex.value = currentIndex
+  }
+}
 
 // Computed
 const allSelected = computed(() =>
@@ -282,22 +314,51 @@ const formatDate = (dateString) => {
 }
 
 .questions-table th {
-  background: var(--bg-secondary);
+  background: var(--primary-color);
   font-weight: 600;
-  color: var(--text-secondary);
+  color: white;
   white-space: nowrap;
   position: sticky;
   top: 0;
   z-index: 1;
+  border-bottom: 2px solid var(--primary-color-dark, color-mix(in srgb, var(--primary-color) 80%, black));
 }
 
 .questions-table th.sortable {
   cursor: pointer;
   user-select: none;
+  transition: background 0.15s;
 }
 
 .questions-table th.sortable:hover {
-  background: var(--bg-tertiary);
+  background: color-mix(in srgb, var(--primary-color) 85%, black);
+}
+
+.questions-table th.sortable.active {
+  background: color-mix(in srgb, var(--primary-color) 90%, black);
+}
+
+.header-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sort-icon {
+  opacity: 0.3;
+  transition: opacity 0.15s;
+}
+
+.sort-icon.visible {
+  opacity: 1;
+}
+
+.questions-table th.sortable:hover .sort-icon {
+  opacity: 0.6;
+}
+
+.questions-table th.sortable:hover .sort-icon.visible {
+  opacity: 1;
 }
 
 .questions-table tbody tr {

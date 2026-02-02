@@ -83,6 +83,7 @@
       :sortOrder="filters.sortOrder"
       @select="toggleSelect"
       @selectAll="toggleSelectAll"
+      @selectRange="selectRange"
       @sort="handleSort"
       @viewDetails="viewQuestionDetails"
     />
@@ -334,6 +335,12 @@ const toggleSelectAll = () => {
   } else {
     selectedIds.value = new Set(questions.value.map(q => q.id))
   }
+}
+
+const selectRange = (rangeIds) => {
+  const newSet = new Set(selectedIds.value)
+  rangeIds.forEach(id => newSet.add(id))
+  selectedIds.value = newSet
 }
 
 // Filter Methods
