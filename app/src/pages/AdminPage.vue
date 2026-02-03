@@ -1958,37 +1958,6 @@ onUnmounted(() => {
   background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-accent) 100%); /* AdminPage-specific gradient */
 }
 
-.tabs-container {
-  display: flex;
-  gap: 0;
-  background: var(--bg-tertiary-60);
-  padding: 0 2rem;
-  border-bottom: 1px solid var(--info-light);
-  overflow-x: auto;
-}
-
-.tab-btn {
-  padding: 1rem 2rem;
-  background: transparent;
-  border: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.tab-btn.active-tab {
-  color: var(--text-primary);
-  border-bottom-color: var(--primary-color);
-}
-
-.tab-btn:hover {
-  color: var(--text-primary);
-}
-
 .container {
   flex: 1;
   overflow: hidden; /* Default: no scroll (for Quiz Management grid) */
@@ -3484,16 +3453,6 @@ onUnmounted(() => {
   .container {
     padding: 1rem;
   }
-
-  .tabs-container {
-    padding: 0 1rem;
-    overflow-x: auto;
-  }
-
-  .tab-btn {
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
-  }
 }
 
 @media (max-width: 600px) {
@@ -3507,11 +3466,6 @@ onUnmounted(() => {
 
   .container {
     padding: 0.75rem;
-  }
-
-  .tab-btn {
-    padding: 0.65rem 0.8rem;
-    font-size: 0.8rem;
   }
 
   .btn-primary,

@@ -20,8 +20,9 @@
       </span>
       <button
         v-if="!readonly && availableTags.length > 0"
+        ref="triggerBtn"
         class="add-tag-trigger"
-        @click="showDropdown = !showDropdown"
+        @click="toggleDropdown"
         type="button"
       >
         <AppIcon name="plus" size="sm" />
@@ -71,7 +72,12 @@
     </div>
 
     <!-- Dropdown Panel (for chips mode) -->
-    <div v-if="mode === 'chips' && showDropdown" class="dropdown-panel">
+    <div
+      v-if="mode === 'chips' && showDropdown"
+      ref="dropdownPanel"
+      class="dropdown-panel"
+      :style="dropdownPosition"
+    >
       <div v-if="groupedAvailableTags.difficulty.length > 0" class="dropdown-group">
         <span class="dropdown-group-label">Difficulty</span>
         <button
@@ -126,7 +132,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
@@ -162,6 +168,43 @@ const emit = defineEmits(['update:modelValue', 'add', 'remove'])
 // State
 const showDropdown = ref(false)
 const dropdownSelection = ref('')
+const triggerBtn = ref(null)
+const dropdownPanel = ref(null)
+const dropdownPosition = ref({})
+
+const updateDropdownPosition = () => {
+  if (!triggerBtn.value) return
+  const rect = triggerBtn.value.getBoundingClientRect()
+  const spaceBelow = window.innerHeight - rect.bottom
+  const panelMaxHeight = 280
+
+  if (spaceBelow >= panelMaxHeight || spaceBelow >= rect.top) {
+    // Open downward
+    dropdownPosition.value = {
+      position: 'fixed',
+      top: `${rect.bottom + 4}px`,
+      left: `${rect.left}px`,
+      minWidth: '200px',
+      maxWidth: '300px'
+    }
+  } else {
+    // Open upward
+    dropdownPosition.value = {
+      position: 'fixed',
+      bottom: `${window.innerHeight - rect.top + 4}px`,
+      left: `${rect.left}px`,
+      minWidth: '200px',
+      maxWidth: '300px'
+    }
+  }
+}
+
+const toggleDropdown = () => {
+  showDropdown.value = !showDropdown.value
+  if (showDropdown.value) {
+    nextTick(updateDropdownPosition)
+  }
+}
 
 // Computed
 const selectedTagIds = computed(() => new Set(props.modelValue))
@@ -315,17 +358,12 @@ watch(showDropdown, (value) => {
 }
 
 .dropdown-panel {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 0.25rem;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 100;
-  max-height: 300px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  z-index: 10000;
+  max-height: 280px;
   overflow-y: auto;
 }
 
@@ -382,6 +420,6 @@ watch(showDropdown, (value) => {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 99;
+  z-index: 9999;
 }
 </style>
