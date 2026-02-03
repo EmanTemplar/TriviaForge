@@ -1,12 +1,234 @@
 # TriviaForge Development Summary
 
 > **Purpose:** Summary of development changes for the current session
-> **Last Updated:** 2026-01-28
-> **Version:** v5.1.2
+> **Last Updated:** 2026-02-02
+> **Version:** v5.3.4
 
 ---
 
-## Session Summary: v5.0.0 - v5.1.2 Release
+## Session Summary: v5.3.0 - v5.3.4 Release
+
+### Overview
+
+This development period covered the Question Bank & Duplicate Detection System:
+1. **v5.3.0** - Question Bank & Tagging System with centralized question management
+2. **v5.3.1** - Find Duplicates tool with similarity detection
+3. **v5.3.2** - Ignore Duplicate Pairs feature for false positives
+4. **v5.3.3** - Import Duplicates Review modal for bulk import
+5. **v5.3.4** - Single Question Duplicate Detection on save
+
+---
+
+## v5.3.4 - Single Question Duplicate Detection
+
+**Release Date:** 2026-02-02
+**Branch:** `question-database-enhancement-v5`
+
+### Features
+
+When saving a question in the Question Editor, the system now checks for similar existing questions and shows a warning modal with options:
+- **Use Existing** - Link to the similar question instead of creating a duplicate
+- **Create Anyway** - Proceed with creating the new question
+- **Cancel** - Go back and edit
+
+### Implementation
+
+**Frontend Changes:**
+- `AdminPage.vue` - Added duplicate check before save, `DuplicateWarningModal` integration
+- State management for `showDuplicateWarningModal`, `duplicateWarningData`, `pendingQuestionSave`
+
+**Files Modified:**
+- `app/src/pages/AdminPage.vue` - Duplicate check integration in saveQuestion flow
+
+---
+
+## v5.3.3 - Import Duplicates Review
+
+**Release Date:** 2026-02-02
+**Branch:** `question-database-enhancement-v5`
+
+### Features
+
+Two-step Excel import flow with duplicate detection:
+1. **Preview Mode** - Parse Excel file without creating quiz
+2. **Batch Duplicate Check** - Check all questions against existing database
+3. **Review Modal** - Show all potential duplicates with per-item decisions
+4. **Import with Decisions** - Execute import respecting user choices
+
+### Implementation
+
+**New Component:** `ImportDuplicatesReview.vue`
+- Shows all potential duplicates with similarity percentages
+- Per-item actions: Use Existing / Create New / Skip
+- Bulk actions: Skip All Duplicates / Create All Anyway
+
+**Backend Changes:**
+- `quiz.controller.js` - Added `?preview=true` mode to importQuiz endpoint
+- Returns parsed questions without creating quiz
+- Handles `decisions` array for skip/use-existing/create-new
+
+**Files Created:**
+- `app/src/components/admin/ImportDuplicatesReview.vue`
+
+**Files Modified:**
+- `app/src/controllers/quiz.controller.js` - Preview mode and decisions handling
+- `app/src/pages/AdminPage.vue` - Two-step import flow integration
+
+---
+
+## v5.3.2 - Ignore Duplicate Pairs
+
+**Release Date:** 2026-02-01
+**Branch:** `question-database-enhancement-v5`
+
+### Features
+
+Allow users to mark question pairs as "not duplicates" to prevent false positive warnings:
+- **Ignore Pair** button on each duplicate group
+- Ignored pairs hidden from Find Duplicates results
+- View and restore ignored pairs
+- Persisted in database with timestamp and user tracking
+
+### Implementation
+
+**Database Migration:** `11-ignored-duplicate-pairs.sql`
+```sql
+CREATE TABLE ignored_duplicate_pairs (
+  id SERIAL PRIMARY KEY,
+  question_id_1 INTEGER REFERENCES questions(id) ON DELETE CASCADE,
+  question_id_2 INTEGER REFERENCES questions(id) ON DELETE CASCADE,
+  ignored_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  ignored_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+);
+```
+
+**API Endpoints:**
+- `POST /api/question-bank/duplicates/ignore` - Add ignored pair
+- `DELETE /api/question-bank/duplicates/ignore/:id1/:id2` - Remove ignored pair
+- `GET /api/question-bank/duplicates/ignored` - List ignored pairs
+
+**Files Created:**
+- `app/init/11-ignored-duplicate-pairs.sql`
+
+**Files Modified:**
+- `app/src/controllers/questionBank.controller.js` - Ignore pair methods
+- `app/src/routes/questionBank.routes.js` - New routes
+- `app/src/components/admin/FindDuplicatesPanel.vue` - UI for ignore/restore
+
+---
+
+## v5.3.1 - Find Duplicates Tool
+
+**Release Date:** 2026-02-01
+**Branch:** `question-database-enhancement-v5`
+
+### Features
+
+Cleanup tool to find and manage duplicate questions in the Question Bank:
+- **Similarity Detection** using Levenshtein distance algorithm
+- **Configurable Threshold** (default 80%)
+- **Duplicate Groups** showing similar questions together
+- **Merge Support** - Keep one question, update quiz references
+- **Text Hash** for fast exact-match detection
+
+### Implementation
+
+**Database Migration:** `10-duplicate-detection.sql`
+```sql
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS text_hash VARCHAR(32);
+CREATE INDEX IF NOT EXISTS idx_questions_text_hash ON questions(text_hash);
+```
+
+**New Utility:** `app/src/utils/similarity.js`
+- `normalizeText()` - Case-insensitive, whitespace-collapsed, punctuation-removed
+- `levenshteinDistance()` - Edit distance calculation
+- `calculateSimilarity()` - Percentage similarity (0-1)
+- `generateTextHash()` - MD5 hash of normalized text
+
+**API Endpoints:**
+- `POST /api/question-bank/check-duplicates` - Check single question
+- `POST /api/question-bank/check-duplicates/batch` - Check multiple questions
+- `GET /api/question-bank/duplicates` - Find all duplicate groups
+
+**Files Created:**
+- `app/src/utils/similarity.js`
+- `app/init/10-duplicate-detection.sql`
+- `app/src/components/admin/FindDuplicatesPanel.vue`
+- `app/src/components/admin/DuplicateWarningModal.vue`
+
+**Files Modified:**
+- `app/src/controllers/questionBank.controller.js` - Duplicate check methods
+- `app/src/routes/questionBank.routes.js` - New routes
+- `app/src/components/admin/QuestionBankPanel.vue` - Find Duplicates button
+
+---
+
+## v5.3.0 - Question Bank & Tagging System
+
+**Release Date:** 2026-02-01
+**Branch:** `question-database-enhancement-v5`
+
+### Features
+
+Centralized Question Bank for managing questions across all quizzes:
+- **Question Bank Panel** - Browse, search, filter all questions
+- **Tag System** - Create, edit, delete tags with colors
+- **Question Filtering** - By tag, type, archived status, search text
+- **Archive/Restore** - Soft delete questions without losing data
+- **Add to Quiz** - Add existing questions to quizzes from the bank
+- **Question Details Modal** - Full question view with metadata and quiz usage
+- **Tag Selector** - Reusable component for tag management
+
+### Implementation
+
+**Database Migrations:**
+- `09-question-bank.sql` - Questions table enhancements, tags table, junction tables
+
+**New Tables:**
+```sql
+CREATE TABLE tags (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(50) NOT NULL UNIQUE,
+  color VARCHAR(7) DEFAULT '#6b7280',
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE question_tags (
+  question_id INTEGER REFERENCES questions(id) ON DELETE CASCADE,
+  tag_id INTEGER REFERENCES tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (question_id, tag_id)
+);
+```
+
+**API Endpoints:**
+- `GET /api/question-bank` - List questions with filters
+- `GET /api/question-bank/:id` - Get question details
+- `PATCH /api/question-bank/:id` - Update question
+- `POST /api/question-bank/:id/archive` - Archive question
+- `POST /api/question-bank/:id/restore` - Restore question
+- `DELETE /api/question-bank/:id` - Permanently delete
+- `PUT /api/question-bank/:id/tags` - Update question tags
+- `GET /api/tags` - List all tags
+- `POST /api/tags` - Create tag
+- `PUT /api/tags/:id` - Update tag
+- `DELETE /api/tags/:id` - Delete tag
+
+**Files Created:**
+- `app/init/09-question-bank.sql`
+- `app/src/controllers/questionBank.controller.js`
+- `app/src/routes/questionBank.routes.js`
+- `app/src/components/admin/QuestionBankPanel.vue`
+- `app/src/components/admin/TagSelector.vue`
+- `app/src/components/admin/TagManager.vue`
+- `app/src/components/admin/QuestionDetailModal.vue`
+
+**Files Modified:**
+- `app/server.js` - Added questionBank routes
+- `app/src/pages/AdminPage.vue` - Question Bank tab integration
+
+---
+
+## Previous Session Summary: v5.0.0 - v5.1.2 Release
 
 ### Overview
 

@@ -5,7 +5,7 @@
  * calculation for detecting similar questions.
  */
 
-const crypto = require('crypto')
+import crypto from 'crypto'
 
 /**
  * Normalize text for comparison
@@ -206,7 +206,7 @@ function findDuplicateGroups(questions, threshold = 0.8) {
   return groups.sort((a, b) => b.similarity - a.similarity)
 }
 
-module.exports = {
+export {
   normalizeText,
   levenshteinDistance,
   calculateSimilarity,

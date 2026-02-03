@@ -1053,14 +1053,97 @@ export async function findDuplicates(req, res) {
     usage_count: parseInt(q.usage_count, 10),
   }));
 
+  // Fetch ignored pairs
+  const ignoredResult = await query(
+    `SELECT question_id_1, question_id_2 FROM ignored_duplicate_pairs`
+  );
+
+  // Build a Set of ignored pair keys for fast lookup
+  const ignoredPairs = new Set();
+  for (const row of ignoredResult.rows) {
+    // Store both directions for easy lookup
+    ignoredPairs.add(`${row.question_id_1}-${row.question_id_2}`);
+    ignoredPairs.add(`${row.question_id_2}-${row.question_id_1}`);
+  }
+
   // Find duplicate groups
-  const groups = findDuplicateGroups(questions, thresholdNum);
+  let groups = findDuplicateGroups(questions, thresholdNum);
+
+  // Filter out groups that contain only ignored pairs
+  groups = groups.map(group => {
+    // Filter questions in each group to remove ignored pairs
+    const filteredQuestions = [];
+    const baseQuestion = group.questions[0];
+    filteredQuestions.push(baseQuestion);
+
+    for (let i = 1; i < group.questions.length; i++) {
+      const q = group.questions[i];
+      const pairKey = `${Math.min(baseQuestion.id, q.id)}-${Math.max(baseQuestion.id, q.id)}`;
+      if (!ignoredPairs.has(pairKey)) {
+        filteredQuestions.push(q);
+      }
+    }
+
+    return {
+      ...group,
+      questions: filteredQuestions,
+    };
+  }).filter(group => group.questions.length > 1); // Only keep groups with 2+ questions
 
   res.json({
     success: true,
     groups: groups.slice(0, parseInt(limit, 10)),
     totalGroups: groups.length,
     totalQuestions: questions.length,
+  });
+}
+
+/**
+ * Ignore a duplicate pair
+ * POST /api/questions/ignore-pair
+ *
+ * Body:
+ *   - questionId1: First question ID
+ *   - questionId2: Second question ID
+ */
+export async function ignoreDuplicatePair(req, res) {
+  const { questionId1, questionId2 } = req.body;
+  const userId = req.user?.id;
+
+  if (!questionId1 || !questionId2) {
+    throw new BadRequestError('Both questionId1 and questionId2 are required');
+  }
+
+  if (questionId1 === questionId2) {
+    throw new BadRequestError('Cannot ignore a question pair with itself');
+  }
+
+  // Ensure smaller ID is first (for constraint)
+  const id1 = Math.min(questionId1, questionId2);
+  const id2 = Math.max(questionId1, questionId2);
+
+  // Verify both questions exist
+  const questionsResult = await query(
+    'SELECT id FROM questions WHERE id IN ($1, $2)',
+    [id1, id2]
+  );
+
+  if (questionsResult.rows.length !== 2) {
+    throw new NotFoundError('One or both questions not found');
+  }
+
+  // Insert the ignored pair (ON CONFLICT to handle duplicates)
+  await query(
+    `INSERT INTO ignored_duplicate_pairs (question_id_1, question_id_2, ignored_by)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (question_id_1, question_id_2) DO NOTHING`,
+    [id1, id2, userId]
+  );
+
+  res.json({
+    success: true,
+    message: 'Question pair marked as not duplicates',
+    ignoredPair: { questionId1: id1, questionId2: id2 },
   });
 }
 
@@ -1162,4 +1245,5 @@ export default {
   checkDuplicatesBatch,
   findDuplicates,
   mergeQuestions,
+  ignoreDuplicatePair,
 };

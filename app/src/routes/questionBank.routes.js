@@ -199,6 +199,19 @@ router.get('/find-duplicates', requireAdmin, asyncHandler(questionBankController
  */
 router.post('/merge', requireAdmin, asyncHandler(questionBankController.mergeQuestions));
 
+/**
+ * Ignore a duplicate pair (mark as not duplicates)
+ * POST /api/questions/ignore-pair
+ *
+ * Body: {
+ *   questionId1: number,
+ *   questionId2: number
+ * }
+ *
+ * Returns: { success, message, ignoredPair }
+ */
+router.post('/ignore-pair', requireAdmin, asyncHandler(questionBankController.ignoreDuplicatePair));
+
 // ============================================================================
 // QUIZ GENERATION
 // ============================================================================

@@ -406,6 +406,25 @@
         </template>
       </template>
     </Modal>
+
+    <!-- Import Duplicates Review Modal -->
+    <ImportDuplicatesReview
+      :isVisible="showImportDuplicatesModal"
+      :duplicateResults="importDuplicateResults"
+      :loading="importLoading"
+      @cancel="handleImportDuplicatesCancel"
+      @continue="handleImportDuplicatesContinue"
+    />
+
+    <!-- Duplicate Warning Modal (for single question save) -->
+    <DuplicateWarningModal
+      :isVisible="showDuplicateWarningModal"
+      :questionText="duplicateWarningData.questionText"
+      :exactMatch="duplicateWarningData.exactMatch"
+      :similarQuestions="duplicateWarningData.similarQuestions"
+      @cancel="handleDuplicateWarningCancel"
+      @continue="handleDuplicateWarningContinue"
+    />
   </div>
 </template>
 
@@ -437,6 +456,8 @@ import BannedNamesPanel from '@/components/admin/BannedNamesPanel.vue'
 import AboutPanel from '@/components/admin/AboutPanel.vue'
 import SessionDetailModal from '@/components/admin/SessionDetailModal.vue'
 import QuestionBankPanel from '@/components/admin/QuestionBankPanel.vue'
+import ImportDuplicatesReview from '@/components/admin/ImportDuplicatesReview.vue'
+import DuplicateWarningModal from '@/components/admin/DuplicateWarningModal.vue'
 
 const router = useRouter()
 const { get, post, put, delete: delete_, upload } = useApi()
@@ -501,6 +522,13 @@ const imageUrl = ref(null)
 const imageType = ref(null)
 const currentQuestions = ref([])
 const importStatus = ref('')
+const showImportDuplicatesModal = ref(false)
+const importDuplicateResults = ref([])
+const pendingImportFile = ref(null)
+const importLoading = ref(false)
+const showDuplicateWarningModal = ref(false)
+const duplicateWarningData = ref({ questionText: '', exactMatch: null, similarQuestions: [] })
+const pendingQuestionSave = ref(null)
 const editingQuestionIdx = ref(null)
 const draggedQuestionIdx = ref(null)
 const dragOverIdx = ref(null)
@@ -654,24 +682,102 @@ const handleExcelUpload = async (e) => {
   const file = e.target.files?.[0]
   if (!file) return
 
-  importStatus.value = 'Uploading...'
+  // Store file for potential re-use after duplicate review
+  pendingImportFile.value = file
+
+  importStatus.value = 'Parsing file...'
+  try {
+    // Step 1: Preview the file to get parsed questions
+    const previewFormData = new FormData()
+    previewFormData.append('file', file)
+
+    const previewResponse = await post('/api/import-quiz?preview=true', previewFormData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+
+    const parsedQuestions = previewResponse.data.questions || []
+
+    // Step 2: Check for duplicates
+    importStatus.value = 'Checking for duplicates...'
+    const duplicateCheckResponse = await post('/api/questions/check-duplicates/batch', {
+      questions: parsedQuestions.map(q => ({
+        text: q.text,
+        rowIndex: q.rowIndex
+      })),
+      threshold: 0.8
+    })
+
+    const duplicateResults = duplicateCheckResponse.data.results || []
+    const totalDuplicates = duplicateCheckResponse.data.totalDuplicates || 0
+
+    // Step 3: If duplicates found, show review modal
+    if (totalDuplicates > 0) {
+      importDuplicateResults.value = duplicateResults.map(r => ({
+        ...r,
+        // Find the full question data from preview
+        questionText: parsedQuestions.find(q => q.rowIndex === r.rowIndex)?.text || r.questionText
+      }))
+      showImportDuplicatesModal.value = true
+      importStatus.value = `Found ${totalDuplicates} potential duplicate(s). Please review.`
+      return
+    }
+
+    // No duplicates - proceed with import directly
+    await executeImport({})
+  } catch (err) {
+    const errorMessage = err.response?.data?.error || err.message
+    importStatus.value = `Error: ${errorMessage}`
+    setTimeout(() => { importStatus.value = '' }, 5000)
+  }
+}
+
+const executeImport = async (decisions) => {
+  if (!pendingImportFile.value) return
+
+  importLoading.value = true
+  importStatus.value = 'Importing...'
+
   try {
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', pendingImportFile.value)
+    formData.append('decisions', JSON.stringify(decisions))
 
     const response = await post('/api/import-quiz', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
-    importStatus.value = `Success: ${response.data.title} created with ${response.data.questionCount} questions`
+    const stats = response.data.stats || {}
+    let statusMsg = `Success: ${response.data.title} created with ${response.data.questionCount} questions`
+    if (stats.linked > 0 || stats.skipped > 0) {
+      statusMsg += ` (${stats.created} new, ${stats.linked} linked, ${stats.skipped} skipped)`
+    }
+
+    importStatus.value = statusMsg
+    showImportDuplicatesModal.value = false
+    importDuplicateResults.value = []
+    pendingImportFile.value = null
+
     loadQuizzes()
-    setTimeout(() => { importStatus.value = '' }, 3000)
+    setTimeout(() => { importStatus.value = '' }, 4000)
   } catch (err) {
-    // Show detailed error message from server response
     const errorMessage = err.response?.data?.error || err.message
     importStatus.value = `Error: ${errorMessage}`
     setTimeout(() => { importStatus.value = '' }, 5000)
+  } finally {
+    importLoading.value = false
   }
+}
+
+const handleImportDuplicatesContinue = (decisions) => {
+  executeImport(decisions)
+}
+
+const handleImportDuplicatesCancel = () => {
+  showImportDuplicatesModal.value = false
+  importDuplicateResults.value = []
+  pendingImportFile.value = null
+  importStatus.value = 'Import cancelled'
+  setTimeout(() => { importStatus.value = '' }, 2000)
 }
 
 const addChoice = () => {
@@ -767,16 +873,46 @@ const saveQuestion = async () => {
     return
   }
 
-  try {
-    const question = {
-      text: questionText.value,
-      choices: choices.value,
-      correctChoice: parseInt(correctChoice.value),
-      type: questionType.value,
-      imageUrl: imageUrl.value,
-      imageType: imageType.value
-    }
+  const question = {
+    text: questionText.value,
+    choices: choices.value,
+    correctChoice: parseInt(correctChoice.value),
+    type: questionType.value,
+    imageUrl: imageUrl.value,
+    imageType: imageType.value
+  }
 
+  // Check for duplicates in Question Bank (only for new questions)
+  if (editingQuestionIdx.value === null) {
+    try {
+      const duplicateCheck = await post('/api/questions/check-duplicates', {
+        questionText: questionText.value,
+        threshold: 0.8
+      })
+
+      if (duplicateCheck.data.hasDuplicates || duplicateCheck.data.exactMatch) {
+        // Show duplicate warning modal
+        duplicateWarningData.value = {
+          questionText: questionText.value,
+          exactMatch: duplicateCheck.data.exactMatch,
+          similarQuestions: duplicateCheck.data.similarQuestions || []
+        }
+        pendingQuestionSave.value = question
+        showDuplicateWarningModal.value = true
+        return
+      }
+    } catch (err) {
+      // If duplicate check fails, proceed with save anyway
+      console.error('Duplicate check failed:', err)
+    }
+  }
+
+  // Proceed with save
+  await executeSaveQuestion(question)
+}
+
+const executeSaveQuestion = async (question) => {
+  try {
     // Update local questions array
     if (editingQuestionIdx.value !== null) {
       // Update existing question
@@ -804,6 +940,27 @@ const saveQuestion = async () => {
   } catch (err) {
     showAlert('Error saving question: ' + err.message, 'Error')
   }
+}
+
+const handleDuplicateWarningContinue = async ({ action, existingQuestion }) => {
+  showDuplicateWarningModal.value = false
+
+  if (action === 'use-existing' && existingQuestion) {
+    // Use existing question from Question Bank
+    // For now, just show a message since quiz editor uses local questions
+    showAlert(`Note: Similar question exists in Question Bank (ID: ${existingQuestion.id}). Creating local copy for this quiz.`)
+  }
+
+  // Proceed with save regardless of action (create-new or use-existing)
+  if (pendingQuestionSave.value) {
+    await executeSaveQuestion(pendingQuestionSave.value)
+    pendingQuestionSave.value = null
+  }
+}
+
+const handleDuplicateWarningCancel = () => {
+  showDuplicateWarningModal.value = false
+  pendingQuestionSave.value = null
 }
 
 const deleteQuestion = async (idx) => {

@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v5.2.2 - Lucide Icons & UI Polish, Session Management, CSV Export, 2FA Support
+**Latest Release**: v5.3.4 - Question Bank & Tagging, Duplicate Detection, Lucide Icons, Session Management, 2FA Support
 
 ### Key Highlights
 
@@ -25,11 +25,14 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 
 ### For Administrators
 - **Quiz Management**: Create, edit, and delete custom quizzes with an intuitive interface
+- **Question Bank**: Centralized question management across all quizzes with search, filter, and archive capabilities
+- **Tag System**: Organize questions with customizable color-coded tags
+- **Duplicate Detection**: Find and manage duplicate questions with similarity-based detection and merge tools
 - **Question Types**: Support for Multiple Choice and True/False questions
 - **Image Support**: Add images to questions via file upload or external URL
 - **Drag-and-Drop Reordering**: Reorganize questions and answer choices with visual drag-and-drop or arrow buttons
 - **Smart Answer Tracking**: Correct answer automatically updates when reordering choices
-- **Excel Import**: Bulk import quizzes from professionally formatted Excel templates (supports 2-10 answer choices)
+- **Excel Import**: Bulk import quizzes from professionally formatted Excel templates with duplicate review (supports 2-10 answer choices)
 - **Session Management**: Resume interrupted sessions with full state preservation
 - **Real-time Monitoring**: Track active rooms and player participation live
 - **User Management**: View and manage all user accounts (guest, registered players, and admins)
@@ -461,6 +464,7 @@ TriviaForge/
 │   │   ├── controllers/  # REST API controllers
 │   │   │   ├── auth.controller.js
 │   │   │   ├── quiz.controller.js
+│   │   │   ├── questionBank.controller.js
 │   │   │   ├── session.controller.js
 │   │   │   └── user.controller.js
 │   │   ├── middleware/   # Express middleware
@@ -469,6 +473,7 @@ TriviaForge/
 │   │   ├── routes/       # REST API routes
 │   │   │   ├── auth.routes.js
 │   │   │   ├── quiz.routes.js
+│   │   │   ├── questionBank.routes.js
 │   │   │   ├── session.routes.js
 │   │   │   └── user.routes.js
 │   │   ├── services/     # Business logic services
@@ -478,6 +483,7 @@ TriviaForge/
 │   │   └── utils/        # Utility modules
 │   │       ├── errors.js      # Custom error classes
 │   │       ├── responses.js   # API response helpers
+│   │       ├── similarity.js  # Duplicate detection algorithm
 │   │       └── validators.js  # Input validation
 │   ├── src/              # Frontend source (Vue 3 + Vite)
 │   │   ├── main.js       # Vue app entry point
@@ -491,7 +497,8 @@ TriviaForge/
 │   │   │   ├── PlayerManagePage.vue
 │   │   │   └── DisplayPage.vue
 │   │   ├── components/   # Reusable Vue components
-│   │   │   ├── common/   # Shared components (Modal, Button, etc.)
+│   │   │   ├── admin/    # Admin panel components (Question Bank, Tags, Duplicates)
+│   │   │   ├── common/   # Shared components (Modal, Button, AppIcon, etc.)
 │   │   │   ├── modals/   # Modal components
 │   │   │   ├── player/   # Player page components
 │   │   │   └── presenter/ # Presenter page components
@@ -507,8 +514,10 @@ TriviaForge/
 │   ├── init/             # Database initialization SQL scripts
 │   │   ├── 01-tables.sql # PostgreSQL schema
 │   │   ├── 02-migrate_timestamps.sql
-│   │   ├── 03-update-admin-password.sql
-│   │   └── 04-banned-display-names.sql
+│   │   ├── ...           # Additional migrations (03-08)
+│   │   ├── 09-question-bank.sql      # Question Bank & tags
+│   │   ├── 10-duplicate-detection.sql # Text hash for duplicates
+│   │   └── 11-ignored-duplicate-pairs.sql # Ignored pairs
 │   ├── testing/          # Automated testing suite
 │   │   ├── README.md     # Testing suite overview
 │   │   ├── TESTING.md    # Complete testing guide
@@ -635,6 +644,18 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 ## Roadmap
 
 ### Completed Features
+
+**v5.3.4 (Feb 2026) - Complete Duplicate Detection System**
+- [x] Question Bank with centralized question management across all quizzes
+- [x] Tag system with customizable colors for question organization
+- [x] Question filtering by tag, type, archived status, and search text
+- [x] Archive/restore questions with soft delete functionality
+- [x] Find Duplicates tool with Levenshtein similarity algorithm (configurable threshold)
+- [x] Ignore duplicate pairs feature for false positive management
+- [x] Import duplicates review for bulk Excel imports with per-item decisions
+- [x] Single question duplicate detection on save with warning modal
+- [x] Question Details modal with metadata, quiz usage, and tag management
+- [x] Add existing questions to quizzes directly from the Question Bank
 
 **v5.2.2 (Feb 2026) - Lucide Icons & UI Polish**
 - [x] Replaced all emojis with Lucide icons via Iconify for consistent UI

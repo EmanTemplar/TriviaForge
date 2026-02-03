@@ -114,9 +114,14 @@
                 <AppIcon :name="merging[groupIndex] ? 'loader-2' : 'git-merge'" size="sm" :class="{ spinning: merging[groupIndex] }" />
                 Merge (Keep Selected)
               </button>
-              <button class="btn-secondary btn-sm" @click="dismissGroup(groupIndex)">
-                <AppIcon name="eye-off" size="sm" />
-                Keep Both
+              <button
+                class="btn-secondary btn-sm"
+                :disabled="ignoring[groupIndex]"
+                @click="dismissGroup(groupIndex)"
+                title="These are different questions, ignore this match"
+              >
+                <AppIcon :name="ignoring[groupIndex] ? 'loader-2' : 'x'" size="sm" :class="{ spinning: ignoring[groupIndex] }" />
+                {{ ignoring[groupIndex] ? 'Ignoring...' : 'Ignore' }}
               </button>
             </div>
           </div>
@@ -134,7 +139,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, watch } from 'vue'
+import { useApi } from '@/composables/useApi'
 import AppIcon from '@/components/common/AppIcon.vue'
 
 const props = defineProps({
@@ -145,6 +151,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'merged'])
+
+const { get, post } = useApi()
 
 const threshold = ref('0.8')
 const loading = ref(false)
@@ -169,15 +177,9 @@ const scanDuplicates = async () => {
   dismissedGroups.value = new Set()
 
   try {
-    const response = await fetch(`/api/questions/find-duplicates?threshold=${threshold.value}`, {
-      credentials: 'include'
-    })
+    const response = await get(`/api/questions/find-duplicates?threshold=${threshold.value}`)
+    const data = response.data
 
-    if (!response.ok) {
-      throw new Error('Failed to scan for duplicates')
-    }
-
-    const data = await response.json()
     groups.value = data.groups || []
     totalGroups.value = data.totalGroups || 0
     totalQuestions.value = data.totalQuestions || 0
@@ -191,7 +193,7 @@ const scanDuplicates = async () => {
     })
   } catch (err) {
     console.error('Error scanning duplicates:', err)
-    error.value = err.message || 'An error occurred while scanning'
+    error.value = err.response?.data?.message || err.message || 'An error occurred while scanning'
   } finally {
     loading.value = false
   }
@@ -233,18 +235,7 @@ const handleMerge = async (groupIndex) => {
   merging[groupIndex] = true
 
   try {
-    const response = await fetch('/api/questions/merge', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
-      body: JSON.stringify({ keepId, mergeIds })
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to merge questions')
-    }
+    await post('/api/questions/merge', { keepId, mergeIds })
 
     // Remove the merged group from the list
     groups.value.splice(groupIndex, 1)
@@ -266,15 +257,54 @@ const handleMerge = async (groupIndex) => {
     emit('merged')
   } catch (err) {
     console.error('Error merging questions:', err)
-    error.value = err.message || 'Failed to merge questions'
+    error.value = err.response?.data?.message || err.message || 'Failed to merge questions'
   } finally {
     merging[groupIndex] = false
   }
 }
 
-const dismissGroup = (groupIndex) => {
-  groups.value.splice(groupIndex, 1)
-  totalGroups.value--
+const ignoring = reactive({}) // groupIndex -> boolean
+
+const dismissGroup = async (groupIndex) => {
+  const group = groups.value[groupIndex]
+  if (!group || group.questions.length < 2) return
+
+  ignoring[groupIndex] = true
+
+  try {
+    // Ignore all pairs in this group (base question vs each other question)
+    const baseQuestion = group.questions[0]
+    const ignorePromises = group.questions.slice(1).map(q =>
+      post('/api/questions/ignore-pair', {
+        questionId1: baseQuestion.id,
+        questionId2: q.id
+      })
+    )
+
+    await Promise.all(ignorePromises)
+
+    // Remove from UI
+    groups.value.splice(groupIndex, 1)
+    totalGroups.value--
+
+    // Re-index ignoring state
+    const newIgnoring = {}
+    Object.keys(ignoring).forEach(key => {
+      const idx = parseInt(key, 10)
+      if (idx < groupIndex) {
+        newIgnoring[idx] = ignoring[idx]
+      } else if (idx > groupIndex) {
+        newIgnoring[idx - 1] = ignoring[idx]
+      }
+    })
+    Object.keys(ignoring).forEach(key => delete ignoring[key])
+    Object.assign(ignoring, newIgnoring)
+  } catch (err) {
+    console.error('Error ignoring duplicate pair:', err)
+    error.value = err.response?.data?.message || err.message || 'Failed to ignore pair'
+  } finally {
+    ignoring[groupIndex] = false
+  }
 }
 
 const handleClose = () => {

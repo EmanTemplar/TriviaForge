@@ -1,8 +1,8 @@
 # TriviaForge - Active Development Tasks (2026)
 
 > **Purpose:** Current development priorities and pending tasks
-> **Last Updated:** 2026-02-01
-> **Version:** v5.2.2
+> **Last Updated:** 2026-02-02
+> **Version:** v5.3.4
 
 ---
 
@@ -298,6 +298,63 @@ Add notification to presenter when all connected players have answered the curre
 
 ---
 
+### v5.3.x Features - Question Bank & Duplicate Detection ✅ COMPLETE
+
+**Status:** ✅ COMPLETE
+**Priority:** HIGH
+**Completed:** 2026-02-02
+**Branch:** `question-database-enhancement-v5`
+
+#### v5.3.0 - Question Bank & Tagging System ✅
+- [x] Question Bank panel for centralized question management
+- [x] Tag system with colors for question organization
+- [x] Question filtering by tag, type, archived status, search text
+- [x] Archive/restore questions (soft delete)
+- [x] Add existing questions to quizzes from the bank
+- [x] Question Details modal with metadata and quiz usage
+- [x] TagSelector and TagManager components
+
+#### v5.3.1 - Find Duplicates Tool ✅
+- [x] Levenshtein distance similarity algorithm
+- [x] Configurable similarity threshold (default 80%)
+- [x] Duplicate groups view with merge support
+- [x] Text hash column for fast exact-match detection
+- [x] FindDuplicatesPanel component
+
+#### v5.3.2 - Ignore Duplicate Pairs ✅
+- [x] Mark question pairs as "not duplicates"
+- [x] Ignored pairs hidden from Find Duplicates results
+- [x] View and restore ignored pairs
+- [x] Database table for persistence
+
+#### v5.3.3 - Import Duplicates Review ✅
+- [x] Two-step Excel import flow (preview → review → import)
+- [x] Batch duplicate checking for bulk imports
+- [x] Per-item decisions: Use Existing / Create New / Skip
+- [x] ImportDuplicatesReview modal component
+
+#### v5.3.4 - Single Question Duplicate Detection ✅
+- [x] Duplicate check when saving questions
+- [x] DuplicateWarningModal with options
+- [x] Integration with Question Editor save flow
+
+**Files Created:**
+- `app/init/09-question-bank.sql` - Question Bank tables
+- `app/init/10-duplicate-detection.sql` - Text hash column
+- `app/init/11-ignored-duplicate-pairs.sql` - Ignored pairs table
+- `app/src/utils/similarity.js` - Levenshtein algorithm
+- `app/src/controllers/questionBank.controller.js`
+- `app/src/routes/questionBank.routes.js`
+- `app/src/components/admin/QuestionBankPanel.vue`
+- `app/src/components/admin/TagSelector.vue`
+- `app/src/components/admin/TagManager.vue`
+- `app/src/components/admin/QuestionDetailModal.vue`
+- `app/src/components/admin/FindDuplicatesPanel.vue`
+- `app/src/components/admin/DuplicateWarningModal.vue`
+- `app/src/components/admin/ImportDuplicatesReview.vue`
+
+---
+
 ### v5.2.2 Features - Lucide Icons & UI Polish ✅ COMPLETE
 
 **Status:** ✅ COMPLETE
@@ -409,14 +466,16 @@ Add notification to presenter when all connected players have answered the curre
 
 ## 📝 Development Notes
 
-### Current Focus Areas (v5.3.0)
+### Current Focus Areas (v5.4.0)
 1. ~~**2FA TOTP:** Two-Factor Authentication for admins~~ ✅ COMPLETE (v5.2.0)
 2. ~~**Session Export:** CSV export of session results~~ ✅ COMPLETE (v5.2.0)
 3. ~~**Session Filtering:** Date range, quiz, status filters~~ ✅ COMPLETE (v5.2.0)
 4. ~~**Icons:** Replace emojis with Lucide icons~~ ✅ COMPLETE (v5.2.2)
-5. **Remember Device:** 30-day trusted device for 2FA (planned v5.3.0)
-6. **PDF Export:** Proper PDF formatting for session results (future)
-7. **Solo-Play Mode:** Self-study without presenter (future)
+5. ~~**Question Bank:** Centralized question management~~ ✅ COMPLETE (v5.3.0)
+6. ~~**Duplicate Detection:** Find and manage duplicate questions~~ ✅ COMPLETE (v5.3.4)
+7. **Remember Device:** 30-day trusted device for 2FA (planned v5.4.0)
+8. **PDF Export:** Proper PDF formatting for session results (future)
+9. **Solo-Play Mode:** Self-study without presenter (future)
 
 ### Testing Priorities
 - Mobile browser testing (iOS Safari, Chrome Mobile, Firefox Mobile)
@@ -435,7 +494,9 @@ Add notification to presenter when all connected players have answered the curre
 - **v5.2.0 (Released):** Session export (CSV), session filtering, 2FA TOTP authentication ✅
 - **v5.2.1 (Released):** Widened modals, removed placeholder PDF export ✅
 - **v5.2.2 (Released):** Lucide icons via Iconify, theme-aware icon colors ✅
-- **v5.3.0 (Planned):** Remember device for 2FA, PDF export improvements
+- **v5.3.0 (Released):** Question Bank & Tagging System ✅
+- **v5.3.1-5.3.4 (Released):** Duplicate Detection System (Find Duplicates, Ignore Pairs, Import Review, Single Question Check) ✅
+- **v5.4.0 (Planned):** Remember device for 2FA, PDF export improvements
 
 ---
 
@@ -454,5 +515,5 @@ Before marking a task as complete:
 
 **Archive:** See [archive/TODO-2025.md](archive/TODO-2025.md) for historical tasks and completed features from 2025.
 
-**Last Updated:** 2026-02-01
+**Last Updated:** 2026-02-02
 **Maintained By:** TriviaForge Development Team

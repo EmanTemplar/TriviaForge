@@ -657,11 +657,30 @@ export async function downloadTemplate(req, res, next) {
  *
  * POST /api/import-quiz
  * Multipart form data with 'file' field
+ *
+ * Query params:
+ *   - preview: If 'true', returns parsed questions without creating the quiz
+ *
+ * Body (when not in preview mode):
+ *   - decisions: Object mapping rowIndex to { action: 'use-existing'|'create-new'|'skip', existingQuestionId: number|null }
  */
 export async function importQuiz(req, res, next) {
   try {
     if (!req.file) {
       throw new BadRequestError('No file uploaded');
+    }
+
+    const isPreview = req.query.preview === 'true';
+    // Parse decisions from body (sent as JSON string in form data)
+    let decisions = {};
+    if (req.body.decisions) {
+      try {
+        decisions = typeof req.body.decisions === 'string'
+          ? JSON.parse(req.body.decisions)
+          : req.body.decisions;
+      } catch (e) {
+        console.error('Error parsing decisions:', e);
+      }
     }
 
     // Parse Excel file with ExcelJS
@@ -688,6 +707,7 @@ export async function importQuiz(req, res, next) {
     const questions = [];
     for (let i = 5; i < data.length; i++) {
       const row = data[i];
+      const rowIndex = i + 1; // 1-indexed row number for user display
 
       // Skip empty rows
       if (!row || !row[0]) continue;
@@ -714,21 +734,39 @@ export async function importQuiz(req, res, next) {
         correctChoice >= choices.length
       ) {
         throw new BadRequestError(
-          `Invalid question at row ${i + 1}: Must have question text, at least 2 choices, and valid correct answer index`
+          `Invalid question at row ${rowIndex}: Must have question text, at least 2 choices, and valid correct answer index`
         );
       }
 
-      // Create question object
+      // Create question object with rowIndex for duplicate tracking
       questions.push({
         text: questionText,
         choices: choices,
         correctChoice: correctChoice,
+        rowIndex: rowIndex,
         id: `q_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
       });
     }
 
     if (questions.length === 0) {
       throw new BadRequestError('No valid questions found in the file');
+    }
+
+    // If preview mode, return parsed questions without creating
+    if (isPreview) {
+      return res.json({
+        success: true,
+        preview: true,
+        title,
+        description,
+        questions: questions.map(q => ({
+          rowIndex: q.rowIndex,
+          text: q.text,
+          choices: q.choices,
+          correctChoice: q.correctChoice
+        })),
+        questionCount: questions.length,
+      });
     }
 
     // Save quiz to database (use authenticated user's ID)
@@ -744,11 +782,44 @@ export async function importQuiz(req, res, next) {
       );
       const quizId = quizResult.rows[0].id;
 
+      // Track statistics
+      let createdCount = 0;
+      let linkedCount = 0;
+      let skippedCount = 0;
+
       // Insert each question with answers
+      let questionOrder = 1;
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
+        const decision = decisions[q.rowIndex];
 
-        // Insert question - use provided type or default to multiple_choice
+        // Handle skip decision
+        if (decision?.action === 'skip') {
+          skippedCount++;
+          continue;
+        }
+
+        // Handle use-existing decision
+        if (decision?.action === 'use-existing' && decision.existingQuestionId) {
+          // Verify the existing question exists
+          const existingCheck = await client.query(
+            'SELECT id FROM questions WHERE id = $1 AND is_archived = FALSE',
+            [decision.existingQuestionId]
+          );
+
+          if (existingCheck.rows.length > 0) {
+            // Link existing question to quiz
+            await client.query(
+              'INSERT INTO quiz_questions (quiz_id, question_id, question_order) VALUES ($1, $2, $3)',
+              [quizId, decision.existingQuestionId, questionOrder++]
+            );
+            linkedCount++;
+            continue;
+          }
+          // If existing question not found, fall through to create new
+        }
+
+        // Create new question (default action or create-new decision)
         const questionType = q.type || 'multiple_choice';
         const questionResult = await client.query(
           'INSERT INTO questions (question_text, question_type, created_by) VALUES ($1, $2, $3) RETURNING id',
@@ -759,7 +830,7 @@ export async function importQuiz(req, res, next) {
         // Link question to quiz
         await client.query(
           'INSERT INTO quiz_questions (quiz_id, question_id, question_order) VALUES ($1, $2, $3)',
-          [quizId, questionId, i + 1]
+          [quizId, questionId, questionOrder++]
         );
 
         // Insert answers
@@ -770,6 +841,8 @@ export async function importQuiz(req, res, next) {
             [questionId, q.choices[j], isCorrect, j]
           );
         }
+
+        createdCount++;
       }
 
       await client.query('COMMIT');
@@ -780,7 +853,12 @@ export async function importQuiz(req, res, next) {
         filename,
         id: quizId,
         title,
-        questionCount: questions.length,
+        questionCount: questionOrder - 1, // Total questions in quiz
+        stats: {
+          created: createdCount,
+          linked: linkedCount,
+          skipped: skippedCount,
+        },
       });
     } catch (dbErr) {
       console.error('❌ Database error:', dbErr);
