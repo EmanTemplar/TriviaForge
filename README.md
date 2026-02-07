@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v5.3.4 - Question Bank & Tagging, Duplicate Detection, Lucide Icons, Session Management, 2FA Support
+**Latest Release**: v5.4.4 - Auto-Mode Timer System, Solo Play Mode, Question Bank, Duplicate Detection, 2FA Support
 
 ### Key Highlights
 
@@ -644,6 +644,20 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 ## Roadmap
 
 ### Completed Features
+
+**v5.4.4 (Feb 2026) - Auto-Mode & Solo Play**
+- [x] Auto-Mode Timer System - Server-side timers run independently of presenter's browser
+- [x] Configurable question timer (10-120 seconds) and reveal delay (2-30 seconds)
+- [x] Pause/Resume functionality with remaining time preservation
+- [x] Auto-advance to next question after reveal delay
+- [x] All players answered detection skips remaining question timer
+- [x] Solo Play Mode - REST-based self-study without presenter
+- [x] Solo quiz browser with solo-enabled quizzes only
+- [x] Per-question countdown timer with immediate feedback
+- [x] Results summary with per-question breakdown
+- [x] Quiz visibility controls (available_live, available_solo flags)
+- [x] Live/Solo badges on quiz list items with toggle controls
+- [x] CountdownTimer component for player and display views
 
 **v5.3.4 (Feb 2026) - Complete Duplicate Detection System**
 - [x] Question Bank with centralized question management across all quizzes

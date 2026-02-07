@@ -30,6 +30,7 @@
           @excelUpload="handleExcelUpload"
           @selectQuiz="selectQuiz"
           @deleteQuiz="deleteQuiz"
+          @toggleAvailability="handleToggleAvailability"
           @startResize="startResize"
         />
 
@@ -654,6 +655,26 @@ const showCreateQuizModal = async () => {
     } catch (err) {
       showAlert('Error creating quiz: ' + err.message, 'Error')
     }
+  }
+}
+
+const handleToggleAvailability = async ({ quiz, type }) => {
+  try {
+    const updateData = {}
+    if (type === 'live') {
+      updateData.availableLive = quiz.availableLive === false ? true : false
+    } else if (type === 'solo') {
+      updateData.availableSolo = quiz.availableSolo === false ? true : false
+    }
+
+    await put(`/api/quizzes/${quiz.id}`, updateData)
+    await loadQuizzes()
+
+    const label = type === 'live' ? 'Live Games' : 'Solo Play'
+    const status = updateData[type === 'live' ? 'availableLive' : 'availableSolo'] ? 'enabled' : 'disabled'
+    showAlert(`"${quiz.title}" ${status} for ${label}`)
+  } catch (err) {
+    showAlert('Error updating quiz: ' + err.message, 'Error')
   }
 }
 

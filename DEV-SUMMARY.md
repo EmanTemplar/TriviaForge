@@ -1,12 +1,194 @@
 # TriviaForge Development Summary
 
 > **Purpose:** Summary of development changes for the current session
-> **Last Updated:** 2026-02-02
-> **Version:** v5.3.4
+> **Last Updated:** 2026-02-06
+> **Version:** v5.4.4
 
 ---
 
-## Session Summary: v5.3.0 - v5.3.4 Release
+## Session Summary: v5.4.0 - v5.4.4 Release
+
+### Overview
+
+This development period covered the Auto-Mode & Solo Play features:
+1. **v5.4.0** - Auto-Mode Timer System for presenters (server-side timers with pause/resume)
+2. **v5.4.0** - Solo Play Mode for players (REST-based self-study without presenter)
+3. **v5.4.1** - Database migration fix for guest participants
+4. **v5.4.2** - Session service ON CONFLICT fix for guests
+5. **v5.4.3** - Timer pause/resume sync fix for player clients
+6. **v5.4.4** - Solo mode UI fixes (answer text theming, selection reset)
+
+---
+
+## v5.4.4 - Solo Mode UI Fixes
+
+**Release Date:** 2026-02-06
+**Branch:** `main`
+
+### Fixes
+
+1. **Answer Text Theme Colors**: Added `color: var(--text-primary)` to `.choice-btn` and `.choice-text` in SoloPlayPage.vue. Button elements don't inherit text color, causing black text in dark mode.
+
+2. **Answer Selection Reset**: Created `goToNextQuestion()` wrapper function that resets `selectedAnswer` to null before calling `advanceToNextQuestion()`. Previously, the selected styling persisted to the next question.
+
+### Files Modified
+- `app/src/pages/SoloPlayPage.vue` - Theme colors and selection reset
+
+---
+
+## v5.4.3 - Timer Pause/Resume Sync Fix
+
+**Release Date:** 2026-02-06
+**Branch:** `main`
+
+### Problem Solved
+
+When presenter paused auto-mode, the server updated correctly but player timer bars continued running. On resume, players saw incorrect timer state.
+
+### Root Cause
+
+The CountdownTimer component's `updateBar()` and `updateText()` functions only checked `props.active` but not `props.paused`. The watcher on `[startedAt, duration]` also didn't check paused state before restarting.
+
+### Fix
+
+Added `props.paused` checks to:
+- `updateBar()` - Returns early if paused
+- `updateText()` - Returns early if paused
+- Watcher on `[startedAt, duration]` - Only restarts if not paused
+
+### Files Modified
+- `app/src/components/player/CountdownTimer.vue`
+
+---
+
+## v5.4.2 - Session Service ON CONFLICT Fix
+
+**Release Date:** 2026-02-06
+**Branch:** `main`
+
+### Problem Solved
+
+Session auto-save failed with error: `there is no unique or exclusion constraint matching the ON CONFLICT specification`
+
+### Root Cause
+
+Migration 13 dropped the full unique constraint on `(user_id, game_session_id)` and replaced it with a partial unique index (only for non-NULL user_ids). The old `ON CONFLICT` clause couldn't find a matching constraint for guest users.
+
+### Fix
+
+Modified `saveSession()` in session.service.js:
+- For registered users (with user_id): Use `ON CONFLICT (user_id, game_session_id) WHERE user_id IS NOT NULL`
+- For guest users (NULL user_id): Use SELECT + INSERT/UPDATE pattern since NULLs don't conflict
+
+### Files Modified
+- `app/src/services/session.service.js`
+
+---
+
+## v5.4.1 - Guest Participants Migration Fix
+
+**Release Date:** 2026-02-06
+**Branch:** `main`
+
+### Problem Solved
+
+Solo play failed with: `null value in column "user_id" of relation "game_participants" violates not-null constraint`
+
+### Root Cause
+
+Migration 12 was already applied before the guest participant changes were added. The automatic migration system correctly tracks applied migrations, so modifying an already-applied migration doesn't re-run it.
+
+### Fix
+
+Created new migration file `13-fix-solo-guest-participants.sql` with the same changes:
+- `ALTER COLUMN user_id DROP NOT NULL`
+- Drop existing unique constraint
+- Create partial unique index for authenticated users only
+
+Also fixed `presentation_order` NOT NULL constraint in solo.controller.js INSERT statement.
+
+### Files Created
+- `app/init/13-fix-solo-guest-participants.sql`
+
+### Files Modified
+- `app/src/controllers/solo.controller.js` - Added presentation_order to INSERT
+- `app/src/composables/useSoloGame.js` - Fixed API response extraction (response.data.data)
+
+---
+
+## v5.4.0 - Auto-Mode & Solo Play
+
+**Release Date:** 2026-02-06
+**Branch:** `game-session-enhancements-v5.4`
+
+### Features
+
+#### Auto-Mode Timer System (Presenter)
+- Server-side timers run independently of presenter's browser
+- Question timer with configurable duration (10-120 seconds)
+- Reveal delay timer (2-30 seconds between reveal and next question)
+- Pause/Resume functionality with remaining time preservation
+- Auto-advance to next question after reveal delay
+- All players answered → skip remaining question timer
+- Timer state synced to all clients via Socket.IO
+
+#### Solo Play Mode (Players)
+- REST-based self-study without presenter or Socket.IO
+- Quiz browser with solo-enabled quizzes only
+- Per-question timer with countdown display
+- Immediate answer feedback (correct/incorrect)
+- Self-paced advancement between questions
+- Results summary with per-question breakdown
+- Play Again and Choose Another Quiz options
+- Guest player support (no account required)
+
+#### Quiz Visibility Controls
+- `available_live` flag - Quiz appears in Presenter's list
+- `available_solo` flag - Quiz appears in Solo Play browser
+- Both default TRUE for backwards compatibility
+- Toggle controls in Quiz Sidebar dropdown menu
+- Live/Solo badges on quiz list items
+
+### Database Migration: `12-auto-mode-solo-play.sql`
+```sql
+-- Timer settings per quiz
+ALTER TABLE quizzes ADD COLUMN question_timer INT DEFAULT NULL;
+ALTER TABLE quizzes ADD COLUMN reveal_delay INT DEFAULT NULL;
+ALTER TABLE quizzes ADD COLUMN available_live BOOLEAN DEFAULT TRUE;
+ALTER TABLE quizzes ADD COLUMN available_solo BOOLEAN DEFAULT TRUE;
+
+-- Session type for multiplayer vs solo
+ALTER TABLE game_sessions ADD COLUMN session_type VARCHAR(20) DEFAULT 'multiplayer';
+
+-- Global defaults in app_settings
+INSERT INTO app_settings (setting_key, setting_value, description) VALUES
+  ('default_question_timer', '30', 'Default question timer in seconds'),
+  ('default_reveal_delay', '5', 'Default delay between answer reveal and next question');
+```
+
+### Files Created
+- `app/init/12-auto-mode-solo-play.sql` - Database migration
+- `app/src/services/autoMode.service.js` - Server-side timer engine
+- `app/src/controllers/solo.controller.js` - Solo play REST API
+- `app/src/routes/solo.routes.js` - Solo play routes
+- `app/src/pages/SoloPlayPage.vue` - Solo play page
+- `app/src/composables/useSoloGame.js` - Solo game state composable
+- `app/src/components/player/CountdownTimer.vue` - Shared countdown timer
+
+### Files Modified
+- `app/server.js` - Auto-mode socket events, solo routes
+- `app/src/services/room.service.js` - Auto-mode fields
+- `app/src/pages/PresenterPage.vue` - Auto-mode controls
+- `app/src/components/presenter/QuizDisplay.vue` - Auto-mode panel
+- `app/src/pages/PlayerPage.vue` - Timer props
+- `app/src/components/player/QuestionDisplay.vue` - Timer display
+- `app/src/pages/DisplayPage.vue` - Timer display
+- `app/src/router.js` - `/solo` route
+- `app/src/components/admin/QuizSidebar.vue` - Visibility toggles
+
+---
+
+## Previous Session Summary: v5.3.0 - v5.3.4 Release
 
 ### Overview
 

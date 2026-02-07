@@ -1,8 +1,8 @@
 # TriviaForge - Active Development Tasks (2026)
 
 > **Purpose:** Current development priorities and pending tasks
-> **Last Updated:** 2026-02-02
-> **Version:** v5.3.4
+> **Last Updated:** 2026-02-06
+> **Version:** v5.4.4
 
 ---
 
@@ -298,6 +298,60 @@ Add notification to presenter when all connected players have answered the curre
 
 ---
 
+### v5.4.x Features - Auto-Mode & Solo Play ✅ COMPLETE
+
+**Status:** ✅ COMPLETE
+**Priority:** HIGH
+**Completed:** 2026-02-06
+**Branch:** `game-session-enhancements-v5.4`
+
+#### v5.4.0 - Auto-Mode Timer System ✅
+- [x] Server-side timer engine (runs independently of presenter's browser)
+- [x] Question timer with configurable duration (10-120 seconds)
+- [x] Reveal delay timer (2-30 seconds between reveal and next)
+- [x] Pause/Resume with remaining time preservation
+- [x] Auto-advance to next question after reveal delay
+- [x] All players answered → skip remaining question timer
+- [x] Timer state synced to all clients via Socket.IO
+- [x] CountdownTimer component for player/display views
+
+#### v5.4.0 - Solo Play Mode ✅
+- [x] REST-based self-study without presenter or Socket.IO
+- [x] Solo quiz browser with solo-enabled quizzes
+- [x] Per-question timer with countdown display
+- [x] Immediate answer feedback (correct/incorrect)
+- [x] Self-paced advancement between questions
+- [x] Results summary with per-question breakdown
+- [x] Play Again and Choose Another Quiz options
+- [x] Guest player support (no account required)
+
+#### v5.4.0 - Quiz Visibility Controls ✅
+- [x] `available_live` flag for Presenter's quiz list
+- [x] `available_solo` flag for Solo Play browser
+- [x] Toggle controls in Quiz Sidebar dropdown menu
+- [x] Live/Solo badges on quiz list items
+
+#### v5.4.1-v5.4.4 - Bug Fixes ✅
+- [x] Guest participants database migration fix (13-fix-solo-guest-participants.sql)
+- [x] Session service ON CONFLICT fix for guest users
+- [x] Timer pause/resume sync fix for player clients
+- [x] Solo mode answer text theme colors fix
+- [x] Solo mode answer selection reset between questions
+- [x] API response extraction fix (response.data.data)
+- [x] presentation_order NOT NULL constraint fix
+
+**Files Created:**
+- `app/init/12-auto-mode-solo-play.sql` - Database migration
+- `app/init/13-fix-solo-guest-participants.sql` - Guest fix migration
+- `app/src/services/autoMode.service.js` - Server-side timer engine
+- `app/src/controllers/solo.controller.js` - Solo play REST API
+- `app/src/routes/solo.routes.js` - Solo play routes
+- `app/src/pages/SoloPlayPage.vue` - Solo play page
+- `app/src/composables/useSoloGame.js` - Solo game state composable
+- `app/src/components/player/CountdownTimer.vue` - Shared countdown timer
+
+---
+
 ### v5.3.x Features - Question Bank & Duplicate Detection ✅ COMPLETE
 
 **Status:** ✅ COMPLETE
@@ -453,8 +507,8 @@ Add notification to presenter when all connected players have answered the curre
 - [ ] Video/audio media support (future consideration)
 
 ### Player & Presenter Features
-- [ ] Automated Presenter Mode with Timers (auto-reveal, auto-advance)
-- [ ] Solo-Play Mode for Players (self-study without presenter)
+- [x] Automated Presenter Mode with Timers (auto-reveal, auto-advance) - v5.4.0 ✅
+- [x] Solo-Play Mode for Players (self-study without presenter) - v5.4.0 ✅
 - [ ] mDNS Service Discovery + Smart QR Code URLs (design phase complete, ready for implementation)
 - [ ] Session analytics with charts/graphs (future)
 
@@ -466,16 +520,17 @@ Add notification to presenter when all connected players have answered the curre
 
 ## 📝 Development Notes
 
-### Current Focus Areas (v5.4.0)
+### Current Focus Areas (v5.5.0)
 1. ~~**2FA TOTP:** Two-Factor Authentication for admins~~ ✅ COMPLETE (v5.2.0)
 2. ~~**Session Export:** CSV export of session results~~ ✅ COMPLETE (v5.2.0)
 3. ~~**Session Filtering:** Date range, quiz, status filters~~ ✅ COMPLETE (v5.2.0)
 4. ~~**Icons:** Replace emojis with Lucide icons~~ ✅ COMPLETE (v5.2.2)
 5. ~~**Question Bank:** Centralized question management~~ ✅ COMPLETE (v5.3.0)
 6. ~~**Duplicate Detection:** Find and manage duplicate questions~~ ✅ COMPLETE (v5.3.4)
-7. **Remember Device:** 30-day trusted device for 2FA (planned v5.4.0)
-8. **PDF Export:** Proper PDF formatting for session results (future)
-9. **Solo-Play Mode:** Self-study without presenter (future)
+7. ~~**Auto-Mode:** Automated presenter mode with timers~~ ✅ COMPLETE (v5.4.0)
+8. ~~**Solo-Play Mode:** Self-study without presenter~~ ✅ COMPLETE (v5.4.0)
+9. **Remember Device:** 30-day trusted device for 2FA (planned v5.5.0)
+10. **PDF Export:** Proper PDF formatting for session results (future)
 
 ### Testing Priorities
 - Mobile browser testing (iOS Safari, Chrome Mobile, Firefox Mobile)
@@ -496,7 +551,8 @@ Add notification to presenter when all connected players have answered the curre
 - **v5.2.2 (Released):** Lucide icons via Iconify, theme-aware icon colors ✅
 - **v5.3.0 (Released):** Question Bank & Tagging System ✅
 - **v5.3.1-5.3.4 (Released):** Duplicate Detection System (Find Duplicates, Ignore Pairs, Import Review, Single Question Check) ✅
-- **v5.4.0 (Planned):** Remember device for 2FA, PDF export improvements
+- **v5.4.0-5.4.4 (Released):** Auto-Mode Timer System, Solo Play Mode, quiz visibility controls, bug fixes ✅
+- **v5.5.0 (Planned):** Remember device for 2FA, PDF export improvements
 
 ---
 
@@ -515,5 +571,5 @@ Before marking a task as complete:
 
 **Archive:** See [archive/TODO-2025.md](archive/TODO-2025.md) for historical tasks and completed features from 2025.
 
-**Last Updated:** 2026-02-02
+**Last Updated:** 2026-02-06
 **Maintained By:** TriviaForge Development Team

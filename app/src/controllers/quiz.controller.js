@@ -120,11 +120,15 @@ async function listQuizzesFromDB() {
       q.title,
       q.description,
       q.created_at,
+      q.question_timer,
+      q.reveal_delay,
+      q.available_live,
+      q.available_solo,
       COUNT(qq.question_id) as question_count
     FROM quizzes q
     LEFT JOIN quiz_questions qq ON q.id = qq.quiz_id
     WHERE q.is_active = TRUE
-    GROUP BY q.id, q.title, q.description, q.created_at
+    GROUP BY q.id, q.title, q.description, q.created_at, q.question_timer, q.reveal_delay, q.available_live, q.available_solo
     ORDER BY q.created_at DESC
   `);
 
@@ -148,6 +152,11 @@ export async function listQuizzes(req, res, next) {
       description: q.description,
       questionCount: parseInt(q.question_count),
       createdAt: q.created_at,
+      // v5.4.0: Timer and availability settings
+      questionTimer: q.question_timer,
+      revealDelay: q.reveal_delay,
+      availableLive: q.available_live !== false, // Default true
+      availableSolo: q.available_solo !== false, // Default true
     }));
 
     res.json(formatted);
@@ -210,17 +219,18 @@ export async function getQuiz(req, res, next) {
  * Body: { title, description, questions }
  */
 export async function createQuiz(req, res, next) {
-  const { title, description, questions } = req.body;
+  const { title, description, questions, questionTimer, revealDelay, availableLive, availableSolo } = req.body;
   const client = await getClient();
 
   try {
     await client.query('BEGIN');
 
-    // Insert quiz (use authenticated user's ID)
+    // Insert quiz (use authenticated user's ID) - v5.4.0: includes timer and availability settings
     const userId = req.user?.user_id || 1; // Fallback for backward compatibility
     const quizResult = await client.query(
-      'INSERT INTO quizzes (title, description, created_by) VALUES ($1, $2, $3) RETURNING id',
-      [title, description, userId]
+      `INSERT INTO quizzes (title, description, created_by, question_timer, reveal_delay, available_live, available_solo)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6, TRUE), COALESCE($7, TRUE)) RETURNING id`,
+      [title, description, userId, questionTimer || null, revealDelay || null, availableLive, availableSolo]
     );
     const quizId = quizResult.rows[0].id;
 
@@ -294,17 +304,81 @@ export async function updateQuiz(req, res, next) {
       throw new BadRequestError('Invalid quiz ID format');
     }
 
-    const { title, description, questions } = req.body;
-    if (!Array.isArray(questions)) {
+    const { title, description, questions, questionTimer, revealDelay, availableLive, availableSolo } = req.body;
+
+    // If questions is provided, it must be an array
+    if (questions !== undefined && !Array.isArray(questions)) {
       throw new BadRequestError('Questions must be an array');
     }
 
     await client.query('BEGIN');
 
-    // Update quiz metadata
+    // Check if this is a metadata-only update (no questions provided)
+    const isMetadataOnlyUpdate = questions === undefined;
+
+    if (isMetadataOnlyUpdate) {
+      // Only update the fields that are provided (v5.4.0: availability toggles)
+      const updates = [];
+      const values = [];
+      let paramIndex = 1;
+
+      if (title !== undefined) {
+        updates.push(`title = $${paramIndex++}`);
+        values.push(title);
+      }
+      if (description !== undefined) {
+        updates.push(`description = $${paramIndex++}`);
+        values.push(description);
+      }
+      if (questionTimer !== undefined) {
+        updates.push(`question_timer = $${paramIndex++}`);
+        values.push(questionTimer || null);
+      }
+      if (revealDelay !== undefined) {
+        updates.push(`reveal_delay = $${paramIndex++}`);
+        values.push(revealDelay || null);
+      }
+      if (availableLive !== undefined) {
+        updates.push(`available_live = $${paramIndex++}`);
+        values.push(availableLive);
+      }
+      if (availableSolo !== undefined) {
+        updates.push(`available_solo = $${paramIndex++}`);
+        values.push(availableSolo);
+      }
+
+      if (updates.length > 0) {
+        updates.push('updated_at = CURRENT_TIMESTAMP');
+        values.push(quizId);
+        await client.query(
+          `UPDATE quizzes SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+          values
+        );
+      }
+
+      await client.query('COMMIT');
+
+      // Return the updated quiz
+      const updatedQuiz = await client.query('SELECT * FROM quizzes WHERE id = $1', [quizId]);
+      return res.json({
+        success: true,
+        quiz: updatedQuiz.rows[0]
+      });
+    }
+
+    // Full update with questions - original logic
+    // Update quiz metadata (v5.4.0: includes timer and availability settings)
     await client.query(
-      'UPDATE quizzes SET title = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-      [title, description, quizId]
+      `UPDATE quizzes SET
+        title = $1,
+        description = $2,
+        question_timer = $3,
+        reveal_delay = $4,
+        available_live = COALESCE($5, TRUE),
+        available_solo = COALESCE($6, TRUE),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $7`,
+      [title, description, questionTimer || null, revealDelay || null, availableLive, availableSolo, quizId]
     );
 
     // Get list of questions currently associated with this quiz

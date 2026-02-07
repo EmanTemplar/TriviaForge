@@ -22,6 +22,7 @@ import sessionRoutes from './src/routes/session.routes.js';
 import userRoutes from './src/routes/user.routes.js';
 import tagRoutes from './src/routes/tag.routes.js';
 import questionBankRoutes from './src/routes/questionBank.routes.js';
+import soloRoutes from './src/routes/solo.routes.js';
 import { requireAuth, requireAdmin } from './src/middleware/auth.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { env } from './src/config/environment.js';
@@ -30,6 +31,7 @@ import { env } from './src/config/environment.js';
 import { roomService } from './src/services/room.service.js';
 import { sessionService } from './src/services/session.service.js';
 import { quizService } from './src/services/quiz.service.js';
+import { autoModeService } from './src/services/autoMode.service.js';
 
 // --------------------
 // Helper: Auto-detect local IP
@@ -327,6 +329,9 @@ app.use('/api/questions', (req, res, next) => {
 });
 app.use('/api/questions', questionBankRoutes);
 
+// Solo play routes (public, no auth required) - v5.4.0
+app.use('/api/solo', soloRoutes);
+
 // Simple password check
 app.post('/api/auth/check', authLimiter, doubleCsrfProtection, (req, res) => {
   const { password } = req.body;
@@ -388,41 +393,67 @@ app.get('/api/qr/room/:roomCode', async (req, res) => {
 // --------------------
 
 // Get quiz options
-// Get quiz options (from database)
+// Get quiz options (from database) - v5.4.0: includes auto-mode timer defaults
 app.get('/api/options', requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT setting_value FROM app_settings WHERE setting_key = 'answer_display_time'"
+      `SELECT setting_key, setting_value FROM app_settings
+       WHERE setting_key IN ('answer_display_time', 'default_question_timer', 'default_reveal_delay')`
     );
 
-    const answerDisplayTime = result.rows.length > 0
-      ? parseInt(result.rows[0].setting_value)
-      : 30;
+    // Build options object from results
+    const settings = {};
+    for (const row of result.rows) {
+      settings[row.setting_key] = parseInt(row.setting_value);
+    }
 
-    res.json({ answerDisplayTime });
+    res.json({
+      answerDisplayTime: settings.answer_display_time || 30,
+      defaultQuestionTimer: settings.default_question_timer || 30,
+      defaultRevealDelay: settings.default_reveal_delay || 5,
+    });
   } catch (err) {
     console.error('Error fetching options:', err);
-    res.json({ answerDisplayTime: 30 }); // Return default on error
+    res.json({ answerDisplayTime: 30, defaultQuestionTimer: 30, defaultRevealDelay: 5 }); // Return defaults on error
   }
 });
 
-// Save quiz options (to database)
+// Save quiz options (to database) - v5.4.0: includes auto-mode timer defaults
 app.post('/api/options', requireAdmin, async (req, res) => {
   try {
-    const { answerDisplayTime } = req.body;
+    const { answerDisplayTime, defaultQuestionTimer, defaultRevealDelay } = req.body;
 
     // Validate input
-    if (!answerDisplayTime || answerDisplayTime < 5 || answerDisplayTime > 300) {
+    if (answerDisplayTime !== undefined && (answerDisplayTime < 5 || answerDisplayTime > 300)) {
       return res.status(400).json({ error: 'Answer display time must be between 5 and 300 seconds' });
     }
+    if (defaultQuestionTimer !== undefined && (defaultQuestionTimer < 10 || defaultQuestionTimer > 120)) {
+      return res.status(400).json({ error: 'Question timer must be between 10 and 120 seconds' });
+    }
+    if (defaultRevealDelay !== undefined && (defaultRevealDelay < 2 || defaultRevealDelay > 30)) {
+      return res.status(400).json({ error: 'Reveal delay must be between 2 and 30 seconds' });
+    }
 
-    // Update or insert setting
-    await pool.query(`
-      INSERT INTO app_settings (setting_key, setting_value, description)
-      VALUES ('answer_display_time', $1, 'Answer display timeout in seconds')
-      ON CONFLICT (setting_key)
-      DO UPDATE SET setting_value = $1, updated_at = CURRENT_TIMESTAMP
-    `, [answerDisplayTime.toString()]);
+    // Update settings
+    const settingsToUpdate = [];
+    if (answerDisplayTime !== undefined) {
+      settingsToUpdate.push({ key: 'answer_display_time', value: answerDisplayTime, desc: 'Answer display timeout in seconds' });
+    }
+    if (defaultQuestionTimer !== undefined) {
+      settingsToUpdate.push({ key: 'default_question_timer', value: defaultQuestionTimer, desc: 'Default question timer in seconds for auto-mode' });
+    }
+    if (defaultRevealDelay !== undefined) {
+      settingsToUpdate.push({ key: 'default_reveal_delay', value: defaultRevealDelay, desc: 'Default delay between reveal and next question' });
+    }
+
+    for (const setting of settingsToUpdate) {
+      await pool.query(`
+        INSERT INTO app_settings (setting_key, setting_value, description)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (setting_key)
+        DO UPDATE SET setting_value = $2, updated_at = CURRENT_TIMESTAMP
+      `, [setting.key, setting.value.toString(), setting.desc]);
+    }
 
     // Reload quiz options to update in-memory cache
     await loadQuizOptions();
@@ -1090,6 +1121,10 @@ io.on('connection', (socket) => {
           status: 'in_progress',
           createdAt: new Date().toISOString(),
           createdBy: userId || 1, // Admin user ID who created the room
+          // Auto-mode fields (v5.4.0)
+          autoMode: false,
+          questionTimer: null,
+          revealDelay: null,
         };
         console.log(`Room ${roomCode} created for quiz ID ${quizId} (${quiz.title}) by admin ${userId || 1}`);
       }
@@ -1114,7 +1149,12 @@ io.on('connection', (socket) => {
         currentQuestionIndex: roomService.liveRooms[roomCode].currentQuestionIndex,
         presentedQuestions: roomService.liveRooms[roomCode].presentedQuestions,
         revealedQuestions: roomService.liveRooms[roomCode].revealedQuestions,
-        isResumed: !!roomService.liveRooms[roomCode].players && Object.keys(roomService.liveRooms[roomCode].players).length > 0
+        isResumed: !!roomService.liveRooms[roomCode].players && Object.keys(roomService.liveRooms[roomCode].players).length > 0,
+        // Auto-mode state (v5.4.0)
+        autoMode: roomService.liveRooms[roomCode].autoMode || false,
+        questionTimer: roomService.liveRooms[roomCode].questionTimer,
+        revealDelay: roomService.liveRooms[roomCode].revealDelay,
+        autoModeState: autoModeService.getState(roomCode)
       });
 
       // Send current player list to presenter (especially important on reconnection)
@@ -1911,6 +1951,11 @@ io.on('connection', (socket) => {
           totalPlayers: activePlayers.length,
           timestamp: Date.now()
         });
+
+        // Notify auto-mode service to skip remaining question timer
+        if (room.autoMode) {
+          autoModeService.onAllPlayersAnswered(roomCode);
+        }
       }
     } else {
       if (DEBUG_ENABLED) {
@@ -1981,6 +2026,102 @@ io.on('connection', (socket) => {
     io.emit('activeRoomsUpdate', getActiveRoomsSummary());
   });
 
+  // ---- Auto-Mode Controls ----
+
+  // Start auto-mode for a room
+  socket.on('startAutoMode', ({ roomCode, questionTimer, revealDelay }) => {
+    const room = roomService.liveRooms[roomCode];
+    if (!room) {
+      socket.emit('roomError', 'Room not found');
+      return;
+    }
+
+    // Validate presenter
+    if (room.presenterId !== socket.id) {
+      socket.emit('roomError', 'Only the presenter can control auto-mode');
+      return;
+    }
+
+    autoModeService.startAutoMode(roomCode, {
+      questionTimerSeconds: questionTimer || 30,
+      revealDelaySeconds: revealDelay || 5
+    });
+
+    // Notify all clients in room
+    io.to(roomCode).emit('autoModeStateChanged', {
+      enabled: true,
+      state: 'question_timer',
+      questionTimer: questionTimer || 30,
+      revealDelay: revealDelay || 5
+    });
+  });
+
+  // Stop auto-mode for a room
+  socket.on('stopAutoMode', ({ roomCode }) => {
+    const room = roomService.liveRooms[roomCode];
+    if (!room) return;
+
+    if (room.presenterId !== socket.id) {
+      socket.emit('roomError', 'Only the presenter can control auto-mode');
+      return;
+    }
+
+    autoModeService.stopAutoMode(roomCode);
+
+    io.to(roomCode).emit('autoModeStateChanged', {
+      enabled: false,
+      state: 'idle'
+    });
+  });
+
+  // Pause auto-mode
+  socket.on('pauseAutoMode', ({ roomCode }) => {
+    const room = roomService.liveRooms[roomCode];
+    if (!room) return;
+
+    if (room.presenterId !== socket.id) {
+      socket.emit('roomError', 'Only the presenter can control auto-mode');
+      return;
+    }
+
+    autoModeService.pauseAutoMode(roomCode);
+    const state = autoModeService.getState(roomCode);
+
+    io.to(roomCode).emit('autoModeStateChanged', {
+      enabled: true,
+      state: 'paused',
+      timeRemaining: state?.timeRemaining
+    });
+  });
+
+  // Resume auto-mode
+  socket.on('resumeAutoMode', ({ roomCode }) => {
+    const room = roomService.liveRooms[roomCode];
+    if (!room) return;
+
+    if (room.presenterId !== socket.id) {
+      socket.emit('roomError', 'Only the presenter can control auto-mode');
+      return;
+    }
+
+    autoModeService.resumeAutoMode(roomCode);
+    const state = autoModeService.getState(roomCode);
+
+    // Calculate new timerStartedAt so clients can sync their timers
+    // This represents when the timer would have started to give the remaining time
+    const timerStartedAt = state?.timeRemaining
+      ? new Date(Date.now() - ((state.questionTimerSeconds - state.timeRemaining) * 1000)).toISOString()
+      : new Date().toISOString();
+
+    io.to(roomCode).emit('autoModeStateChanged', {
+      enabled: true,
+      state: state?.state || 'question_timer',
+      timeRemaining: state?.timeRemaining,
+      timerStartedAt,
+      timerDuration: state?.questionTimerSeconds
+    });
+  });
+
   // Close room
   socket.on('closeRoom', async ({ roomCode, userId, isRootAdmin }) => {
     const room = roomService.liveRooms[roomCode];
@@ -1995,6 +2136,9 @@ io.on('connection', (socket) => {
 
     // Stop periodic auto-save
     stopAutoSave(roomCode);
+
+    // Clean up auto-mode timers
+    autoModeService.cleanup(roomCode);
 
     // Auto-save if there are answers
     if (sessionHasAnswers(room)) {
@@ -3195,6 +3339,9 @@ app.use((req, res, next) => {
 
   // Update admin password from environment variable
   await initializeAdminPassword();
+
+  // Initialize auto-mode service
+  autoModeService.initialize(io, roomService, pool, quizOptions);
 
   server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 })();

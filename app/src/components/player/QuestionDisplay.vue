@@ -1,5 +1,14 @@
 <template>
   <div class="question-display-area">
+    <!-- Auto-Mode Countdown Timer (v5.4.0) -->
+    <CountdownTimer
+      v-if="autoMode && timerDuration && timerStartedAt && !answerRevealed"
+      :startedAt="timerStartedAt"
+      :duration="timerDuration"
+      :active="!answerRevealed"
+      :paused="timerPaused"
+    />
+
     <!-- Question Image (if present) -->
     <div v-if="currentQuestion?.imageUrl" class="question-image-container">
       <img
@@ -63,13 +72,19 @@
 <script setup>
 import { computed } from 'vue';
 import AppIcon from '@/components/common/AppIcon.vue';
+import CountdownTimer from '@/components/player/CountdownTimer.vue';
 
 const props = defineProps({
   currentQuestion: { type: Object, default: null },
   selectedAnswer: { type: Number, default: null },
   answerRevealed: { type: Boolean, required: true },
   playerGotCorrect: { type: Boolean, required: true },
-  answeredCurrentQuestion: { type: Boolean, required: true }
+  answeredCurrentQuestion: { type: Boolean, required: true },
+  // Auto-mode timer props (v5.4.0)
+  autoMode: { type: Boolean, default: false },
+  timerStartedAt: { type: String, default: null },
+  timerDuration: { type: Number, default: null },
+  timerPaused: { type: Boolean, default: false }
 });
 
 defineEmits(['selectAnswer']);

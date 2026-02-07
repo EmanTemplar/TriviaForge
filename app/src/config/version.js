@@ -4,9 +4,9 @@
  * Update this file to change version across the entire application
  */
 
-export const VERSION = '5.3.4'
-export const VERSION_NAME = 'Complete Duplicate Detection System'
-export const RELEASE_DATE = '2026-02-02'
+export const VERSION = '5.4.4'
+export const VERSION_NAME = 'Auto-Mode & Solo Play'
+export const RELEASE_DATE = '2026-02-06'
 
 export default {
   VERSION,

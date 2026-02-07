@@ -13,6 +13,16 @@
 
       <!-- Question Display -->
       <div v-else class="question-display-area">
+        <!-- Auto-Mode Countdown Timer (v5.4.0) -->
+        <CountdownTimer
+          v-if="autoMode && timerDuration && timerStartedAt && !revealedAnswer"
+          :startedAt="timerStartedAt"
+          :duration="timerDuration"
+          :active="!revealedAnswer"
+          :paused="timerPaused"
+          class="display-countdown-timer"
+        />
+
         <!-- Question Image (if present) -->
         <div v-if="currentQuestion?.imageUrl" class="display-image-container">
           <img :src="currentQuestion.imageUrl" alt="Question image" class="display-question-image" />
@@ -93,6 +103,7 @@ import Button from '@/components/common/Button.vue'
 import FormInput from '@/components/common/FormInput.vue'
 import ThemeToggle from '@/components/display/ThemeToggle.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
+import CountdownTimer from '@/components/player/CountdownTimer.vue'
 
 const route = useRoute()
 const socket = useSocket()
@@ -111,6 +122,12 @@ const showRoomCodeModal = ref(false)
 const roomCodeInput = ref('')
 const currentQuestion = ref(null)
 const currentPlayers = ref([])
+
+// Auto-mode timer state (v5.4.0)
+const autoMode = ref(false)
+const timerStartedAt = ref(null)
+const timerDuration = ref(null)
+const timerPaused = ref(false)
 
 // Connection state management for spectator display
 const connectionState = ref('connected')
@@ -215,7 +232,7 @@ onMounted(() => {
   })
 
   // Listen for question presentation
-  socket.on('questionPresented', ({ questionIndex, question }) => {
+  socket.on('questionPresented', ({ questionIndex, question, autoMode: isAutoMode, timerStartedAt: serverTimerStartedAt, timerDuration: serverTimerDuration }) => {
     console.log('[DISPLAY] Question presented:', questionIndex)
 
     // Clear any existing display timeout from previous question
@@ -223,6 +240,11 @@ onMounted(() => {
       clearTimeout(questionDisplayTimeout.value)
       questionDisplayTimeout.value = null
     }
+
+    // Update auto-mode timer state (v5.4.0)
+    autoMode.value = isAutoMode || false
+    timerStartedAt.value = serverTimerStartedAt || null
+    timerDuration.value = serverTimerDuration || null
 
     // Store the current question with its choices
     currentQuestion.value = {
@@ -275,6 +297,28 @@ onMounted(() => {
     uiStore.addNotification('Room has been closed', 'info')
     showRoomCodeModal.value = true
     roomCode.value = null
+  })
+
+  // Auto-mode state changes (v5.4.0) - for pause/resume sync
+  socket.on('autoModeStateChanged', ({ enabled, state, timerStartedAt: newTimerStartedAt, timerDuration: newTimerDuration }) => {
+    console.log('[DISPLAY] Auto-mode state changed:', { enabled, state, newTimerStartedAt, newTimerDuration })
+
+    autoMode.value = enabled
+
+    // Handle pause state
+    if (state === 'paused') {
+      timerPaused.value = true
+    } else {
+      timerPaused.value = false
+
+      // Update timer info when resuming
+      if (newTimerStartedAt) {
+        timerStartedAt.value = newTimerStartedAt
+      }
+      if (newTimerDuration) {
+        timerDuration.value = newTimerDuration
+      }
+    }
   })
 
   // Handle connection errors
@@ -348,6 +392,14 @@ onUnmounted(() => {
   animation: fadeIn 0.3s ease-in;
   box-sizing: border-box;
   min-height: 0;
+}
+
+/* Display Countdown Timer (v5.4.0) */
+.display-countdown-timer {
+  margin-bottom: 1.5rem;
+  max-width: 600px;
+  width: 100%;
+  align-self: center;
 }
 
 /* Display Question Image Styles */

@@ -3,6 +3,15 @@
     <h2 class="waiting-title">{{ inRoom ? 'Waiting for Question' : 'Join a Room to Start' }}</h2>
     <p class="waiting-message">{{ inRoom ? 'Waiting for the presenter to start the quiz...' : 'Enter your name and room code to begin playing.' }}</p>
 
+    <!-- Solo Practice Link (when not in room) -->
+    <div v-if="!inRoom" class="solo-practice-section">
+      <p class="solo-hint">or practice on your own</p>
+      <RouterLink to="/solo" class="solo-practice-btn">
+        <span class="solo-icon">🎯</span>
+        <span class="solo-text">Solo Practice Mode</span>
+      </RouterLink>
+    </div>
+
     <!-- Recent Rooms Section -->
     <div v-if="!inRoom && recentRooms.length > 0" class="recent-rooms-section">
       <h3>Recent Rooms</h3>
@@ -65,6 +74,47 @@ const getTimeAgo = (timestamp) => {
   font-size: 1.1rem;
   color: var(--text-tertiary);
   margin: 0;
+}
+
+.solo-practice-section {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.solo-hint {
+  font-size: 0.9rem;
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.solo-practice-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--primary-bg-30);
+  border: 1px solid var(--primary-light);
+  border-radius: 8px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.solo-practice-btn:hover {
+  background: var(--primary-bg-50);
+  transform: translateY(-2px);
+}
+
+.solo-icon {
+  font-size: 1.2rem;
+}
+
+.solo-text {
+  color: var(--primary-light);
 }
 
 .recent-rooms-section {

@@ -32,6 +32,7 @@ async function listSessionsFromDB(options = {}) {
     quizId = null,
     status = null,
     searchPlayer = null,
+    sessionType = 'multiplayer', // v5.4.0: Default to multiplayer (solo hidden by default)
   } = options;
 
   try {
@@ -41,6 +42,7 @@ async function listSessionsFromDB(options = {}) {
         gs.id,
         gs.room_code,
         gs.status,
+        gs.session_type,
         gs.created_at,
         gs.completed_at,
         gs.original_session_id,
@@ -102,6 +104,12 @@ async function listSessionsFromDB(options = {}) {
       )`);
     }
 
+    // v5.4.0: Session type filter (multiplayer by default, or 'all' to show both)
+    if (sessionType && sessionType !== 'all') {
+      queryParams.push(sessionType);
+      conditions.push(`gs.session_type = $${queryParams.length}`);
+    }
+
     // Add WHERE clause if any conditions exist
     if (conditions.length > 0) {
       queryText += ` WHERE ${conditions.join(' AND ')}`;
@@ -161,8 +169,8 @@ function parseSessionId(filename) {
  */
 export async function listSessions(req, res, next) {
   try {
-    // Extract filter parameters from query string
-    const { dateFrom, dateTo, quizId, status, search } = req.query;
+    // Extract filter parameters from query string (v5.4.0: added sessionType)
+    const { dateFrom, dateTo, quizId, status, search, sessionType } = req.query;
 
     const sessions = await listSessionsFromDB({
       userId: req.user?.user_id,
@@ -172,6 +180,7 @@ export async function listSessions(req, res, next) {
       quizId: quizId ? parseInt(quizId, 10) : null,
       status: status || null,
       searchPlayer: search || null,
+      sessionType: sessionType || 'multiplayer', // Default to multiplayer
     });
 
     // Format for frontend compatibility
@@ -182,6 +191,7 @@ export async function listSessions(req, res, next) {
       quizId: s.quiz_id,
       quizTitle: s.quiz_title,
       status: s.status,
+      sessionType: s.session_type || 'multiplayer', // v5.4.0
       createdAt: s.created_at,
       completedAt: s.completed_at,
       resumedAt: s.resumed_at || null,

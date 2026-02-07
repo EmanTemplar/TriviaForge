@@ -43,6 +43,12 @@
         :allAnswered="allPlayersAnswered"
         :autoRevealCountdown="autoRevealCountdown"
         :autoRevealEnabled="autoRevealEnabled"
+        :autoMode="autoMode"
+        :autoModeState="autoModeState"
+        :questionTimer="questionTimer"
+        :revealDelay="revealDelay"
+        :timerStartedAt="timerStartedAt"
+        :timerDuration="timerDuration"
         @selectQuestion="selectQuestion"
         @previousQuestion="previousQuestion"
         @nextQuestion="nextQuestion"
@@ -51,6 +57,12 @@
         @completeQuiz="completeQuiz"
         @cancelAutoReveal="cancelAutoReveal"
         @update:autoRevealEnabled="autoRevealEnabled = $event"
+        @startAutoMode="startAutoMode"
+        @stopAutoMode="stopAutoMode"
+        @pauseAutoMode="pauseAutoMode"
+        @resumeAutoMode="resumeAutoMode"
+        @update:questionTimer="questionTimer = $event"
+        @update:revealDelay="revealDelay = $event"
       />
 
       <!-- Right Column: Connected Players -->
@@ -245,6 +257,14 @@ const allPlayersAnswered = ref(false)
 const autoRevealCountdown = ref(null)
 const autoRevealEnabled = ref(true) // Default: auto-reveal enabled
 let autoRevealTimer = null
+
+// Auto-mode state (v5.4.0)
+const autoMode = ref(false)
+const autoModeState = ref('idle') // idle | question_timer | reveal_delay | paused
+const questionTimer = ref(30)
+const revealDelay = ref(5)
+const timerStartedAt = ref(null)
+const timerDuration = ref(null)
 
 // Computed: Filter out spectators from connected players
 const nonSpectatorPlayers = computed(() => {
@@ -453,6 +473,38 @@ const revealAnswer = async () => {
   }
   cancelAutoReveal() // Cancel auto-reveal if manually revealing
   socket.emit('revealAnswer', { roomCode: currentRoomCode.value })
+}
+
+// Auto-mode controls (v5.4.0)
+const startAutoMode = () => {
+  if (!currentRoomCode.value) {
+    showAlert('No room selected.', 'No Room')
+    return
+  }
+  console.log('[AUTO-MODE] Starting auto-mode:', { questionTimer: questionTimer.value, revealDelay: revealDelay.value })
+  socket.emit('startAutoMode', {
+    roomCode: currentRoomCode.value,
+    questionTimer: questionTimer.value,
+    revealDelay: revealDelay.value
+  })
+}
+
+const stopAutoMode = () => {
+  if (!currentRoomCode.value) return
+  console.log('[AUTO-MODE] Stopping auto-mode')
+  socket.emit('stopAutoMode', { roomCode: currentRoomCode.value })
+}
+
+const pauseAutoMode = () => {
+  if (!currentRoomCode.value) return
+  console.log('[AUTO-MODE] Pausing auto-mode')
+  socket.emit('pauseAutoMode', { roomCode: currentRoomCode.value })
+}
+
+const resumeAutoMode = () => {
+  if (!currentRoomCode.value) return
+  console.log('[AUTO-MODE] Resuming auto-mode')
+  socket.emit('resumeAutoMode', { roomCode: currentRoomCode.value })
 }
 
 // Complete quiz
@@ -858,9 +910,16 @@ const setupSocketListeners = () => {
     }
   })
 
-  socketInstance.on('questionPresented', ({ questionIndex, question, presentedQuestions: serverPresentedQuestions }) => {
+  socketInstance.on('questionPresented', ({ questionIndex, question, presentedQuestions: serverPresentedQuestions, autoMode: isAutoMode, timerStartedAt: serverTimerStartedAt, timerDuration: serverTimerDuration }) => {
     if (serverPresentedQuestions) {
       presentedQuestions.value = serverPresentedQuestions
+    }
+    // Update auto-mode timer state for presenter sync
+    if (isAutoMode) {
+      timerStartedAt.value = serverTimerStartedAt
+      timerDuration.value = serverTimerDuration
+      presentedQuestionIndex.value = questionIndex
+      currentQuestionIndex.value = questionIndex
     }
   })
 
@@ -910,6 +969,15 @@ const setupSocketListeners = () => {
       allPlayersAnswered.value = true
       startAutoRevealCountdown()
     }
+  })
+
+  // Auto-mode state changes (v5.4.0)
+  socketInstance.on('autoModeStateChanged', ({ enabled, state, questionTimer: qt, revealDelay: rd, timeRemaining }) => {
+    console.log('[AUTO-MODE] State changed:', { enabled, state, qt, rd, timeRemaining })
+    autoMode.value = enabled
+    autoModeState.value = state || 'idle'
+    if (qt !== undefined) questionTimer.value = qt
+    if (rd !== undefined) revealDelay.value = rd
   })
 
   // Request initial active rooms

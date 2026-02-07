@@ -8,6 +8,7 @@ import PlayerPage from './pages/PlayerPage.vue'
 import PresenterPage from './pages/PresenterPage.vue'
 import AdminPage from './pages/AdminPage.vue'
 import PlayerManagePage from './pages/PlayerManagePage.vue'
+import SoloPlayPage from './pages/SoloPlayPage.vue'
 
 const routes = [
   {
@@ -44,6 +45,12 @@ const routes = [
     path: '/display',
     name: 'display',
     component: DisplayPage,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/solo',
+    name: 'solo',
+    component: SoloPlayPage,
     meta: { requiresAuth: false }
   }
 ]

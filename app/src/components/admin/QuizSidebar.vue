@@ -36,16 +36,43 @@
     <div class="quiz-list">
       <div v-if="quizzes.length === 0" class="empty-state"><em>No quizzes</em></div>
       <div v-for="quiz in quizzes" :key="quiz.filename" class="quiz-item" @click="$emit('selectQuiz', quiz)">
-        <div class="quiz-name">{{ quiz.title }}</div>
-        <div class="quiz-count">{{ quiz.questionCount || 0 }} questions</div>
-        <button @click.stop="$emit('deleteQuiz', quiz.filename)" class="btn-delete">Delete</button>
+        <div class="quiz-info">
+          <div class="quiz-name">{{ quiz.title }}</div>
+          <div class="quiz-meta">
+            <span class="quiz-count">{{ quiz.questionCount || 0 }} questions</span>
+            <span class="quiz-badges">
+              <span v-if="quiz.availableLive !== false" class="badge badge-live" title="Available for Live Games">Live</span>
+              <span v-if="quiz.availableSolo !== false" class="badge badge-solo" title="Available for Solo Play">Solo</span>
+            </span>
+          </div>
+        </div>
+        <div class="quiz-menu-container" @click.stop>
+          <button class="btn-menu" @click="toggleMenu(quiz.filename)">
+            <AppIcon name="more-vertical" size="sm" />
+          </button>
+          <div v-if="openMenuId === quiz.filename" class="quiz-dropdown-menu">
+            <button class="menu-item" @click="toggleAvailability(quiz, 'live')">
+              <AppIcon :name="quiz.availableLive !== false ? 'check-square' : 'square'" size="sm" />
+              <span>Available for Live</span>
+            </button>
+            <button class="menu-item" @click="toggleAvailability(quiz, 'solo')">
+              <AppIcon :name="quiz.availableSolo !== false ? 'check-square' : 'square'" size="sm" />
+              <span>Available for Solo</span>
+            </button>
+            <hr class="menu-divider" />
+            <button class="menu-item menu-item-danger" @click="handleDelete(quiz.filename)">
+              <AppIcon name="trash-2" size="sm" />
+              <span>Delete Quiz</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </aside>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import AppIcon from '@/components/common/AppIcon.vue';
 
 defineProps({
@@ -55,13 +82,47 @@ defineProps({
   importStatus: { type: String, default: '' }
 });
 
-const emit = defineEmits(['update:quizTitle', 'update:quizDescription', 'createQuiz', 'downloadTemplate', 'excelUpload', 'selectQuiz', 'deleteQuiz', 'startResize']);
+const emit = defineEmits(['update:quizTitle', 'update:quizDescription', 'createQuiz', 'downloadTemplate', 'excelUpload', 'selectQuiz', 'deleteQuiz', 'toggleAvailability', 'startResize']);
 
 const excelFileInput = ref(null);
+const openMenuId = ref(null);
 
 const handleFileChange = (event) => {
   emit('excelUpload', event);
 };
+
+const toggleMenu = (quizId) => {
+  openMenuId.value = openMenuId.value === quizId ? null : quizId;
+};
+
+const closeMenu = () => {
+  openMenuId.value = null;
+};
+
+const toggleAvailability = (quiz, type) => {
+  emit('toggleAvailability', { quiz, type });
+  closeMenu();
+};
+
+const handleDelete = (filename) => {
+  emit('deleteQuiz', filename);
+  closeMenu();
+};
+
+// Close menu when clicking outside
+const handleClickOutside = (event) => {
+  if (!event.target.closest('.quiz-menu-container')) {
+    closeMenu();
+  }
+};
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <style scoped>
@@ -200,7 +261,8 @@ h2 {
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 0.5rem;
 }
 
@@ -209,10 +271,28 @@ h2 {
   border-color: var(--info-light);
 }
 
+.quiz-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .quiz-name {
   font-weight: 500;
   color: var(--text-primary);
   font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quiz-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .quiz-count {
@@ -220,20 +300,99 @@ h2 {
   font-size: 0.8rem;
 }
 
-.btn-delete {
-  padding: 0.4rem 0.6rem;
-  background: var(--danger-bg-20);
-  border: 1px solid var(--danger-light);
-  border-radius: 4px;
-  color: var(--danger-light);
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.8rem;
-  align-self: flex-start;
+.quiz-badges {
+  display: flex;
+  gap: 0.25rem;
 }
 
-.btn-delete:hover {
-  background: var(--danger-bg-40);
+.badge {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-live {
+  background: var(--secondary-bg-30);
+  color: var(--secondary-light);
+}
+
+.badge-solo {
+  background: var(--primary-bg-30);
+  color: var(--primary-light);
+}
+
+/* Quiz Menu */
+.quiz-menu-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.btn-menu {
+  padding: 0.3rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-menu:hover {
+  background: var(--bg-overlay-20);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.quiz-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 100;
+  min-width: 180px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: var(--shadow-lg);
+  padding: 0.25rem 0;
+  margin-top: 0.25rem;
+}
+
+.menu-item {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.menu-item:hover {
+  background: var(--bg-overlay-20);
+}
+
+.menu-item-danger {
+  color: var(--danger-light);
+}
+
+.menu-item-danger:hover {
+  background: var(--danger-bg-20);
+}
+
+.menu-divider {
+  margin: 0.25rem 0;
+  border: none;
+  border-top: 1px solid var(--border-color);
 }
 
 @media (max-width: 1024px) {

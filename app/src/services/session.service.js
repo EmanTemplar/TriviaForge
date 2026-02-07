@@ -94,31 +94,81 @@ class SessionService {
         if (player.isSpectator) continue;
 
         // Insert or update participant with user_id from guest/registered account
-        const participantResult = await client.query(
-          `
-          INSERT INTO game_participants (
-            user_id, game_session_id, display_name, score,
-            is_connected, socket_id, joined_at, last_seen
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-          ON CONFLICT (user_id, game_session_id) DO UPDATE SET
-            display_name = EXCLUDED.display_name,
-            is_connected = EXCLUDED.is_connected,
-            socket_id = EXCLUDED.socket_id,
-            last_seen = EXCLUDED.last_seen
-          RETURNING id
-        `,
-          [
-            player.userId || null, // user_id from guest or registered account
-            sessionId,
-            player.name,
-            0, // score (calculated from correct answers)
-            player.connected || false,
-            player.id, // socket_id
-            new Date(),
-            new Date(),
-          ]
-        );
+        // For guests (null user_id), we can't use ON CONFLICT since the partial
+        // unique index only applies to non-null user_ids. Use socket_id to find existing.
+        let participantResult;
+
+        if (player.userId) {
+          // Registered user: use ON CONFLICT on the partial unique index
+          participantResult = await client.query(
+            `
+            INSERT INTO game_participants (
+              user_id, game_session_id, display_name, score,
+              is_connected, socket_id, joined_at, last_seen
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (user_id, game_session_id)
+            WHERE user_id IS NOT NULL
+            DO UPDATE SET
+              display_name = EXCLUDED.display_name,
+              is_connected = EXCLUDED.is_connected,
+              socket_id = EXCLUDED.socket_id,
+              last_seen = EXCLUDED.last_seen
+            RETURNING id
+          `,
+            [
+              player.userId,
+              sessionId,
+              player.name,
+              0,
+              player.connected || false,
+              player.id,
+              new Date(),
+              new Date(),
+            ]
+          );
+        } else {
+          // Guest user: try to find existing by socket_id, or insert new
+          participantResult = await client.query(
+            `SELECT id FROM game_participants WHERE game_session_id = $1 AND socket_id = $2`,
+            [sessionId, player.id]
+          );
+
+          if (participantResult.rows.length === 0) {
+            // Insert new guest participant
+            participantResult = await client.query(
+              `
+              INSERT INTO game_participants (
+                user_id, game_session_id, display_name, score,
+                is_connected, socket_id, joined_at, last_seen
+              )
+              VALUES (NULL, $1, $2, $3, $4, $5, $6, $7)
+              RETURNING id
+            `,
+              [
+                sessionId,
+                player.name,
+                0,
+                player.connected || false,
+                player.id,
+                new Date(),
+                new Date(),
+              ]
+            );
+          } else {
+            // Update existing guest participant
+            await client.query(
+              `
+              UPDATE game_participants SET
+                display_name = $1,
+                is_connected = $2,
+                last_seen = $3
+              WHERE id = $4
+            `,
+              [player.name, player.connected || false, new Date(), participantResult.rows[0].id]
+            );
+          }
+        }
 
         const participantId = participantResult.rows[0].id;
 

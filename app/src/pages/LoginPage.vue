@@ -124,9 +124,15 @@
 
       <hr class="divider">
 
-      <RouterLink to="/player" class="player-link">
-        <AppIcon name="users" size="lg" /> Join as Player
-      </RouterLink>
+      <div class="public-links">
+        <RouterLink to="/player" class="player-link">
+          <AppIcon name="users" size="lg" /> Join as Player
+        </RouterLink>
+
+        <RouterLink to="/solo" class="solo-link">
+          <AppIcon name="user" size="lg" /> Solo Practice
+        </RouterLink>
+      </div>
     </div>
   </div>
 </template>
@@ -494,7 +500,14 @@ const performLogout = async () => {
   border-top: 1px solid var(--border-color);
 }
 
-.player-link {
+.public-links {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.player-link,
+.solo-link {
   display: inline-block;
   padding: 0.75rem 1.5rem;
   background: var(--bg-overlay-10);
@@ -503,12 +516,21 @@ const performLogout = async () => {
   text-decoration: none;
   transition: all 0.2s;
   text-align: center;
-  margin: 0 auto;
 }
 
-.player-link:hover {
+.player-link:hover,
+.solo-link:hover {
   background: var(--bg-overlay-20);
   transform: translateY(-2px);
+}
+
+.solo-link {
+  background: var(--primary-bg-30);
+  border: 1px solid var(--primary-light);
+}
+
+.solo-link:hover {
+  background: var(--primary-bg-50);
 }
 
 @media (max-width: 640px) {

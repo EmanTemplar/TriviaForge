@@ -52,8 +52,80 @@
           </div>
         </div>
 
-        <!-- Auto-Reveal Toggle -->
-        <div class="auto-reveal-toggle">
+        <!-- Auto-Mode Control Panel (v5.4.0) -->
+        <div class="auto-mode-panel" :class="{ 'active': autoMode }">
+          <div class="auto-mode-header">
+            <div class="auto-mode-toggle">
+              <label class="toggle-switch">
+                <input
+                  type="checkbox"
+                  :checked="autoMode"
+                  @change="autoMode ? $emit('stopAutoMode') : $emit('startAutoMode')"
+                  :disabled="!currentRoomCode"
+                />
+                <span class="slider"></span>
+              </label>
+              <span class="toggle-label-text">Auto-Pilot Mode</span>
+            </div>
+            <div v-if="autoMode" class="auto-mode-state" :class="autoModeStateClass">
+              {{ autoModeStateLabel }}
+            </div>
+          </div>
+
+          <!-- Timer Settings (only when auto-mode is off) -->
+          <div v-if="!autoMode" class="auto-mode-settings">
+            <div class="timer-setting">
+              <label>Question Timer</label>
+              <div class="timer-input-group">
+                <input
+                  type="number"
+                  :value="questionTimer"
+                  @input="$emit('update:questionTimer', Math.min(120, Math.max(10, parseInt($event.target.value) || 30)))"
+                  min="10"
+                  max="120"
+                  step="5"
+                />
+                <span class="unit">sec</span>
+              </div>
+            </div>
+            <div class="timer-setting">
+              <label>Reveal Delay</label>
+              <div class="timer-input-group">
+                <input
+                  type="number"
+                  :value="revealDelay"
+                  @input="$emit('update:revealDelay', Math.min(30, Math.max(2, parseInt($event.target.value) || 5)))"
+                  min="2"
+                  max="30"
+                  step="1"
+                />
+                <span class="unit">sec</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pause/Resume Controls (only when auto-mode is on) -->
+          <div v-if="autoMode" class="auto-mode-controls">
+            <button
+              v-if="autoModeState === 'paused'"
+              class="btn-resume"
+              @click="$emit('resumeAutoMode')"
+            >
+              <AppIcon name="play" size="sm" /> Resume
+            </button>
+            <button
+              v-else-if="autoModeState === 'question_timer' || autoModeState === 'reveal_delay'"
+              class="btn-pause"
+              @click="$emit('pauseAutoMode')"
+            >
+              <AppIcon name="pause" size="sm" /> Pause
+            </button>
+            <span class="auto-mode-hint">Manual controls still work as overrides</span>
+          </div>
+        </div>
+
+        <!-- Legacy Auto-Reveal Toggle (hidden when auto-mode active) -->
+        <div v-if="!autoMode" class="auto-reveal-toggle">
           <label class="toggle-label">
             <input
               type="checkbox"
@@ -118,7 +190,14 @@ const props = defineProps({
   totalActivePlayers: { type: Number, default: 0 },
   allAnswered: { type: Boolean, default: false },
   autoRevealCountdown: { type: Number, default: null },
-  autoRevealEnabled: { type: Boolean, default: true }
+  autoRevealEnabled: { type: Boolean, default: true },
+  // Auto-mode props (v5.4.0)
+  autoMode: { type: Boolean, default: false },
+  autoModeState: { type: String, default: 'idle' }, // idle | question_timer | reveal_delay | paused
+  questionTimer: { type: Number, default: 30 },
+  revealDelay: { type: Number, default: 5 },
+  timerStartedAt: { type: String, default: null },
+  timerDuration: { type: Number, default: null }
 })
 
 defineEmits([
@@ -129,13 +208,40 @@ defineEmits([
   'revealAnswer',
   'completeQuiz',
   'cancelAutoReveal',
-  'update:autoRevealEnabled'
+  'update:autoRevealEnabled',
+  // Auto-mode emits (v5.4.0)
+  'startAutoMode',
+  'stopAutoMode',
+  'pauseAutoMode',
+  'resumeAutoMode',
+  'update:questionTimer',
+  'update:revealDelay'
 ])
 
 // Computed: Answer percentage
 const answerPercentage = computed(() => {
   if (props.totalActivePlayers === 0) return 0
   return Math.round((props.answeredCount / props.totalActivePlayers) * 100)
+})
+
+// Auto-mode state label
+const autoModeStateLabel = computed(() => {
+  switch (props.autoModeState) {
+    case 'question_timer': return 'Question Timer Running'
+    case 'reveal_delay': return 'Reveal Delay'
+    case 'paused': return 'Paused'
+    default: return 'Ready'
+  }
+})
+
+// Auto-mode state color class
+const autoModeStateClass = computed(() => {
+  switch (props.autoModeState) {
+    case 'question_timer': return 'state-active'
+    case 'reveal_delay': return 'state-reveal'
+    case 'paused': return 'state-paused'
+    default: return 'state-idle'
+  }
 })
 </script>
 
@@ -432,6 +538,217 @@ const answerPercentage = computed(() => {
 
 .btn-cancel-auto:hover {
   background: var(--danger-bg-30);
+}
+
+/* Auto-Mode Control Panel (v5.4.0) */
+.auto-mode-panel {
+  background: var(--bg-overlay-20);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.auto-mode-panel.active {
+  background: var(--secondary-bg-10);
+  border-color: var(--secondary-light);
+}
+
+.auto-mode-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.auto-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-switch .slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--bg-overlay-40);
+  transition: 0.3s;
+  border-radius: 26px;
+}
+
+.toggle-switch .slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .slider {
+  background-color: var(--secondary-light);
+}
+
+.toggle-switch input:checked + .slider:before {
+  transform: translateX(22px);
+}
+
+.toggle-switch input:disabled + .slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggle-label-text {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.auto-mode-state {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.auto-mode-state.state-idle {
+  background: var(--bg-overlay-30);
+  color: var(--text-tertiary);
+}
+
+.auto-mode-state.state-active {
+  background: var(--secondary-bg-30);
+  color: var(--secondary-light);
+  animation: pulse 1.5s infinite;
+}
+
+.auto-mode-state.state-reveal {
+  background: var(--info-bg-30);
+  color: var(--info-light);
+  animation: pulse 1.5s infinite;
+}
+
+.auto-mode-state.state-paused {
+  background: var(--warning-bg-30);
+  color: var(--warning-light);
+}
+
+.auto-mode-settings {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.timer-setting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 100px;
+}
+
+.timer-setting label {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.timer-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.timer-input-group input {
+  width: 60px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-overlay-10);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.timer-input-group input:focus {
+  outline: none;
+  border-color: var(--secondary-light);
+}
+
+.timer-input-group .unit {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+
+.auto-mode-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.btn-pause,
+.btn-resume {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-pause {
+  background: var(--warning-bg-20);
+  color: var(--warning-light);
+  border: 1px solid var(--warning-light);
+}
+
+.btn-pause:hover {
+  background: var(--warning-bg-30);
+}
+
+.btn-resume {
+  background: var(--secondary-bg-20);
+  color: var(--secondary-light);
+  border: 1px solid var(--secondary-light);
+}
+
+.btn-resume:hover {
+  background: var(--secondary-bg-30);
+}
+
+.auto-mode-hint {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-style: italic;
 }
 
 /* Auto-Reveal Toggle */

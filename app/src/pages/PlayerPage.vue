@@ -52,6 +52,10 @@
           :answerRevealed="answerRevealed"
           :playerGotCorrect="playerGotCorrect"
           :answeredCurrentQuestion="answeredCurrentQuestion"
+          :autoMode="autoMode"
+          :timerStartedAt="timerStartedAt"
+          :timerDuration="timerDuration"
+          :timerPaused="timerPaused"
           @selectAnswer="selectAnswer"
         />
       </div>
@@ -202,6 +206,12 @@ const questionDisplaying = ref(false)
 const inRoom = ref(false)
 const isConnected = ref(false)
 const answerRevealed = ref(false)
+
+// Auto-mode timer state (v5.4.0)
+const autoMode = ref(false)
+const timerStartedAt = ref(null)
+const timerDuration = ref(null)
+const timerPaused = ref(false)
 
 // Login/Auth modals
 const showLoginModal = ref(false)
@@ -622,7 +632,7 @@ const setupSocketListeners = () => {
     }
   })
 
-  socket.on('questionPresented', ({ questionIndex, question }) => {
+  socket.on('questionPresented', ({ questionIndex, question, autoMode: isAutoMode, timerStartedAt: serverTimerStartedAt, timerDuration: serverTimerDuration }) => {
     // SAFETY: Clear joinRoom in-progress flag - receiving a question means we're definitely in the room
     if (joinRoomInProgress.value) {
       console.log('[CONNECTION] Clearing joinRoom flag (questionPresented received)')
@@ -634,6 +644,11 @@ const setupSocketListeners = () => {
       clearTimeout(answerDisplayTimeout.value)
       answerDisplayTimeout.value = null
     }
+
+    // Update auto-mode timer state (v5.4.0)
+    autoMode.value = isAutoMode || false
+    timerStartedAt.value = serverTimerStartedAt || null
+    timerDuration.value = serverTimerDuration || null
 
     questionDisplaying.value = true
     // Check if this question has already been revealed (for late joiners)
@@ -790,6 +805,35 @@ const setupSocketListeners = () => {
     activeRoomCodes.value = Array.isArray(rooms) ? rooms.map(r => r.roomCode) : []
     // Load recent rooms after receiving active rooms list
     loadRecentRooms()
+  })
+
+  // Auto-mode state changes (v5.4.0) - for pause/resume sync
+  socket.on('autoModeStateChanged', ({ enabled, state, timerStartedAt: newTimerStartedAt, timerDuration: newTimerDuration }) => {
+    console.log('[AUTO-MODE] State changed:', { enabled, state, newTimerStartedAt, newTimerDuration })
+
+    autoMode.value = enabled
+
+    // Handle pause state
+    if (state === 'paused') {
+      timerPaused.value = true
+    } else {
+      timerPaused.value = false
+
+      // Update timer info when resuming
+      if (newTimerStartedAt) {
+        timerStartedAt.value = newTimerStartedAt
+      }
+      if (newTimerDuration) {
+        timerDuration.value = newTimerDuration
+      }
+    }
+  })
+
+  // All players answered event (v5.4.0) - brief notification
+  socket.on('allPlayersAnswered', ({ waitSeconds }) => {
+    console.log(`[AUTO-MODE] All players answered, waiting ${waitSeconds}s before reveal`)
+    statusMessage.value = 'All players answered! Revealing soon...'
+    statusMessageType.value = 'info'
   })
 }
 
