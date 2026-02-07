@@ -54,6 +54,7 @@ LOCAL-AI/
 # Continue.dev configuration and rules (local AI assistant config)
 .continue/
 .omc/
+.claude/
 
 # Vite build output
 app/dist/
