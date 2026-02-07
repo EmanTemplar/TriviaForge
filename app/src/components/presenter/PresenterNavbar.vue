@@ -7,7 +7,7 @@
     <ul class="menu" :class="{ open: menuOpen }" id="menu">
       <li><RouterLink to="/admin">Admin</RouterLink></li>
       <li><RouterLink to="/player">Player</RouterLink></li>
-      <li><RouterLink to="/presenter/room">Presenter</RouterLink></li>
+      <li><RouterLink to="/presenter">Presenter</RouterLink></li>
       <li><RouterLink to="/display">Spectate</RouterLink></li>
       <li class="account-dropdown">
         <button class="account-button" @click.stop="toggleDropdown">

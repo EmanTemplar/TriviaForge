@@ -20,17 +20,39 @@
     </div>
 
     <div class="quiz-form">
-      <input
-        :value="quizTitle"
-        @input="$emit('update:quizTitle', $event.target.value)"
-        type="text"
-        placeholder="Quiz Title"
-      />
-      <textarea
-        :value="quizDescription"
-        @input="$emit('update:quizDescription', $event.target.value)"
-        placeholder="Quiz Description"
-      ></textarea>
+      <div class="input-with-action">
+        <input
+          :value="quizTitle"
+          @input="$emit('update:quizTitle', $event.target.value)"
+          type="text"
+          placeholder="Quiz Title"
+          :class="{ 'has-changes': hasQuizSelected && titleChanged }"
+        />
+        <div v-if="hasQuizSelected && titleChanged" class="inline-actions">
+          <button class="btn-inline btn-confirm" @click="$emit('saveQuizTitle')" title="Save title">
+            <AppIcon name="check" size="sm" />
+          </button>
+          <button class="btn-inline btn-cancel" @click="$emit('cancelQuizTitle')" title="Cancel">
+            <AppIcon name="x" size="sm" />
+          </button>
+        </div>
+      </div>
+      <div class="input-with-action">
+        <textarea
+          :value="quizDescription"
+          @input="$emit('update:quizDescription', $event.target.value)"
+          placeholder="Quiz Description"
+          :class="{ 'has-changes': hasQuizSelected && descriptionChanged }"
+        ></textarea>
+        <div v-if="hasQuizSelected && descriptionChanged" class="inline-actions inline-actions-textarea">
+          <button class="btn-inline btn-confirm" @click="$emit('saveQuizDescription')" title="Save description">
+            <AppIcon name="check" size="sm" />
+          </button>
+          <button class="btn-inline btn-cancel" @click="$emit('cancelQuizDescription')" title="Cancel">
+            <AppIcon name="x" size="sm" />
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="quiz-list">
@@ -72,17 +94,38 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import AppIcon from '@/components/common/AppIcon.vue';
 
-defineProps({
+const props = defineProps({
   quizTitle: { type: String, required: true },
   quizDescription: { type: String, required: true },
+  originalQuizTitle: { type: String, default: '' },
+  originalQuizDescription: { type: String, default: '' },
+  hasQuizSelected: { type: Boolean, default: false },
   quizzes: { type: Array, required: true },
   importStatus: { type: String, default: '' }
 });
 
-const emit = defineEmits(['update:quizTitle', 'update:quizDescription', 'createQuiz', 'downloadTemplate', 'excelUpload', 'selectQuiz', 'deleteQuiz', 'toggleAvailability', 'startResize']);
+const emit = defineEmits([
+  'update:quizTitle',
+  'update:quizDescription',
+  'createQuiz',
+  'downloadTemplate',
+  'excelUpload',
+  'selectQuiz',
+  'deleteQuiz',
+  'toggleAvailability',
+  'startResize',
+  'saveQuizTitle',
+  'saveQuizDescription',
+  'cancelQuizTitle',
+  'cancelQuizDescription'
+]);
+
+// Detect if title or description has changed from original
+const titleChanged = computed(() => props.quizTitle !== props.originalQuizTitle);
+const descriptionChanged = computed(() => props.quizDescription !== props.originalQuizDescription);
 
 const excelFileInput = ref(null);
 const openMenuId = ref(null);
@@ -222,6 +265,13 @@ h2 {
   gap: 0.75rem;
 }
 
+.input-with-action {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .quiz-form input,
 .quiz-form textarea {
   padding: 0.75rem;
@@ -231,6 +281,49 @@ h2 {
   color: var(--text-primary);
   font-size: 0.9rem;
   resize: vertical;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.quiz-form input.has-changes,
+.quiz-form textarea.has-changes {
+  border-color: var(--warning-light);
+  box-shadow: 0 0 0 2px var(--warning-bg-20);
+}
+
+.inline-actions {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+.btn-inline {
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-inline.btn-confirm {
+  background: var(--secondary-bg-30);
+  color: var(--secondary-light);
+}
+
+.btn-inline.btn-confirm:hover {
+  background: var(--secondary-bg-50);
+}
+
+.btn-inline.btn-cancel {
+  background: var(--bg-overlay-20);
+  color: var(--text-tertiary);
+}
+
+.btn-inline.btn-cancel:hover {
+  background: var(--danger-bg-20);
+  color: var(--danger-light);
 }
 
 .quiz-form textarea {

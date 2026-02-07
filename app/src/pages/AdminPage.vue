@@ -23,6 +23,9 @@
         <QuizSidebar
           v-model:quizTitle="quizTitle"
           v-model:quizDescription="quizDescription"
+          :originalQuizTitle="originalQuizTitle"
+          :originalQuizDescription="originalQuizDescription"
+          :hasQuizSelected="!!selectedQuiz"
           :quizzes="quizzes"
           :importStatus="importStatus"
           @createQuiz="showCreateQuizModal"
@@ -32,6 +35,10 @@
           @deleteQuiz="deleteQuiz"
           @toggleAvailability="handleToggleAvailability"
           @startResize="startResize"
+          @saveQuizTitle="saveQuizTitle"
+          @saveQuizDescription="saveQuizDescription"
+          @cancelQuizTitle="cancelQuizTitle"
+          @cancelQuizDescription="cancelQuizDescription"
         />
 
         <QuestionEditor
@@ -515,6 +522,8 @@ const quizzes = ref([])
 const selectedQuiz = ref(null)
 const quizTitle = ref('')
 const quizDescription = ref('')
+const originalQuizTitle = ref('')
+const originalQuizDescription = ref('')
 const questionText = ref('')
 const choices = ref(['', '', '', ''])
 const correctChoice = ref(0)
@@ -619,6 +628,9 @@ const selectQuiz = async (quiz) => {
   selectedQuiz.value = quiz
   quizTitle.value = quiz.title
   quizDescription.value = quiz.description || ''
+  // Track original values for change detection
+  originalQuizTitle.value = quiz.title
+  originalQuizDescription.value = quiz.description || ''
 
   try {
     const response = await get(`/api/quizzes/${quiz.filename}`)
@@ -626,6 +638,50 @@ const selectQuiz = async (quiz) => {
   } catch (err) {
     console.error('Error loading quiz questions:', err)
   }
+}
+
+// Save just the quiz title
+const saveQuizTitle = async () => {
+  if (!selectedQuiz.value) return
+  try {
+    await put(`/api/quizzes/${selectedQuiz.value.filename}`, {
+      title: quizTitle.value,
+      description: quizDescription.value,
+      questions: currentQuestions.value
+    })
+    originalQuizTitle.value = quizTitle.value
+    await loadQuizzes()
+    showAlert('Quiz title updated')
+  } catch (err) {
+    showAlert('Error updating quiz title: ' + err.message, 'Error')
+  }
+}
+
+// Save just the quiz description
+const saveQuizDescription = async () => {
+  if (!selectedQuiz.value) return
+  try {
+    await put(`/api/quizzes/${selectedQuiz.value.filename}`, {
+      title: quizTitle.value,
+      description: quizDescription.value,
+      questions: currentQuestions.value
+    })
+    originalQuizDescription.value = quizDescription.value
+    await loadQuizzes()
+    showAlert('Quiz description updated')
+  } catch (err) {
+    showAlert('Error updating quiz description: ' + err.message, 'Error')
+  }
+}
+
+// Cancel title change and revert to original
+const cancelQuizTitle = () => {
+  quizTitle.value = originalQuizTitle.value
+}
+
+// Cancel description change and revert to original
+const cancelQuizDescription = () => {
+  quizDescription.value = originalQuizDescription.value
 }
 
 const deleteQuiz = async (filename) => {

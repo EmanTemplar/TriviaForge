@@ -224,6 +224,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Alert Modal -->
+    <Modal :isOpen="showAlertModal" :title="alertTitle" size="small" @close="showAlertModal = false">
+      <p class="alert-modal-message">{{ alertMessage }}</p>
+      <template #footer>
+        <button class="btn-modal-ok" @click="showAlertModal = false">OK</button>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -232,6 +240,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useSoloGame } from '@/composables/useSoloGame.js'
 import AppIcon from '@/components/common/AppIcon.vue'
 import CountdownTimer from '@/components/player/CountdownTimer.vue'
+import Modal from '@/components/common/Modal.vue'
 
 const {
   gamePhase,
@@ -266,6 +275,18 @@ const {
 const playerNameInput = ref('')
 const selectedAnswer = ref(null)
 
+// Alert modal state
+const showAlertModal = ref(false)
+const alertTitle = ref('Notice')
+const alertMessage = ref('')
+
+// Show alert modal helper
+function showAlert(message, title = 'Notice') {
+  alertTitle.value = title
+  alertMessage.value = message
+  showAlertModal.value = true
+}
+
 // Score grade for styling
 const scoreGrade = computed(() => {
   if (!results.value) return 'grade-c'
@@ -290,7 +311,7 @@ function selectQuiz(quiz) {
 // Start the selected quiz
 async function startSelectedQuiz(quiz) {
   if (!playerNameInput.value.trim()) {
-    alert('Please enter your name to play')
+    showAlert('Please enter your name to play', 'Name Required')
     return
   }
 
@@ -298,7 +319,7 @@ async function startSelectedQuiz(quiz) {
     await startQuiz(quiz.id, playerNameInput.value)
     selectedAnswer.value = null
   } catch (error) {
-    alert(error.message)
+    showAlert(error.message, 'Error')
   }
 }
 
@@ -963,5 +984,27 @@ function goToNextQuestion() {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* Alert Modal Styles */
+.alert-modal-message {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.btn-modal-ok {
+  padding: 0.75rem 2rem;
+  background: var(--secondary-bg-20);
+  color: var(--secondary-light);
+  border: 1px solid var(--secondary-light);
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-modal-ok:hover {
+  background: var(--secondary-bg-30);
 }
 </style>
