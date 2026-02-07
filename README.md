@@ -16,20 +16,22 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - 🐳 **Easy Deploy**: Single-command Docker Compose setup with automatic database initialization
 
 <!-- Screenshot Placeholder: Landing Page -->
-![Landing Page](screenshots/landing-page.png?v=202511)
+![Landing Page](screenshots/landing-page.png?v=202602)
 
 <!-- Screenshot Placeholder: Main Game Interface -->
-![TriviaForge Main Interface](screenshots/main-interface.png?v=202511)
+![TriviaForge Main Interface](screenshots/main-interface.png?v=202602)
 
 ## Features
 
 ### For Administrators
 - **Quiz Management**: Create, edit, and delete custom quizzes with an intuitive interface
+- **Quiz Visibility Controls**: Toggle quizzes for Live mode (presenter-led) and/or Solo mode (self-study) with visual badges
 - **Question Bank**: Centralized question management across all quizzes with search, filter, and archive capabilities
 - **Tag System**: Organize questions with customizable color-coded tags
 - **Duplicate Detection**: Find and manage duplicate questions with similarity-based detection and merge tools
 - **Question Types**: Support for Multiple Choice and True/False questions
 - **Image Support**: Add images to questions via file upload or external URL
+- **Timer Settings**: Configure per-quiz question timers and reveal delays for auto-mode
 - **Drag-and-Drop Reordering**: Reorganize questions and answer choices with visual drag-and-drop or arrow buttons
 - **Smart Answer Tracking**: Correct answer automatically updates when reordering choices
 - **Excel Import**: Bulk import quizzes from professionally formatted Excel templates with duplicate review (supports 2-10 answer choices)
@@ -42,10 +44,34 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - **Account Settings**: Update email and password from any admin page
 
 <!-- Screenshot Placeholder: Admin Dashboard -->
-![Admin Dashboard](screenshots/admin-dashboard.png?v=202511)
+![Admin Dashboard](screenshots/admin-dashboard.png?v=202602)
+
+<table>
+  <tr>
+    <td width="33%" align="center">
+      <img src="screenshots/question-bank.png?v=202602" alt="Question Bank" width="100%"/>
+      <br/>
+      <em>Question Bank</em>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshots/user-management.png?v=202602" alt="User Management" width="100%"/>
+      <br/>
+      <em>User Management</em>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshots/2FA-login.png?v=202602" alt="Two-Factor Authentication" width="100%"/>
+      <br/>
+      <em>Two-Factor Authentication</em>
+    </td>
+  </tr>
+</table>
 
 ### For Presenters
 - **Live Quiz Control**: Present questions, reveal answers, and navigate through quizzes in real-time
+- **Auto-Mode Timer System**: Server-side timers run independently of presenter's browser with pause/resume support
+- **Configurable Timers**: Question timer (10-120 seconds) and reveal delay (2-30 seconds) per quiz or global defaults
+- **Auto-Advance**: Automatically advance to next question after reveal delay expires
+- **Smart Timer Skip**: All players answered detection skips remaining question timer automatically
 - **Player Management**: See connected players with live status indicators, organized by connection status (connected/away/disconnected)
 - **Real-time Answer Progress**: Track how many players have answered with percentage and animated progress bar
 - **All Players Answered Notification**: Visual notification when all active players have submitted answers
@@ -59,14 +85,21 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - **Class Performance Analytics**: View overall class statistics (total correct/incorrect, class accuracy percentage, average performance)
 
 <!-- Screenshot Placeholder: Presenter View -->
-![Presenter View](screenshots/presenter-view.png?v=202511)
+![Presenter View](screenshots/presenter-view.png?v=202602)
+
+![Live Standings](screenshots/live-standings.png?v=202602)
 
 ### For Players
 - **Mobile-Optimized Interface**: Responsive design that works seamlessly on all devices (HTTP and HTTPS)
+- **Solo Play Mode**: Self-study mode without a presenter - browse solo-enabled quizzes and play at your own pace
+- **Per-Question Timer**: Countdown timer for each question with visual progress bar
+- **Immediate Feedback**: See correct/incorrect status immediately after answering in solo mode
+- **Results Summary**: Detailed breakdown of performance with per-question review after completing a quiz
+- **Guest Solo Play**: No account required - play solo quizzes as a guest
 - **Persistent Player Identity**: UUID-based PlayerID stored in localStorage for seamless reconnection across sessions
 - **Wake Lock Support**: Keeps mobile screens on during games (Chrome 84+, Safari 16.4+) with visual indicator
 - **Enhanced Connection Stability**: Infinite reconnection attempts with intelligent page visibility detection (30-second debounce)
-- **Real-time Feedback**: Instant answer submission and result display
+- **Real-time Feedback**: Instant answer submission and result display in live games
 - **Answer Locking**: Prevents re-answering after submission (even on reconnection)
 - **Smart Reconnection**: Automatically restore progress when rejoining with full state preservation via RoomSessionID
 - **Progress Tracking**: Comprehensive modal showing detailed session statistics and question-by-question history with correct/incorrect/pending status (persists across disconnections)
@@ -79,19 +112,64 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 <table>
   <tr>
     <td width="33%" align="center">
-      <img src="screenshots/player-mobile-waiting.png?v=202511" alt="Player Waiting" width="100%"/>
+      <img src="screenshots/player-mobile-waiting.png?v=202602" alt="Player Waiting" width="100%"/>
       <br/>
       <em>Player Lobby</em>
     </td>
     <td width="33%" align="center">
-      <img src="screenshots/player-questions.png?v=202511" alt="Player Answering" width="100%"/>
+      <img src="screenshots/player-questions.png?v=202602" alt="Player Answering" width="100%"/>
       <br/>
       <em>Answering Questions</em>
     </td>
     <td width="33%" align="center">
-      <img src="screenshots/player-mobile.png?v=202511" alt="Player Overview" width="100%"/>
+      <img src="screenshots/confirmation-modal.png?v=202602" alt="Answer Confirmation" width="100%"/>
       <br/>
-      <em>Interface Overview</em>
+      <em>Answer Confirmation</em>
+    </td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">
+      <img src="screenshots/desktop-player-page.png?v=202602" alt="Desktop Player View" width="100%"/>
+      <br/>
+      <em>Desktop Player View</em>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshots/player-countdown.png?v=202602" alt="Countdown Timer" width="100%"/>
+      <br/>
+      <em>Countdown Timer</em>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshots/player-standings.png?v=202602" alt="Player Standings" width="100%"/>
+      <br/>
+      <em>Player Standings</em>
+    </td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">
+      <img src="screenshots/theme-selection.png?v=202602" alt="Theme Selection" width="100%"/>
+      <br/>
+      <em>Theme Selection</em>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshots/player-mobile.png?v=202602" alt="Player Overview" width="100%"/>
+      <br/>
+      <em>Mobile Interface</em>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshots/solo-mode-landing.png?v=202602" alt="Solo Mode Landing" width="100%"/>
+      <br/>
+      <em>Solo Mode Landing</em>
+    </td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">
+      <img src="screenshots/solo-mode-playing.png?v=202602" alt="Solo Mode Playing" width="100%"/>
+      <br/>
+      <em>Solo Mode Playing</em>
+    </td>
+    <td width="33%" align="center">
+    </td>
+    <td width="33%" align="center">
     </td>
   </tr>
 </table>
@@ -102,7 +180,7 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - **Reveal Animations**: Engaging answer reveals with visual feedback
 
 <!-- Screenshot Placeholder: Display/Spectator View -->
-![Spectator Display](screenshots/spectator-display.png?v=202511)
+![Spectator Display](screenshots/spectator-display.png?v=202602)
 
 ## Technology Stack
 
@@ -330,7 +408,7 @@ docker-compose up -d          # Recreate containers if needed
 4. Review and save the imported quiz
 
 <!-- Screenshot Placeholder: Quiz Creation -->
-![Quiz Creation Interface](screenshots/quiz-creation.png?v=202511)
+![Quiz Creation Interface](screenshots/quiz-creation.png?v=202602)
 
 ### Running a Live Session
 
@@ -356,7 +434,7 @@ docker-compose up -d          # Recreate containers if needed
    - Session data is automatically saved
 
 <!-- Screenshot Placeholder: Live Session Flow -->
-![Live Session in Progress](screenshots/live-session.png?v=202511)
+![Live Session in Progress](screenshots/live-session.png?v=202602)
 
 ### Resuming an Interrupted Session
 
@@ -370,7 +448,7 @@ If a session is interrupted (server restart, connection loss, etc.):
 6. Continue from where you left off
 
 <!-- Screenshot Placeholder: Resume Session -->
-![Resume Session Feature](screenshots/resume-session.png?v=202511)
+![Resume Session Feature](screenshots/resume-session.png?v=202602)
 
 ### Viewing Past Sessions
 
@@ -385,7 +463,7 @@ All completed and interrupted sessions are saved and can be reviewed:
    - Individual question results
 
 <!-- Screenshot Placeholder: Past Sessions -->
-![Past Sessions History](screenshots/past-sessions.png?v=202511)
+![Past Sessions History](screenshots/past-sessions.png?v=202602)
 
 ## Testing
 
@@ -456,16 +534,19 @@ For comprehensive testing documentation, see:
 ```
 TriviaForge/
 ├── app/
-│   ├── src/              # Backend source (NEW v4.0.0 - Modular Architecture)
+│   ├── src/              # Backend source (v4.0.0+ Modular Architecture)
 │   │   ├── config/       # Configuration modules
-│   │   │   ├── constants.js # Application constants
-│   │   │   ├── database.js  # PostgreSQL connection pool
-│   │   │   └── environment.js # Environment variable access
+│   │   │   ├── constants.js    # Application constants
+│   │   │   ├── database.js     # PostgreSQL connection pool
+│   │   │   ├── environment.js  # Environment variable access
+│   │   │   └── version.js      # Centralized version management
 │   │   ├── controllers/  # REST API controllers
 │   │   │   ├── auth.controller.js
 │   │   │   ├── quiz.controller.js
 │   │   │   ├── questionBank.controller.js
 │   │   │   ├── session.controller.js
+│   │   │   ├── solo.controller.js    # Solo play REST API
+│   │   │   ├── tag.controller.js     # Tag management
 │   │   │   └── user.controller.js
 │   │   ├── middleware/   # Express middleware
 │   │   │   ├── auth.js         # Authentication middleware
@@ -475,13 +556,20 @@ TriviaForge/
 │   │   │   ├── quiz.routes.js
 │   │   │   ├── questionBank.routes.js
 │   │   │   ├── session.routes.js
+│   │   │   ├── solo.routes.js        # Solo play routes
+│   │   │   ├── tag.routes.js         # Tag routes
 │   │   │   └── user.routes.js
 │   │   ├── services/     # Business logic services
-│   │   │   ├── room.service.js    # Live room state management
-│   │   │   ├── session.service.js # Session persistence
-│   │   │   └── quiz.service.js    # Quiz data access
+│   │   │   ├── autoMode.service.js   # Server-side auto-mode timer engine
+│   │   │   ├── export.service.js     # CSV export functionality
+│   │   │   ├── quiz.service.js       # Quiz data access
+│   │   │   ├── room.service.js       # Live room state management
+│   │   │   ├── session.service.js    # Session persistence
+│   │   │   └── totp.service.js       # Two-factor authentication
 │   │   └── utils/        # Utility modules
+│   │       ├── constants.js   # Shared constants
 │   │       ├── errors.js      # Custom error classes
+│   │       ├── helpers.js     # Helper functions
 │   │       ├── responses.js   # API response helpers
 │   │       ├── similarity.js  # Duplicate detection algorithm
 │   │       └── validators.js  # Input validation
@@ -495,29 +583,40 @@ TriviaForge/
 │   │   │   ├── PresenterPage.vue
 │   │   │   ├── PlayerPage.vue
 │   │   │   ├── PlayerManagePage.vue
-│   │   │   └── DisplayPage.vue
+│   │   │   ├── DisplayPage.vue
+│   │   │   └── SoloPlayPage.vue      # Solo play mode
 │   │   ├── components/   # Reusable Vue components
 │   │   │   ├── admin/    # Admin panel components (Question Bank, Tags, Duplicates)
 │   │   │   ├── common/   # Shared components (Modal, Button, AppIcon, etc.)
 │   │   │   ├── modals/   # Modal components
-│   │   │   ├── player/   # Player page components
+│   │   │   ├── player/   # Player page components (CountdownTimer, etc.)
 │   │   │   └── presenter/ # Presenter page components
 │   │   ├── stores/       # Pinia state stores
 │   │   │   ├── auth.js
 │   │   │   ├── ui.js
-│   │   │   └── game.js
+│   │   │   ├── player.js
+│   │   │   ├── question.js
+│   │   │   ├── quiz.js
+│   │   │   └── room.js
 │   │   ├── composables/  # Vue composables
-│   │   │   ├── useSocket.js # Socket.IO integration (w/ PlayerID)
-│   │   │   └── useApi.js    # Axios wrapper (w/ CSRF)
+│   │   │   ├── useApi.js         # Axios wrapper (w/ CSRF)
+│   │   │   ├── useAuth.js        # Authentication composable
+│   │   │   ├── useLocalStorage.js # LocalStorage wrapper
+│   │   │   ├── useSocket.js      # Socket.IO integration (w/ PlayerID)
+│   │   │   ├── useSoloGame.js    # Solo play state management
+│   │   │   ├── useTheme.js       # Theme management
+│   │   │   └── useWakeLock.js    # Screen wake lock
 │   │   ├── assets/       # Static assets (CSS, images)
 │   │   └── main.css      # Global styles
 │   ├── init/             # Database initialization SQL scripts
-│   │   ├── 01-tables.sql # PostgreSQL schema
+│   │   ├── 01-tables.sql              # PostgreSQL schema
 │   │   ├── 02-migrate_timestamps.sql
-│   │   ├── ...           # Additional migrations (03-08)
-│   │   ├── 09-question-bank.sql      # Question Bank & tags
+│   │   ├── ...                        # Additional migrations (03-08)
+│   │   ├── 09-question-tags.sql       # Question Bank & tags
 │   │   ├── 10-duplicate-detection.sql # Text hash for duplicates
-│   │   └── 11-ignored-duplicate-pairs.sql # Ignored pairs
+│   │   ├── 11-ignored-duplicate-pairs.sql # Ignored pairs
+│   │   ├── 12-auto-mode-solo-play.sql # Auto-mode & solo play
+│   │   └── 13-fix-solo-guest-participants.sql # Guest participant fix
 │   ├── testing/          # Automated testing suite
 │   │   ├── README.md     # Testing suite overview
 │   │   ├── TESTING.md    # Complete testing guide
@@ -760,7 +859,6 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 
 **Under Consideration:**
 - [ ] Advanced leaderboard and scoring systems
-- [ ] Timer-based questions with countdown
 - [ ] Team mode for collaborative play
 - [ ] PDF export with proper formatting
 - [ ] Email verification for admin accounts

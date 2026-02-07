@@ -15,15 +15,16 @@
         <ul>
           <li><AppIcon name="check" size="sm" class="feature-check" /> Vue 3 modern interface</li>
           <li><AppIcon name="check" size="sm" class="feature-check" /> Real-time quiz presentations</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Auto-Mode with server-side timers</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Solo Play mode for self-study</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Question Bank with tags</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Duplicate detection & merge</li>
           <li><AppIcon name="check" size="sm" class="feature-check" /> Live leaderboards & rankings</li>
           <li><AppIcon name="check" size="sm" class="feature-check" /> Multi-admin support with isolation</li>
-          <li><AppIcon name="check" size="sm" class="feature-check" /> Player connection monitoring</li>
-          <li><AppIcon name="check" size="sm" class="feature-check" /> Player authentication & accounts</li>
-          <li><AppIcon name="check" size="sm" class="feature-check" /> Excel bulk import</li>
-          <li><AppIcon name="check" size="sm" class="feature-check" /> Session resumption</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Two-factor authentication (2FA)</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Session export (CSV)</li>
+          <li><AppIcon name="check" size="sm" class="feature-check" /> Excel bulk import with review</li>
           <li><AppIcon name="check" size="sm" class="feature-check" /> Mobile-optimized interface</li>
-          <li><AppIcon name="check" size="sm" class="feature-check" /> Spectator display mode</li>
-          <li><AppIcon name="check" size="sm" class="feature-check" /> Auto-reveal when all answer</li>
           <li><AppIcon name="check" size="sm" class="feature-check" /> Automatic database migrations</li>
         </ul>
       </div>
@@ -81,10 +82,10 @@
         TriviaForge is a modern, real-time trivia game platform designed for educators, event organizers, and trivia enthusiasts. It enables interactive quiz sessions with instant feedback, live leaderboards, and comprehensive player analytics.
       </p>
       <p>
-        With features like session resumption, user authentication, player connection monitoring, and mobile-optimized interfaces, TriviaForge provides a seamless experience for presenters and players. Whether you're running classroom quizzes, corporate events, or casual game nights, TriviaForge adapts to your needs.
+        With features like Auto-Mode (server-side timers with pause/resume), Solo Play for self-study, a centralized Question Bank with tagging and duplicate detection, session export, and two-factor authentication, TriviaForge provides a complete quiz management solution. Whether you're running classroom quizzes, corporate events, or casual game nights, TriviaForge adapts to your needs.
       </p>
       <p>
-        Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. The v5.x series introduces multi-admin support with session isolation, automatic database migrations, and seamless upgrades between versions.
+        Built with modern web technologies including Vue 3, Vite, Node.js, Socket.IO for real-time communication, and PostgreSQL for robust data management, TriviaForge ensures reliability, performance, and data integrity. The v5.x series introduces multi-admin support, automatic database migrations, Question Bank management, Auto-Mode timer system, and Solo Play mode.
       </p>
     </div>
 
