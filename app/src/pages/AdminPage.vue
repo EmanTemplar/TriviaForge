@@ -164,6 +164,11 @@
         />
       </div>
 
+      <!-- Session Health Tab -->
+      <div v-if="activeTab === 'session-health'" class="tab-content session-health-management">
+        <SessionHealthPanel />
+      </div>
+
       <!-- About Tab -->
       <div v-if="activeTab === 'about'" class="tab-content about-management">
         <AboutPanel />
@@ -462,6 +467,7 @@ import ThemeSettingsPanel from '@/components/admin/ThemeSettingsPanel.vue'
 import UserManagementPanel from '@/components/admin/UserManagementPanel.vue'
 import BannedNamesPanel from '@/components/admin/BannedNamesPanel.vue'
 import AboutPanel from '@/components/admin/AboutPanel.vue'
+import SessionHealthPanel from '@/components/admin/SessionHealthPanel.vue'
 import SessionDetailModal from '@/components/admin/SessionDetailModal.vue'
 import QuestionBankPanel from '@/components/admin/QuestionBankPanel.vue'
 import ImportDuplicatesReview from '@/components/admin/ImportDuplicatesReview.vue'
@@ -585,6 +591,7 @@ const tabs = [
   { id: 'users', label: 'User Management' },
   { id: 'banned-names', label: 'Banned Names' },
   { id: 'settings', label: 'Settings' },
+  { id: 'session-health', label: 'Session Health' },
   { id: 'about', label: 'About' }
 ]
 

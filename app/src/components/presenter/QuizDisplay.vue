@@ -31,18 +31,7 @@
 
       <!-- Presenter Controls -->
       <div class="presenter-controls">
-        <!-- Progress Indicator (when question is presented) -->
-        <div v-if="presentedQuestionIndex !== null" class="answer-progress">
-          <div class="progress-text">
-            <span class="progress-count">{{ answeredCount }}/{{ totalActivePlayers }} answered</span>
-            <span v-if="totalActivePlayers > 0" class="progress-percentage">({{ answerPercentage }}%)</span>
-          </div>
-          <div class="progress-bar-container">
-            <div class="progress-bar" :style="{ width: `${answerPercentage}%` }"></div>
-          </div>
-        </div>
-
-        <!-- All Players Answered Notification -->
+        <!-- All Players Answered Notification (full width) -->
         <div v-if="allAnswered && presentedQuestionIndex !== null" class="all-answered-notification">
           <div class="notification-content">
             <AppIcon name="target" size="lg" class="notification-icon" />
@@ -52,97 +41,116 @@
           </div>
         </div>
 
-        <!-- Auto-Mode Control Panel (v5.4.0) -->
-        <div class="auto-mode-panel" :class="{ 'active': autoMode }">
-          <div class="auto-mode-header">
-            <div class="auto-mode-toggle">
-              <label class="toggle-switch">
+        <!-- Two-Column Layout: Buttons Left, Auto-Mode Right -->
+        <div class="controls-grid">
+          <!-- Left Column: Progress + Buttons -->
+          <div class="controls-left">
+            <!-- Progress Indicator (when question is presented) -->
+            <div v-if="presentedQuestionIndex !== null" class="answer-progress">
+              <div class="progress-text">
+                <span class="progress-count">{{ answeredCount }}/{{ totalActivePlayers }} answered</span>
+                <span v-if="totalActivePlayers > 0" class="progress-percentage">({{ answerPercentage }}%)</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-bar" :style="{ width: `${answerPercentage}%` }"></div>
+              </div>
+            </div>
+
+            <div class="presenter-controls-row">
+              <button @click="$emit('previousQuestion')">← Previous</button>
+              <button @click="$emit('nextQuestion')">Next →</button>
+              <button @click="$emit('presentQuestion')">Present Question</button>
+              <button @click="$emit('revealAnswer')" :disabled="presentedQuestionIndex === null">Reveal Answer</button>
+            </div>
+            <button class="btn-complete" @click="$emit('completeQuiz')" :disabled="!currentRoomCode">Complete Quiz & Save</button>
+          </div>
+
+          <!-- Right Column: Auto-Mode Controls -->
+          <div class="controls-right">
+            <!-- Auto-Mode Control Panel (v5.4.0) -->
+            <div class="auto-mode-panel" :class="{ 'active': autoMode }">
+              <div class="auto-mode-header">
+                <div class="auto-mode-toggle">
+                  <label class="toggle-switch">
+                    <input
+                      type="checkbox"
+                      :checked="autoMode"
+                      @change="autoMode ? $emit('stopAutoMode') : $emit('startAutoMode')"
+                      :disabled="!currentRoomCode"
+                    />
+                    <span class="slider"></span>
+                  </label>
+                  <span class="toggle-label-text">Auto-Pilot</span>
+                </div>
+                <div v-if="autoMode" class="auto-mode-state" :class="autoModeStateClass">
+                  {{ autoModeStateLabel }}
+                </div>
+              </div>
+
+              <!-- Timer Settings (only when auto-mode is off) -->
+              <div v-if="!autoMode" class="auto-mode-settings">
+                <div class="timer-setting">
+                  <label>Question Timer</label>
+                  <div class="timer-input-group">
+                    <input
+                      type="number"
+                      :value="questionTimer"
+                      @input="$emit('update:questionTimer', Math.min(120, Math.max(10, parseInt($event.target.value) || 30)))"
+                      min="10"
+                      max="120"
+                      step="5"
+                    />
+                    <span class="unit">s</span>
+                  </div>
+                </div>
+                <div class="timer-setting">
+                  <label>Reveal Delay</label>
+                  <div class="timer-input-group">
+                    <input
+                      type="number"
+                      :value="revealDelay"
+                      @input="$emit('update:revealDelay', Math.min(30, Math.max(2, parseInt($event.target.value) || 5)))"
+                      min="2"
+                      max="30"
+                      step="1"
+                    />
+                    <span class="unit">s</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pause/Resume Controls (only when auto-mode is on) -->
+              <div v-if="autoMode" class="auto-mode-controls">
+                <button
+                  v-if="autoModeState === 'paused'"
+                  class="btn-resume"
+                  @click="$emit('resumeAutoMode')"
+                >
+                  <AppIcon name="play" size="sm" /> Resume
+                </button>
+                <button
+                  v-else-if="autoModeState === 'question_timer' || autoModeState === 'reveal_delay'"
+                  class="btn-pause"
+                  @click="$emit('pauseAutoMode')"
+                >
+                  <AppIcon name="pause" size="sm" /> Pause
+                </button>
+              </div>
+            </div>
+
+            <!-- Legacy Auto-Reveal Toggle (hidden when auto-mode active) -->
+            <div v-if="!autoMode" class="auto-reveal-toggle">
+              <label class="toggle-label">
                 <input
                   type="checkbox"
-                  :checked="autoMode"
-                  @change="autoMode ? $emit('stopAutoMode') : $emit('startAutoMode')"
-                  :disabled="!currentRoomCode"
+                  :checked="autoRevealEnabled"
+                  @change="$emit('update:autoRevealEnabled', $event.target.checked)"
                 />
-                <span class="slider"></span>
+                <span class="toggle-text">Auto-reveal when all answered</span>
               </label>
-              <span class="toggle-label-text">Auto-Pilot Mode</span>
-            </div>
-            <div v-if="autoMode" class="auto-mode-state" :class="autoModeStateClass">
-              {{ autoModeStateLabel }}
             </div>
           </div>
-
-          <!-- Timer Settings (only when auto-mode is off) -->
-          <div v-if="!autoMode" class="auto-mode-settings">
-            <div class="timer-setting">
-              <label>Question Timer</label>
-              <div class="timer-input-group">
-                <input
-                  type="number"
-                  :value="questionTimer"
-                  @input="$emit('update:questionTimer', Math.min(120, Math.max(10, parseInt($event.target.value) || 30)))"
-                  min="10"
-                  max="120"
-                  step="5"
-                />
-                <span class="unit">sec</span>
-              </div>
-            </div>
-            <div class="timer-setting">
-              <label>Reveal Delay</label>
-              <div class="timer-input-group">
-                <input
-                  type="number"
-                  :value="revealDelay"
-                  @input="$emit('update:revealDelay', Math.min(30, Math.max(2, parseInt($event.target.value) || 5)))"
-                  min="2"
-                  max="30"
-                  step="1"
-                />
-                <span class="unit">sec</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Pause/Resume Controls (only when auto-mode is on) -->
-          <div v-if="autoMode" class="auto-mode-controls">
-            <button
-              v-if="autoModeState === 'paused'"
-              class="btn-resume"
-              @click="$emit('resumeAutoMode')"
-            >
-              <AppIcon name="play" size="sm" /> Resume
-            </button>
-            <button
-              v-else-if="autoModeState === 'question_timer' || autoModeState === 'reveal_delay'"
-              class="btn-pause"
-              @click="$emit('pauseAutoMode')"
-            >
-              <AppIcon name="pause" size="sm" /> Pause
-            </button>
-            <span class="auto-mode-hint">Manual controls still work as overrides</span>
-          </div>
         </div>
-
-        <!-- Legacy Auto-Reveal Toggle (hidden when auto-mode active) -->
-        <div v-if="!autoMode" class="auto-reveal-toggle">
-          <label class="toggle-label">
-            <input
-              type="checkbox"
-              :checked="autoRevealEnabled"
-              @change="$emit('update:autoRevealEnabled', $event.target.checked)"
-            />
-            <span class="toggle-text">Auto-reveal when all answers are submitted (3s delay)</span>
-          </label>
-        </div>
-
-        <div class="presenter-controls-row">
-          <button @click="$emit('previousQuestion')">← Previous</button>
-          <button @click="$emit('nextQuestion')">Next →</button>
-          <button @click="$emit('presentQuestion')">Present Question to Players</button>
-          <button @click="$emit('revealAnswer')" :disabled="presentedQuestionIndex === null">Reveal Answer</button>
-        </div>
-        <button class="btn-complete" @click="$emit('completeQuiz')" :disabled="!currentRoomCode">Complete Quiz & Save Results</button>
       </div>
     </div>
     <div v-else class="empty-state">
@@ -436,8 +444,7 @@ const autoModeStateClass = computed(() => {
   background: var(--bg-overlay-30);
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  padding: 0.75rem;
-  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
 }
 
 .progress-text {
@@ -478,8 +485,7 @@ const autoModeStateClass = computed(() => {
   background: var(--secondary-bg-20);
   border: 2px solid var(--secondary-light);
   border-radius: 8px;
-  padding: 0.75rem;
-  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.75rem;
   animation: slideDown 0.3s ease;
 }
 
@@ -545,8 +551,7 @@ const autoModeStateClass = computed(() => {
   background: var(--bg-overlay-20);
   border: 2px solid var(--border-color);
   border-radius: 8px;
-  padding: 0.75rem;
-  margin-bottom: 0.75rem;
+  padding: 0.6rem;
   transition: all 0.3s ease;
 }
 
@@ -559,7 +564,7 @@ const autoModeStateClass = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
 }
 
@@ -658,8 +663,8 @@ const autoModeStateClass = computed(() => {
 
 .auto-mode-settings {
   display: flex;
-  gap: 1rem;
-  margin-top: 0.75rem;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
   flex-wrap: wrap;
 }
 
@@ -707,8 +712,8 @@ const autoModeStateClass = computed(() => {
 .auto-mode-controls {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
   flex-wrap: wrap;
 }
 
@@ -756,8 +761,7 @@ const autoModeStateClass = computed(() => {
   background: var(--bg-overlay-20);
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  padding: 0.5rem 0.75rem;
-  margin-bottom: 0.75rem;
+  padding: 0.4rem 0.6rem;
 }
 
 .toggle-label {
@@ -781,6 +785,21 @@ const autoModeStateClass = computed(() => {
 }
 
 .presenter-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Two-Column Controls Layout */
+.controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.controls-left,
+.controls-right {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -834,6 +853,12 @@ const autoModeStateClass = computed(() => {
 @media (max-width: 900px) {
   .quiz-display {
     max-height: 50vh;
+  }
+}
+
+@media (max-width: 900px) {
+  .controls-grid {
+    grid-template-columns: 1fr;
   }
 }
 

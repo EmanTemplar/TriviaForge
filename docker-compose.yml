@@ -18,13 +18,13 @@ services:
     restart: unless-stopped
   app:
     # PRODUCTION/DOCKER HUB: Uses Docker Hub image (default)
-    image: emancodetemplar/triviaforge:latest
+    #image: emancodetemplar/triviaforge:latest
 
     # LOCAL DEVELOPMENT: Uncomment below to build from local Dockerfile
-    # build:
-    #    context: ./app
-    #    dockerfile: Dockerfile
-    # image: triviaforge:local
+    build:
+        context: ./app
+        dockerfile: Dockerfile
+    image: triviaforge:local
 
     container_name: triviagame-app
     ports:
@@ -47,6 +47,11 @@ services:
       HOST_IP: ${HOST_IP:-}
       SESSION_TIMEOUT: ${SESSION_TIMEOUT:-3600000}
       APP_NAME: ${APP_NAME:-TriviaForge}
+      # Socket.IO Rate Limiting (v5.5.0)
+      # Increase limits for venues with many players on shared IP (NAT)
+      SOCKET_RATE_WINDOW_MS: ${SOCKET_RATE_WINDOW_MS:-60000}
+      SOCKET_JOIN_LIMIT: ${SOCKET_JOIN_LIMIT:-50}
+      SOCKET_ANSWER_LIMIT: ${SOCKET_ANSWER_LIMIT:-300}
     volumes:
       - uploads:/app/public/uploads
     restart: unless-stopped

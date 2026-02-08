@@ -332,6 +332,69 @@ app.use('/api/questions', questionBankRoutes);
 // Solo play routes (public, no auth required) - v5.4.0
 app.use('/api/solo', soloRoutes);
 
+// --------------------
+// Admin: Memory Monitoring Endpoint (v5.5.0)
+// --------------------
+// Returns memory usage and session statistics for monitoring server health
+// Protected by admin authentication
+app.get('/api/admin/memory', requireAdmin, (req, res) => {
+  try {
+    const memUsage = process.memoryUsage();
+    const stats = {
+      timestamp: new Date().toISOString(),
+      memory: {
+        heapUsedMB: Math.round(memUsage.heapUsed / 1024 / 1024 * 100) / 100,
+        heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024 * 100) / 100,
+        rssMB: Math.round(memUsage.rss / 1024 / 1024 * 100) / 100,
+        externalMB: Math.round(memUsage.external / 1024 / 1024 * 100) / 100,
+        arrayBuffersMB: Math.round((memUsage.arrayBuffers || 0) / 1024 / 1024 * 100) / 100
+      },
+      sessions: {
+        playerSessions: playerSessions.size,
+        socketToPlayer: socketToPlayer.size,
+        roomSessions: roomSessions.size,
+        roomSessionData: roomSessionData.size,
+        socketToRoomSession: socketToRoomSession.size,
+        socketRateLimits: socketRateLimits.size,
+        liveRooms: Object.keys(roomService.liveRooms).length,
+        autoSaveIntervals: sessionService.getActiveAutoSaveCount()
+      },
+      uptime: {
+        seconds: Math.round(process.uptime()),
+        formatted: formatUptime(process.uptime())
+      },
+      liveRoomDetails: Object.entries(roomService.liveRooms).map(([code, room]) => ({
+        roomCode: code,
+        quizTitle: room.quizData?.title || 'Unknown',
+        playerCount: Object.keys(room.players || {}).length,
+        currentQuestion: room.currentQuestionIndex,
+        totalQuestions: room.quizData?.questions?.length || 0,
+        status: room.status,
+        createdAt: room.createdAt,
+        lastActivityAt: room.lastActivityAt || room.createdAt
+      }))
+    };
+    res.json({ success: true, data: stats });
+  } catch (err) {
+    console.error('[ADMIN] Error fetching memory stats:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch memory statistics' });
+  }
+});
+
+// Helper function for uptime formatting
+function formatUptime(seconds) {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  parts.push(`${secs}s`);
+  return parts.join(' ');
+}
+
 // Simple password check
 app.post('/api/auth/check', authLimiter, doubleCsrfProtection, (req, res) => {
   const { password } = req.body;
@@ -1034,6 +1097,327 @@ const deleteRoomSession = (roomSessionID) => {
   }
 };
 
+// --------------------
+// PHASE 4: Memory Cleanup & Room Expiry (v5.5.0)
+// --------------------
+// Periodic cleanup to prevent memory leaks from stale sessions and abandoned rooms
+
+const CLEANUP_INTERVAL_MS = 30 * 60 * 1000; // Run cleanup every 30 minutes
+
+// --------------------
+// Socket.IO Rate Limiting (v5.5.0)
+// --------------------
+// Prevent abuse from rapid socket event spamming
+// Configurable via environment variables for different deployment scenarios:
+//   SOCKET_RATE_WINDOW_MS - Time window in ms (default: 60000 = 1 minute)
+//   SOCKET_JOIN_LIMIT     - Max join attempts per IP per window (default: 50)
+//   SOCKET_ANSWER_LIMIT   - Max answer submissions per IP per window (default: 300)
+
+const socketRateLimits = new Map(); // Map<ip, { joinAttempts: number, lastReset: number }>
+const SOCKET_RATE_WINDOW_MS = env.socketRateWindowMs;
+const SOCKET_JOIN_LIMIT = env.socketJoinLimit;
+const SOCKET_ANSWER_LIMIT = env.socketAnswerLimit;
+
+// Log rate limit configuration on startup
+console.log('[RATE LIMIT] Socket.IO limits:', {
+  window: `${SOCKET_RATE_WINDOW_MS / 1000}s`,
+  joinLimit: SOCKET_JOIN_LIMIT,
+  answerLimit: SOCKET_ANSWER_LIMIT
+});
+
+/**
+ * Check and update rate limit for a socket event
+ * @param {string} ip - Client IP address
+ * @param {string} eventType - 'join' or 'answer'
+ * @returns {boolean} - True if allowed, false if rate limited
+ */
+const checkSocketRateLimit = (ip, eventType) => {
+  const now = Date.now();
+  let limits = socketRateLimits.get(ip);
+
+  // Initialize or reset if window expired
+  if (!limits || (now - limits.lastReset) > SOCKET_RATE_WINDOW_MS) {
+    limits = { joinAttempts: 0, answerAttempts: 0, lastReset: now };
+    socketRateLimits.set(ip, limits);
+  }
+
+  if (eventType === 'join') {
+    if (limits.joinAttempts >= SOCKET_JOIN_LIMIT) {
+      return false;
+    }
+    limits.joinAttempts++;
+  } else if (eventType === 'answer') {
+    if (limits.answerAttempts >= SOCKET_ANSWER_LIMIT) {
+      return false;
+    }
+    limits.answerAttempts++;
+  }
+
+  return true;
+};
+
+/**
+ * Clean up old rate limit entries (called by cleanup scheduler)
+ */
+const cleanupSocketRateLimits = () => {
+  const now = Date.now();
+  let cleaned = 0;
+  for (const [ip, limits] of socketRateLimits.entries()) {
+    if ((now - limits.lastReset) > SOCKET_RATE_WINDOW_MS * 2) {
+      socketRateLimits.delete(ip);
+      cleaned++;
+    }
+  }
+  return cleaned;
+};
+const ROOM_EXPIRY_MS = 4 * 60 * 60 * 1000; // Expire rooms after 4 hours of inactivity
+const SESSION_STALE_MS = 2 * 60 * 60 * 1000; // Consider sessions stale after 2 hours
+
+/**
+ * Clean up stale entries from in-memory session Maps
+ * Removes entries where the associated socket is no longer connected
+ * and the lastActive timestamp is older than SESSION_STALE_MS
+ */
+const cleanupStaleSessions = () => {
+  const now = Date.now();
+  let cleanedPlayerSessions = 0;
+  let cleanedRoomSessions = 0;
+  let cleanedSocketMappings = 0;
+
+  // Clean playerSessions - remove entries with stale lastActive and disconnected sockets
+  for (const [playerID, session] of playerSessions.entries()) {
+    const socket = io.sockets.sockets.get(session.socketId);
+    const isStale = (now - session.lastActive) > SESSION_STALE_MS;
+    const isDisconnected = !socket || !socket.connected;
+
+    if (isStale && isDisconnected) {
+      playerSessions.delete(playerID);
+      cleanedPlayerSessions++;
+    }
+  }
+
+  // Clean socketToPlayer - remove entries for non-existent sockets
+  for (const [socketId, playerID] of socketToPlayer.entries()) {
+    const socket = io.sockets.sockets.get(socketId);
+    if (!socket) {
+      socketToPlayer.delete(socketId);
+      cleanedSocketMappings++;
+    }
+  }
+
+  // Clean roomSessionData - remove stale disconnected sessions
+  for (const [roomSessionID, session] of roomSessionData.entries()) {
+    const socket = io.sockets.sockets.get(session.socketId);
+    const isStale = (now - session.lastActive) > SESSION_STALE_MS;
+    const isDisconnected = !socket || !socket.connected;
+
+    // Only clean if stale AND disconnected AND room no longer exists
+    const roomExists = roomService.liveRooms[session.roomCode];
+    if (isStale && isDisconnected && !roomExists) {
+      const sessionKey = `${session.playerID}_${session.roomCode}`;
+      roomSessions.delete(sessionKey);
+      roomSessionData.delete(roomSessionID);
+      cleanedRoomSessions++;
+    }
+  }
+
+  // Clean socketToRoomSession - remove entries for non-existent sockets
+  for (const [socketId] of socketToRoomSession.entries()) {
+    const socket = io.sockets.sockets.get(socketId);
+    if (!socket) {
+      socketToRoomSession.delete(socketId);
+      cleanedSocketMappings++;
+    }
+  }
+
+  if (VERBOSE_LOGGING && (cleanedPlayerSessions > 0 || cleanedRoomSessions > 0 || cleanedSocketMappings > 0)) {
+    console.log('[CLEANUP] Stale sessions cleaned:', {
+      playerSessions: cleanedPlayerSessions,
+      roomSessions: cleanedRoomSessions,
+      socketMappings: cleanedSocketMappings,
+      remaining: {
+        playerSessions: playerSessions.size,
+        roomSessions: roomSessions.size,
+        roomSessionData: roomSessionData.size
+      }
+    });
+  }
+};
+
+/**
+ * Check for and close expired/abandoned rooms
+ * Rooms are considered abandoned if:
+ * - No activity (question presented, answer submitted) for ROOM_EXPIRY_MS
+ * - Presenter socket is disconnected
+ * - No connected players remain
+ */
+const cleanupExpiredRooms = async () => {
+  const now = Date.now();
+  const expiredRooms = [];
+
+  for (const [roomCode, room] of Object.entries(roomService.liveRooms)) {
+    // Calculate last activity time
+    const createdAt = new Date(room.createdAt).getTime();
+    const lastActivityTime = room.lastActivityAt || createdAt;
+    const roomAge = now - lastActivityTime;
+
+    // Check if presenter is still connected
+    const presenterSocket = io.sockets.sockets.get(room.presenterId);
+    const presenterConnected = presenterSocket && presenterSocket.connected;
+
+    // Check if any players are connected
+    const connectedPlayers = Object.values(room.players).filter(p => {
+      if (p.isSpectator) return false;
+      const socket = io.sockets.sockets.get(p.id);
+      return socket && socket.connected;
+    });
+
+    // Room is expired if:
+    // 1. Room is older than expiry time AND presenter disconnected AND no connected players
+    // 2. OR room is older than 2x expiry time (hard limit)
+    const isExpired = (roomAge > ROOM_EXPIRY_MS && !presenterConnected && connectedPlayers.length === 0) ||
+                      (roomAge > ROOM_EXPIRY_MS * 2);
+
+    if (isExpired) {
+      expiredRooms.push({
+        roomCode,
+        roomAge: Math.round(roomAge / 1000 / 60), // minutes
+        presenterConnected,
+        connectedPlayersCount: connectedPlayers.length,
+        status: room.status
+      });
+    }
+  }
+
+  // Process expired rooms
+  for (const expiredRoom of expiredRooms) {
+    const { roomCode } = expiredRoom;
+    const room = roomService.liveRooms[roomCode];
+
+    if (!room) continue;
+
+    if (VERBOSE_LOGGING) {
+      console.log('[CLEANUP] Expiring abandoned room:', expiredRoom);
+    }
+
+    try {
+      // Save session if there are answers (prevent data loss)
+      const hasAnswers = Object.values(room.players).some(player =>
+        player.answers && Object.keys(player.answers).length > 0
+      );
+
+      if (hasAnswers && room.status !== 'completed') {
+        room.status = 'interrupted';
+        room.completedAt = new Date().toISOString();
+        await sessionService.saveSession(roomCode, room);
+        if (VERBOSE_LOGGING) {
+          console.log(`[CLEANUP] Saved interrupted session for room ${roomCode}`);
+        }
+      }
+
+      // Clean up room session data for all players in this room
+      for (const player of Object.values(room.players)) {
+        if (player.roomSessionID) {
+          deleteRoomSession(player.roomSessionID);
+        }
+      }
+
+      // Clear auto-save interval
+      sessionService.clearAutoSave(roomCode);
+
+      // Stop auto-mode if running
+      autoModeService.cleanup(roomCode);
+
+      // Notify any remaining connected clients
+      io.to(roomCode).emit('roomClosed', {
+        roomCode,
+        reason: 'Room expired due to inactivity'
+      });
+
+      // Remove room from memory
+      delete roomService.liveRooms[roomCode];
+
+      if (VERBOSE_LOGGING) {
+        console.log(`[CLEANUP] Room ${roomCode} expired and cleaned up`);
+      }
+    } catch (err) {
+      console.error(`[CLEANUP] Error cleaning up expired room ${roomCode}:`, err);
+    }
+  }
+
+  if (expiredRooms.length > 0) {
+    io.emit('activeRoomsUpdate', getActiveRoomsSummary());
+  }
+};
+
+/**
+ * Get memory usage statistics for monitoring
+ * @returns {Object} Memory statistics
+ */
+const getMemoryStats = () => {
+  const memUsage = process.memoryUsage();
+  return {
+    heapUsedMB: Math.round(memUsage.heapUsed / 1024 / 1024 * 100) / 100,
+    heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024 * 100) / 100,
+    rssMB: Math.round(memUsage.rss / 1024 / 1024 * 100) / 100,
+    externalMB: Math.round(memUsage.external / 1024 / 1024 * 100) / 100,
+    sessionCounts: {
+      playerSessions: playerSessions.size,
+      socketToPlayer: socketToPlayer.size,
+      roomSessions: roomSessions.size,
+      roomSessionData: roomSessionData.size,
+      socketToRoomSession: socketToRoomSession.size,
+      socketRateLimits: socketRateLimits.size,
+      liveRooms: Object.keys(roomService.liveRooms).length,
+      autoSaveIntervals: sessionService.getActiveAutoSaveCount()
+    },
+    uptime: Math.round(process.uptime())
+  };
+};
+
+// Start periodic cleanup scheduler
+let cleanupIntervalId = null;
+const startCleanupScheduler = () => {
+  if (cleanupIntervalId) {
+    clearInterval(cleanupIntervalId);
+  }
+
+  console.log(`[CLEANUP] Starting cleanup scheduler (interval: ${CLEANUP_INTERVAL_MS / 1000 / 60} minutes)`);
+
+  cleanupIntervalId = setInterval(async () => {
+    if (VERBOSE_LOGGING) {
+      console.log('[CLEANUP] Running periodic cleanup...');
+    }
+    const beforeStats = getMemoryStats();
+
+    cleanupStaleSessions();
+    await cleanupExpiredRooms();
+    cleanupSocketRateLimits();
+
+    const afterStats = getMemoryStats();
+    if (VERBOSE_LOGGING) {
+      console.log('[CLEANUP] Cleanup complete:', {
+        memoryBefore: `${beforeStats.heapUsedMB}MB`,
+        memoryAfter: `${afterStats.heapUsedMB}MB`,
+        sessions: afterStats.sessionCounts
+      });
+    }
+  }, CLEANUP_INTERVAL_MS);
+
+  // Run initial cleanup after 5 minutes of server start
+  setTimeout(() => {
+    if (VERBOSE_LOGGING) {
+      console.log('[CLEANUP] Running initial cleanup...');
+    }
+    cleanupStaleSessions();
+    cleanupExpiredRooms();
+    cleanupSocketRateLimits();
+  }, 5 * 60 * 1000);
+};
+
+// Start cleanup scheduler when server starts (called after io is initialized)
+startCleanupScheduler();
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
@@ -1120,6 +1504,7 @@ io.on('connection', (socket) => {
           kickedPlayers: {}, // { username: kickedTimestamp }
           status: 'in_progress',
           createdAt: new Date().toISOString(),
+          lastActivityAt: Date.now(), // v5.5.0: Track last activity for expiry
           createdBy: userId || 1, // Admin user ID who created the room
           // Auto-mode fields (v5.4.0)
           autoMode: false,
@@ -1341,6 +1726,7 @@ io.on('connection', (socket) => {
         kickedPlayers: {}, // { username: kickedTimestamp }
         status: 'in_progress',
         createdAt: session.created_at,
+        lastActivityAt: Date.now(), // v5.5.0: Track last activity for expiry
         createdBy: session.created_by || 1, // Admin user ID who created the session
         resumedAt: new Date().toISOString(),
         originalRoomCode: session.original_room_code,
@@ -1436,6 +1822,13 @@ io.on('connection', (socket) => {
 
   // Player joins a room
   socket.on('joinRoom', async ({ roomCode, username, displayName, playerID }) => {
+    // Rate limiting check (v5.5.0)
+    const clientIP = socket.handshake.headers['x-forwarded-for']?.split(',')[0]?.trim() || socket.handshake.address || 'unknown';
+    if (!checkSocketRateLimit(clientIP, 'join')) {
+      socket.emit('roomError', 'Too many join attempts. Please wait a moment and try again.');
+      return;
+    }
+
     if (DEBUG_ENABLED) {
       console.log('[JOIN DEBUG] joinRoom event received', {
         roomCode,
@@ -1449,7 +1842,9 @@ io.on('connection', (socket) => {
 
     // PHASE 2: Multi-tab detection
     if (playerID && isPlayerIDAlreadyConnected(playerID, socket.id)) {
-      console.log(`[MULTI-TAB BLOCKED] PlayerID ${playerID} already connected in another tab`);
+      if (DEBUG_ENABLED) {
+        console.log(`[MULTI-TAB BLOCKED] PlayerID ${playerID} already connected in another tab`);
+      }
       socket.emit('roomError', 'Already connected in another tab. Please close other tabs and try again.');
       return;
     }
@@ -1463,6 +1858,8 @@ io.on('connection', (socket) => {
       socket.emit('roomError', 'Room not found.');
       return;
     }
+
+    room.lastActivityAt = Date.now(); // v5.5.0: Update activity for expiry tracking
 
     // Support legacy playerName parameter for backward compatibility
     const playerUsername = username;
@@ -1819,6 +2216,7 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     room.currentQuestionIndex = questionIndex;
+    room.lastActivityAt = Date.now(); // v5.5.0: Update activity for expiry tracking
 
     // Track this question as presented
     if (!room.presentedQuestions.includes(questionIndex)) {
@@ -1851,6 +2249,13 @@ io.on('connection', (socket) => {
 
   // Player submits answer
   socket.on('submitAnswer', ({ roomCode, choice }) => {
+    // Rate limiting check (v5.5.0)
+    const clientIP = socket.handshake.headers['x-forwarded-for']?.split(',')[0]?.trim() || socket.handshake.address || 'unknown';
+    if (!checkSocketRateLimit(clientIP, 'answer')) {
+      socket.emit('answerSubmitted', { success: false, message: 'Too many submissions. Please slow down.' });
+      return;
+    }
+
     if (DEBUG_ENABLED) {
       console.log('[ANSWER DEBUG] submitAnswer received', {
         roomCode,
@@ -1871,6 +2276,8 @@ io.on('connection', (socket) => {
       }
       return;
     }
+
+    room.lastActivityAt = Date.now(); // v5.5.0: Update activity for expiry tracking
 
     if (room.currentQuestionIndex === null) {
       if (DEBUG_ENABLED) {
@@ -2867,7 +3274,8 @@ if (DEBUG_ENABLED) {
           presentedQuestions: [],
           revealedQuestions: [],
           status: 'waiting',
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          lastActivityAt: Date.now() // v5.5.0: Track last activity for expiry
         };
         results.steps.push({ step: 'create-room', roomCode, success: true });
 

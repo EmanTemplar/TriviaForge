@@ -1,12 +1,75 @@
 # TriviaForge Development Summary
 
 > **Purpose:** Summary of development changes for the current session
-> **Last Updated:** 2026-02-06
-> **Version:** v5.4.4
+> **Last Updated:** 2026-02-08
+> **Version:** v5.5.0
 
 ---
 
-## Session Summary: v5.4.0 - v5.4.4 Release
+## Session Summary: v5.5.0 Release
+
+### Overview
+
+This development period covered backend performance optimizations:
+1. **v5.5.0** - Backend performance optimizations (memory cleanup, rate limiting, session health monitoring)
+2. **v5.5.0** - Session Health admin panel with memory and session statistics
+3. **v5.5.0** - Configurable Socket.IO rate limits via environment variables
+4. **v5.5.0** - Presenter layout reorganization (two-column controls)
+
+---
+
+## v5.5.0 - Backend Performance & Session Health
+
+**Release Date:** 2026-02-08
+**Branch:** `main`
+
+### Features
+
+#### Backend Performance Optimizations
+- **Memory Cleanup Scheduler**: Added `cleanupSocketRateLimits()` to the periodic cleanup interval that runs every 5 minutes. Cleans up stale entries from `socketRateLimits` and `socketJoinTracker` Maps.
+- **Socket.IO Rate Limiting**: Per-IP rate limiting for `joinRoom` (50/minute) and `submitAnswer` (300/minute) events to prevent abuse
+- **Room Activity Tracking**: Added `lastActivityAt` field to rooms, updated on join, presentQuestion, and submitAnswer events. Room expiry now uses actual activity time (4-hour inactivity timeout).
+
+#### Session Health Monitoring
+- **Admin Memory Endpoint**: New `/api/admin/memory` endpoint returning:
+  - Memory usage (heap, RSS, external, arrayBuffers)
+  - Session counts (active rooms, total players, rate limit entries)
+  - Server uptime
+  - Live room details (room code, players, questions, last activity)
+- **Session Health Panel**: New admin tab with visual dashboard featuring:
+  - Memory usage progress bars with color-coding (green <60%, yellow 60-80%, red >80%)
+  - Session counts grid with room, player, and rate limit counts
+  - Server uptime display
+  - Live rooms table with detailed statistics
+  - Auto-refresh toggle (10-second interval)
+
+#### Configurable Socket.IO Rate Limits
+Environment variables for tuning rate limits for venues with many players on shared IP (NAT):
+- `SOCKET_RATE_WINDOW_MS` - Rate limit window (default: 60000ms / 1 minute)
+- `SOCKET_JOIN_LIMIT` - Max join attempts per IP per window (default: 50)
+- `SOCKET_ANSWER_LIMIT` - Max answer submissions per IP per window (default: 300)
+
+#### Presenter Layout Improvements
+- Reorganized presenter controls into two-column layout
+- Left column: Progress indicator, Previous/Next buttons, Present Question, Reveal Answer, Complete Quiz
+- Right column: Auto-Pilot toggle with timer settings, Auto-Reveal toggle
+- Responsive design: single column on mobile (<900px width)
+
+### Files Created
+- `app/src/components/admin/SessionHealthPanel.vue` - Session Health dashboard component
+
+### Files Modified
+- `app/server.js` - Rate limiting, memory cleanup, activity tracking, admin memory endpoint
+- `app/src/config/constants.js` - Added SOCKET_RATE_WINDOW_MS, SOCKET_JOIN_LIMIT, SOCKET_ANSWER_LIMIT defaults
+- `app/src/config/environment.js` - Added socketRateWindowMs, socketJoinLimit, socketAnswerLimit config
+- `app/src/pages/AdminPage.vue` - Session Health tab integration
+- `app/src/components/presenter/QuizDisplay.vue` - Two-column controls layout with CSS Grid
+- `docker-compose.yml` - Added new environment variables with comments
+- `.env.example` - Added Socket.IO rate limiting variables
+
+---
+
+## Previous Session Summary: v5.4.0 - v5.4.4 Release
 
 ### Overview
 

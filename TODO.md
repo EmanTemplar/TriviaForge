@@ -1,8 +1,8 @@
 # TriviaForge - Active Development Tasks (2026)
 
 > **Purpose:** Current development priorities and pending tasks
-> **Last Updated:** 2026-02-06
-> **Version:** v5.4.4
+> **Last Updated:** 2026-02-08
+> **Version:** v5.5.0
 
 ---
 
@@ -298,6 +298,54 @@ Add notification to presenter when all connected players have answered the curre
 
 ---
 
+### v5.5.0 Features - Backend Performance & Session Health ✅ COMPLETE
+
+**Status:** ✅ COMPLETE
+**Priority:** HIGH
+**Completed:** 2026-02-08
+**Branch:** `main`
+
+#### Backend Performance Optimizations ✅
+- [x] Memory cleanup scheduler for rate limit Maps (runs with room expiry interval)
+- [x] Socket.IO rate limiting (join and answer events) with per-IP tracking
+- [x] REST API rate limiting (100 requests per 15 minutes per IP)
+- [x] Room expiry with `lastActivityAt` tracking (expires after 4 hours of inactivity)
+- [x] Configurable Socket.IO rate limits via environment variables
+
+#### Session Health Monitoring ✅
+- [x] `/api/admin/memory` endpoint for memory and session statistics
+- [x] Session Health tab in Admin panel with visual dashboard
+- [x] Memory usage display with color-coded progress bars (green/yellow/red)
+- [x] Session counts (active rooms, total players, rate limit entries)
+- [x] Live room details table with room code, players, questions, and activity
+- [x] Server uptime display
+- [x] Auto-refresh toggle (10-second interval)
+
+#### Presenter Layout Improvements ✅
+- [x] Two-column layout for presenter controls
+- [x] Left column: Progress indicator, navigation buttons, complete button
+- [x] Right column: Auto-Pilot toggle, timer settings, auto-reveal toggle
+- [x] Responsive design (single column on mobile <900px)
+
+#### Environment Configuration ✅
+- [x] `SOCKET_RATE_WINDOW_MS` - Rate limit window (default: 60000ms / 1 minute)
+- [x] `SOCKET_JOIN_LIMIT` - Max join attempts per IP per window (default: 50)
+- [x] `SOCKET_ANSWER_LIMIT` - Max answer submissions per IP per window (default: 300)
+
+**Files Created:**
+- `app/src/components/admin/SessionHealthPanel.vue` - Session Health dashboard
+
+**Files Modified:**
+- `app/server.js` - Rate limiting, memory cleanup, activity tracking, admin memory endpoint
+- `app/src/config/constants.js` - New defaults and env vars
+- `app/src/config/environment.js` - Socket rate limit config parsing
+- `app/src/pages/AdminPage.vue` - Session Health tab integration
+- `app/src/components/presenter/QuizDisplay.vue` - Two-column controls layout
+- `docker-compose.yml` - New environment variables
+- `.env.example` - New rate limiting variables
+
+---
+
 ### v5.4.x Features - Auto-Mode & Solo Play ✅ COMPLETE
 
 **Status:** ✅ COMPLETE
@@ -520,7 +568,7 @@ Add notification to presenter when all connected players have answered the curre
 
 ## 📝 Development Notes
 
-### Current Focus Areas (v5.5.0)
+### Current Focus Areas (v5.6.0)
 1. ~~**2FA TOTP:** Two-Factor Authentication for admins~~ ✅ COMPLETE (v5.2.0)
 2. ~~**Session Export:** CSV export of session results~~ ✅ COMPLETE (v5.2.0)
 3. ~~**Session Filtering:** Date range, quiz, status filters~~ ✅ COMPLETE (v5.2.0)
@@ -529,8 +577,9 @@ Add notification to presenter when all connected players have answered the curre
 6. ~~**Duplicate Detection:** Find and manage duplicate questions~~ ✅ COMPLETE (v5.3.4)
 7. ~~**Auto-Mode:** Automated presenter mode with timers~~ ✅ COMPLETE (v5.4.0)
 8. ~~**Solo-Play Mode:** Self-study without presenter~~ ✅ COMPLETE (v5.4.0)
-9. **Remember Device:** 30-day trusted device for 2FA (planned v5.5.0)
-10. **PDF Export:** Proper PDF formatting for session results (future)
+9. ~~**Backend Performance:** Memory cleanup, rate limiting, session health~~ ✅ COMPLETE (v5.5.0)
+10. **Remember Device:** 30-day trusted device for 2FA (planned v5.6.0)
+11. **PDF Export:** Proper PDF formatting for session results (future)
 
 ### Testing Priorities
 - Mobile browser testing (iOS Safari, Chrome Mobile, Firefox Mobile)
@@ -552,7 +601,8 @@ Add notification to presenter when all connected players have answered the curre
 - **v5.3.0 (Released):** Question Bank & Tagging System ✅
 - **v5.3.1-5.3.4 (Released):** Duplicate Detection System (Find Duplicates, Ignore Pairs, Import Review, Single Question Check) ✅
 - **v5.4.0-5.4.4 (Released):** Auto-Mode Timer System, Solo Play Mode, quiz visibility controls, bug fixes ✅
-- **v5.5.0 (Planned):** Remember device for 2FA, PDF export improvements
+- **v5.5.0 (Released):** Backend performance optimizations, Session Health monitoring, rate limiting, presenter layout improvements ✅
+- **v5.6.0 (Planned):** Remember device for 2FA, PDF export improvements
 
 ---
 
@@ -571,5 +621,5 @@ Before marking a task as complete:
 
 **Archive:** See [archive/TODO-2025.md](archive/TODO-2025.md) for historical tasks and completed features from 2025.
 
-**Last Updated:** 2026-02-06
+**Last Updated:** 2026-02-08
 **Maintained By:** TriviaForge Development Team

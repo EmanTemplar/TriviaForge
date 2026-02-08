@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v5.4.4 - Auto-Mode Timer System, Solo Play Mode, Question Bank, Duplicate Detection, 2FA Support
+**Latest Release**: v5.5.0 - Backend Performance, Session Health Monitoring, Rate Limiting, Auto-Mode, Solo Play, Question Bank
 
 ### Key Highlights
 
@@ -42,6 +42,7 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - **Multi-Admin Support**: Multiple admin accounts with isolated quizzes and sessions
 - **Admin Management** (Root Admin): Create/delete admin accounts, reset admin passwords
 - **Account Settings**: Update email and password from any admin page
+- **Session Health Monitoring**: View memory usage, active sessions, and live room statistics in real-time
 
 <!-- Screenshot Placeholder: Admin Dashboard -->
 ![Admin Dashboard](screenshots/admin-dashboard.png?v=202602)
@@ -662,6 +663,9 @@ Environment variables can be set in multiple ways (listed by precedence, highest
 | `DEBUG_MODE` | Enable comprehensive debug logging (server-side) | `false` | No |
 | `TZ` | Timezone for timestamps | `America/New_York` | No |
 | `APP_NAME` | Application name | `TriviaForge` | No |
+| `SOCKET_RATE_WINDOW_MS` | Socket.IO rate limit window (ms) | `60000` (1 min) | No |
+| `SOCKET_JOIN_LIMIT` | Max join attempts per IP per window | `50` | No |
+| `SOCKET_ANSWER_LIMIT` | Max answer submissions per IP per window | `300` | No |
 
 ### Important Notes
 
@@ -743,6 +747,14 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 ## Roadmap
 
 ### Completed Features
+
+**v5.5.0 (Feb 2026) - Backend Performance & Session Health**
+- [x] Backend Performance Optimizations - Memory cleanup scheduler, Socket.IO rate limiting, room activity tracking
+- [x] Session Health Monitoring - Admin panel with memory usage, session counts, and live room statistics
+- [x] Configurable Socket.IO Rate Limits - Environment variables for join and answer rate limits (NAT-friendly defaults)
+- [x] Presenter Layout Improvements - Two-column layout for controls (buttons left, auto-mode right)
+- [x] Memory Progress Bars - Color-coded visualization (green/yellow/red) based on usage percentage
+- [x] Auto-refresh Toggle - 10-second interval for real-time monitoring
 
 **v5.4.4 (Feb 2026) - Auto-Mode & Solo Play**
 - [x] Auto-Mode Timer System - Server-side timers run independently of presenter's browser

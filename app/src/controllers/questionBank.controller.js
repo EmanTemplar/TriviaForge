@@ -521,6 +521,10 @@ export async function restoreQuestion(req, res) {
  *
  * Query params:
  *   - confirm: Must be 'true' to proceed with deletion
+ *
+ * Note: Questions used in game sessions CANNOT be permanently deleted
+ * because session_questions has a RESTRICT foreign key to preserve
+ * session history. These questions must be archived instead.
  */
 export async function deleteQuestion(req, res) {
   const { id } = req.params;
@@ -545,28 +549,46 @@ export async function deleteQuestion(req, res) {
   );
 
   const { quiz_count, session_count } = usageResult.rows[0];
+  const sessionCount = parseInt(session_count, 10);
+  const quizCount = parseInt(quiz_count, 10);
 
-  // If not confirmed and has usage, return warning
-  if (confirm !== 'true' && (parseInt(quiz_count) > 0 || parseInt(session_count) > 0)) {
-    return res.json({
-      requiresConfirmation: true,
-      message: 'This question is in use. Deleting it will affect existing data.',
+  // Questions used in game sessions CANNOT be permanently deleted
+  // The session_questions FK constraint (RESTRICT) preserves session history
+  if (sessionCount > 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Cannot permanently delete this question',
+      message: `This question has been used in ${sessionCount} game session(s). ` +
+               'To preserve session history, please archive the question instead of deleting it.',
+      canArchive: true,
       usage: {
-        quizCount: parseInt(quiz_count, 10),
-        sessionCount: parseInt(session_count, 10),
+        quizCount,
+        sessionCount,
       },
     });
   }
 
-  // Delete the question (cascades to answers and question_tags)
+  // If not confirmed and has quiz usage, return warning
+  if (confirm !== 'true' && quizCount > 0) {
+    return res.json({
+      requiresConfirmation: true,
+      message: `This question is used in ${quizCount} quiz(es). Deleting it will remove it from those quizzes.`,
+      usage: {
+        quizCount,
+        sessionCount,
+      },
+    });
+  }
+
+  // Delete the question (cascades to answers, question_tags, and quiz_questions)
   await query('DELETE FROM questions WHERE id = $1', [id]);
 
   res.json({
     success: true,
     message: 'Question permanently deleted',
     questionId: parseInt(id, 10),
-    affectedQuizzes: parseInt(quiz_count, 10),
-    affectedSessions: parseInt(session_count, 10),
+    affectedQuizzes: quizCount,
+    affectedSessions: 0,
   });
 }
 

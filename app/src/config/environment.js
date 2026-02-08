@@ -59,6 +59,11 @@ export const env = {
   debugMode: parseBoolean(process.env[ENV_VARS.DEBUG_MODE], false),
   verboseLogging: parseBoolean(process.env[ENV_VARS.VERBOSE_LOGGING], false),
 
+  // Socket.IO Rate Limiting (v5.5.0)
+  socketRateWindowMs: parseIntValue(process.env[ENV_VARS.SOCKET_RATE_WINDOW_MS], DEFAULTS.SOCKET_RATE_WINDOW_MS),
+  socketJoinLimit: parseIntValue(process.env[ENV_VARS.SOCKET_JOIN_LIMIT], DEFAULTS.SOCKET_JOIN_LIMIT),
+  socketAnswerLimit: parseIntValue(process.env[ENV_VARS.SOCKET_ANSWER_LIMIT], DEFAULTS.SOCKET_ANSWER_LIMIT),
+
   // Auto-computed
   isDebugMode: parseBoolean(process.env[ENV_VARS.DEBUG_MODE], false) ||
                 process.env[ENV_VARS.NODE_ENV] === 'development',

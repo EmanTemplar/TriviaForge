@@ -299,6 +299,10 @@ export const DEFAULTS = {
   SOCKET_PING_TIMEOUT: 360000, // 6 minutes
   SOCKET_PING_INTERVAL: 25000, // 25 seconds
   BCRYPT_SALT_ROUNDS: 10,
+  // Socket.IO rate limiting (v5.5.0)
+  SOCKET_RATE_WINDOW_MS: 60000, // 1 minute window
+  SOCKET_JOIN_LIMIT: 50, // Max join attempts per IP per window
+  SOCKET_ANSWER_LIMIT: 300, // Max answer submissions per IP per window
 };
 
 // ============================================================================
@@ -424,6 +428,10 @@ export const ENV_VARS = {
   VERBOSE_LOGGING: 'VERBOSE_LOGGING',
   CSRF_SECRET: 'CSRF_SECRET',
   TZ: 'TZ',
+  // Socket.IO rate limiting (v5.5.0)
+  SOCKET_RATE_WINDOW_MS: 'SOCKET_RATE_WINDOW_MS',
+  SOCKET_JOIN_LIMIT: 'SOCKET_JOIN_LIMIT',
+  SOCKET_ANSWER_LIMIT: 'SOCKET_ANSWER_LIMIT',
 };
 
 // ============================================================================
