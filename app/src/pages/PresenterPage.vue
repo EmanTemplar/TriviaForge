@@ -650,6 +650,8 @@ const resetRoom = () => {
   presentedQuestionIndex.value = null
   currentQuizTitle.value = 'No Quiz Loaded'
   connectedPlayers.value = []
+  autoMode.value = false
+  autoModeState.value = 'idle'
   resetAllAnsweredState()
 }
 

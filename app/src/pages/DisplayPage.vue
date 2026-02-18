@@ -5,8 +5,28 @@
 
     <!-- Main Display Area -->
     <div class="main-display">
+      <!-- End-of-Game Results Podium (v5.6.0) -->
+      <GameResults
+        v-if="quizResultsData && !isQuestionDisplaying"
+        :players="quizResultsData.players"
+        :totalQuestions="quizResultsData.totalQuestions"
+        :classAverage="quizResultsData.classAverage"
+      />
+
+      <!-- Quiz Complete Screen (v5.6.0) - shown for ALL quizzes on completion -->
+      <div v-else-if="quizCompleted && !isQuestionDisplaying" class="quiz-complete-screen">
+        <AppIcon name="check-circle" size="2xl" class="complete-icon" />
+        <h2 class="complete-title">Quiz Complete!</h2>
+        <p v-if="resultsCountdown > 0" class="complete-subtitle">
+          Results in <span class="countdown-number">{{ resultsCountdown }}</span>...
+        </p>
+        <p v-else class="complete-subtitle">
+          Check your <strong>Progress</strong> to see how you did!
+        </p>
+      </div>
+
       <!-- Waiting State -->
-      <div v-if="!isQuestionDisplaying" class="waiting-display">
+      <div v-else-if="!isQuestionDisplaying" class="waiting-display">
         <h1 class="waiting-title"><AppIcon name="gamepad-2" size="2xl" /> Trivia Forge</h1>
         <p class="waiting-text">Waiting for questions...</p>
       </div>
@@ -48,6 +68,12 @@
         <img v-if="qrCodeUrl" :src="qrCodeUrl" :alt="`QR code for room ${roomCode}`" class="qr-code" />
         <div class="room-code">{{ roomCode || '----' }}</div>
         <p class="sidebar-hint">Scan QR or enter code</p>
+      </div>
+
+      <!-- Question Progress -->
+      <div v-if="totalQuestions > 0" class="sidebar-progress">
+        <span class="progress-label">Progress</span>
+        <span class="progress-count">{{ revealedCount }} / {{ totalQuestions }}</span>
       </div>
 
       <!-- Players List -->
@@ -104,6 +130,7 @@ import FormInput from '@/components/common/FormInput.vue'
 import ThemeToggle from '@/components/display/ThemeToggle.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import CountdownTimer from '@/components/player/CountdownTimer.vue'
+import GameResults from '@/components/player/GameResults.vue'
 
 const route = useRoute()
 const socket = useSocket()
@@ -122,6 +149,16 @@ const showRoomCodeModal = ref(false)
 const roomCodeInput = ref('')
 const currentQuestion = ref(null)
 const currentPlayers = ref([])
+
+// Question progress counter
+const revealedCount = ref(0)
+const totalQuestions = ref(0)
+
+// End-of-game state (v5.6.0)
+const quizResultsData = ref(null)
+const quizCompleted = ref(false)
+const resultsCountdown = ref(0)
+let countdownInterval = null
 
 // Auto-mode timer state (v5.4.0)
 const autoMode = ref(false)
@@ -191,8 +228,9 @@ const joinRoom = async () => {
   }
 
   // Join the socket.io room to receive presenter events
-  socket.emit('joinRoom', { roomCode: code, username: 'Display', displayName: 'Spectator Display' })
-  socket.setRoomContext(code, 'Display')
+  const displayId = 'Display-' + Math.random().toString(36).substr(2, 4)
+  socket.emit('joinRoom', { roomCode: code, username: displayId, displayName: 'Spectator Display', isSpectator: true })
+  socket.setRoomContext(code, displayId)
 }
 
 // Initialize Socket.IO connection
@@ -213,9 +251,13 @@ onMounted(() => {
   }
 
   // Listen for player list updates (confirms room join)
-  socket.on('playerListUpdate', ({ roomCode: code, players }) => {
+  socket.on('playerListUpdate', ({ roomCode: code, players, revealedCount: rc, totalQuestions: tq }) => {
     if (roomCode.value && code === roomCode.value) {
       currentPlayers.value = players || []
+      if (tq !== undefined) {
+        revealedCount.value = rc || 0
+        totalQuestions.value = tq
+      }
       if (!isConnected.value) {
         isConnected.value = true
         uiStore.addNotification(`Connected to room ${code}`, 'success')
@@ -258,7 +300,12 @@ onMounted(() => {
   })
 
   // Listen for answer reveal
-  socket.on('questionRevealed', ({ questionIndex, question, answerDisplayTime }) => {
+  socket.on('questionRevealed', ({ questionIndex, question, answerDisplayTime, revealedCount: rc, totalQuestions: tq }) => {
+    // Update question progress counter
+    if (tq !== undefined) {
+      revealedCount.value = rc || 0
+      totalQuestions.value = tq
+    }
     console.log('[DISPLAY] Answer revealed for question:', questionIndex)
     console.log('[DISPLAY] Answer display time from server:', answerDisplayTime)
 
@@ -289,11 +336,55 @@ onMounted(() => {
     }, displayTimeout)
   })
 
+  // v5.6.0: Quiz completed - show completion screen for ALL quizzes
+  socket.on('quizCompleted', (data) => {
+    console.log('[DISPLAY] Quiz completed:', data)
+    quizCompleted.value = true
+    isQuestionDisplaying.value = false
+
+    // Clear any pending question display timeout
+    if (questionDisplayTimeout.value) {
+      clearTimeout(questionDisplayTimeout.value)
+      questionDisplayTimeout.value = null
+    }
+
+    // If results are coming, show a countdown
+    if (data.showResults) {
+      resultsCountdown.value = 5
+      if (countdownInterval) clearInterval(countdownInterval)
+      countdownInterval = setInterval(() => {
+        resultsCountdown.value--
+        if (resultsCountdown.value <= 0) {
+          clearInterval(countdownInterval)
+          countdownInterval = null
+        }
+      }, 1000)
+    }
+  })
+
+  // End-of-game results (v5.6.0) - arrives 5s after quizCompleted if enabled
+  socket.on('quizResults', (data) => {
+    if (data.showResults) {
+      quizResultsData.value = data
+      resultsCountdown.value = 0
+      if (countdownInterval) {
+        clearInterval(countdownInterval)
+        countdownInterval = null
+      }
+    }
+  })
+
   // Listen for room closed
   socket.on('roomClosed', () => {
+    quizResultsData.value = null
+    quizCompleted.value = false
     isQuestionDisplaying.value = false
     isConnected.value = false
     currentPlayers.value = []
+    autoMode.value = false
+    timerStartedAt.value = null
+    timerDuration.value = null
+    timerPaused.value = false
     uiStore.addNotification('Room has been closed', 'info')
     showRoomCodeModal.value = true
     roomCode.value = null
@@ -361,6 +452,57 @@ onUnmounted(() => {
   min-width: 0;
   min-height: 0;
   box-sizing: border-box;
+}
+
+/* Quiz Complete screen (v5.6.0) */
+.quiz-complete-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem;
+  text-align: center;
+  animation: fadeInUp 0.5s ease;
+}
+
+.complete-icon {
+  color: var(--secondary-light);
+  filter: drop-shadow(0 0 12px rgba(34, 197, 94, 0.5));
+  font-size: 4rem;
+}
+
+.complete-title {
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.complete-subtitle {
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.countdown-number {
+  display: inline-block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--info-light);
+  min-width: 1.5ch;
+  font-variant-numeric: tabular-nums;
+  animation: countPulse 1s ease-in-out infinite;
+}
+
+@keyframes countPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .waiting-display {
@@ -510,6 +652,29 @@ onUnmounted(() => {
 .sidebar-section {
   text-align: center;
   margin-bottom: 2rem;
+}
+
+.sidebar-progress {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.progress-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.progress-count {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--info-light);
+  font-variant-numeric: tabular-nums;
 }
 
 .sidebar-title {

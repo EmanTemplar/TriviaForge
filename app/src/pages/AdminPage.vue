@@ -728,13 +728,17 @@ const handleToggleAvailability = async ({ quiz, type }) => {
       updateData.availableLive = quiz.availableLive === false ? true : false
     } else if (type === 'solo') {
       updateData.availableSolo = quiz.availableSolo === false ? true : false
+    } else if (type === 'show_results') {
+      updateData.showResults = quiz.showResults === false ? true : false
     }
 
     await put(`/api/quizzes/${quiz.id}`, updateData)
     await loadQuizzes()
 
-    const label = type === 'live' ? 'Live Games' : 'Solo Play'
-    const status = updateData[type === 'live' ? 'availableLive' : 'availableSolo'] ? 'enabled' : 'disabled'
+    const labelMap = { live: 'Live Games', solo: 'Solo Play', show_results: 'Show Results' }
+    const keyMap = { live: 'availableLive', solo: 'availableSolo', show_results: 'showResults' }
+    const label = labelMap[type]
+    const status = updateData[keyMap[type]] ? 'enabled' : 'disabled'
     showAlert(`"${quiz.title}" ${status} for ${label}`)
   } catch (err) {
     showAlert('Error updating quiz: ' + err.message, 'Error')
@@ -1296,7 +1300,9 @@ const shuffleAllChoices = async () => {
   if (!selectedQuiz.value) return
   try {
     // Shuffle choices within each question and track correct answer index
+    // Skip True/False questions as shuffling can break their pre-set answers
     const updatedQuestions = currentQuestions.value.map(question => {
+      if (question.type === 'true_false') return question
       const choiceIndexMap = question.choices.map((_, idx) => idx)
       const shuffledIndices = shuffleArray(choiceIndexMap)
       const shuffledChoices = shuffledIndices.map(idx => question.choices[idx])

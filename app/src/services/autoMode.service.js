@@ -392,6 +392,8 @@ class AutoModeService {
       question,
       results,
       revealedQuestions: room.revealedQuestions,
+      revealedCount: room.revealedQuestions.length,
+      totalQuestions: room.quizData.questions.length,
       answerDisplayTime: this.quizOptions?.answerDisplayTime || 30
     });
 
@@ -443,24 +445,58 @@ class AutoModeService {
       player.answers && Object.keys(player.answers).length > 0
     );
 
+    let savedFilename = null;
     if (hasAnswers) {
       try {
-        const filename = await sessionService.saveSession(roomCode, room);
-        console.log(`[AutoMode] Session saved: ${filename}`);
-        this.io.to(roomCode).emit('quizCompleted', {
-          message: 'Quiz completed and saved!',
-          filename
-        });
+        savedFilename = await sessionService.saveSession(roomCode, room);
+        console.log(`[AutoMode] Session saved: ${savedFilename}`);
       } catch (err) {
         console.error(`[AutoMode] Error saving session for room ${roomCode}:`, err);
-        this.io.to(roomCode).emit('quizCompleted', {
-          message: 'Quiz completed (error saving session)'
-        });
       }
-    } else {
-      this.io.to(roomCode).emit('quizCompleted', {
-        message: 'Quiz completed (no answers recorded)'
-      });
+    }
+
+    // v5.6.0: Broadcast quiz completion to ALL clients in the room
+    this.io.to(roomCode).emit('quizCompleted', {
+      message: savedFilename ? 'Quiz completed and saved!' : 'Quiz completed (no answers recorded)',
+      filename: savedFilename,
+      showResults: room.showResults || false
+    });
+
+    // v5.6.0: Broadcast final results after a 5-second delay (countdown transition)
+    if (room.showResults) {
+      const io = this.io;
+      const roomRef = room;
+      setTimeout(() => {
+        const totalQuestions = roomRef.quizData.questions.length;
+        const players = Object.values(roomRef.players)
+          .filter(p => !p.isSpectator && p.answers && Object.keys(p.answers).length > 0)
+          .map(p => {
+            const answers = p.answers || {};
+            let correct = 0;
+            for (const [qIdx, choice] of Object.entries(answers)) {
+              const question = roomRef.quizData.questions[parseInt(qIdx)];
+              if (question && choice === question.correctChoice) {
+                correct++;
+              }
+            }
+            return {
+              name: p.name,
+              score: correct,
+              totalAnswered: Object.keys(answers).length
+            };
+          })
+          .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+
+        const totalCorrect = players.reduce((sum, p) => sum + p.score, 0);
+        const classAverage = players.length > 0 ? parseFloat((totalCorrect / players.length).toFixed(1)) : 0;
+
+        io.to(roomCode).emit('quizResults', {
+          players,
+          totalQuestions,
+          classAverage,
+          showResults: true
+        });
+      }, 5000);
     }
 
     // Emit active rooms update

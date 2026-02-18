@@ -45,6 +45,11 @@
         <div class="controls-grid">
           <!-- Left Column: Progress + Buttons -->
           <div class="controls-left">
+            <!-- Question Counter -->
+            <div v-if="currentQuestions.length > 0" class="question-counter-presenter">
+              Revealed: {{ revealedQuestions.length }} / {{ currentQuestions.length }}
+            </div>
+
             <!-- Progress Indicator (when question is presented) -->
             <div v-if="presentedQuestionIndex !== null" class="answer-progress">
               <div class="progress-text">
@@ -437,6 +442,19 @@ const autoModeStateClass = computed(() => {
 
 .questionCard ul li.correct-choice {
   color: var(--secondary-light);
+}
+
+/* Question Counter */
+.question-counter-presenter {
+  padding: 0.4rem 0.75rem;
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--info-light);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Answer Progress Indicator */

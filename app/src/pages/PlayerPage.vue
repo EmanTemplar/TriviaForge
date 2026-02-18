@@ -9,6 +9,8 @@
       :menuOpen="menuOpen"
       :nonSpectatorPlayers="nonSpectatorPlayers"
       :loginUsername="loginUsername"
+      :revealedCount="revealedCount"
+      :totalQuestions="totalQuestions"
       @showProgress="showProgressModal"
       @toggleMenu="toggleMenu"
       @leaveRoom="handleLeaveRoomClick"
@@ -36,9 +38,29 @@
 
       <!-- Left/Top: Question Display -->
       <div class="question-area">
+        <!-- End-of-Game Results Podium (v5.6.0) -->
+        <GameResults
+          v-if="quizResultsData && !questionDisplaying"
+          :players="quizResultsData.players"
+          :totalQuestions="quizResultsData.totalQuestions"
+          :classAverage="quizResultsData.classAverage"
+        />
+
+        <!-- Quiz Complete Screen (v5.6.0) - shown for ALL quizzes on completion -->
+        <div v-else-if="quizCompleted && !questionDisplaying" class="quiz-complete-screen">
+          <AppIcon name="check-circle" size="2xl" class="complete-icon" />
+          <h2 class="complete-title">Quiz Complete!</h2>
+          <p v-if="resultsCountdown > 0" class="complete-subtitle">
+            Results in <span class="countdown-number">{{ resultsCountdown }}</span>...
+          </p>
+          <p v-else class="complete-subtitle">
+            Check your <strong>Progress</strong> to see how you did!
+          </p>
+        </div>
+
         <!-- Waiting Screen -->
         <WaitingDisplay
-          v-if="!questionDisplaying"
+          v-else-if="!questionDisplaying"
           :inRoom="inRoom"
           :recentRooms="recentRooms"
           @quickJoin="quickJoinRoom"
@@ -174,6 +196,7 @@ import ChangeUsernameConfirmModal from '@/components/modals/ChangeUsernameConfir
 import ProgressModal from '@/components/modals/ProgressModal.vue'
 import AnswerConfirmModal from '@/components/modals/AnswerConfirmModal.vue'
 import PlayerNavbar from '@/components/player/PlayerNavbar.vue'
+import GameResults from '@/components/player/GameResults.vue'
 import QuestionDisplay from '@/components/player/QuestionDisplay.vue'
 import WaitingDisplay from '@/components/player/WaitingDisplay.vue'
 import JoinRoomSection from '@/components/player/JoinRoomSection.vue'
@@ -233,6 +256,16 @@ const selectedAnswer = ref(null)
 const playerGotCorrect = ref(false)
 const answeredCurrentQuestion = ref(false)
 const answeredQuestions = new Set()
+
+// Question progress counter
+const revealedCount = ref(0)
+const totalQuestions = ref(0)
+
+// End-of-game state (v5.6.0)
+const quizResultsData = ref(null)
+const quizCompleted = ref(false)
+const resultsCountdown = ref(0)
+let countdownInterval = null
 
 // Question history
 const questionHistory = ref([])
@@ -588,7 +621,12 @@ const setupSocketListeners = () => {
     }
   })
 
-  socket.on('playerListUpdate', ({ roomCode, players }) => {
+  socket.on('playerListUpdate', ({ roomCode, players, revealedCount: rc, totalQuestions: tq }) => {
+    // Update question progress counter if provided
+    if (tq !== undefined) {
+      revealedCount.value = rc || 0
+      totalQuestions.value = tq
+    }
     console.log(`[CONNECTION] playerListUpdate received - roomCode: ${roomCode}, currentRoomCode: ${currentRoomCode.value}, joinInProgress: ${joinRoomInProgress.value}, inRoom: ${inRoom.value}`)
     debugLog('playerListUpdate received', {
       roomCode,
@@ -706,7 +744,12 @@ const setupSocketListeners = () => {
     }
   })
 
-  socket.on('questionRevealed', ({ questionIndex, question, results, answerDisplayTime }) => {
+  socket.on('questionRevealed', ({ questionIndex, question, results, answerDisplayTime, revealedCount: rc, totalQuestions: tq }) => {
+    // Update question progress counter
+    if (tq !== undefined) {
+      revealedCount.value = rc || 0
+      totalQuestions.value = tq
+    }
     // CRITICAL: Clear any existing answer display timeout before setting new one
     if (answerDisplayTimeout.value) {
       clearTimeout(answerDisplayTimeout.value)
@@ -741,6 +784,7 @@ const setupSocketListeners = () => {
   })
 
   socket.on('roomClosed', () => {
+    localStorage.removeItem('trivia_last_room')
     uiStore.addNotification('Room closed by presenter.', 'info')
     handleLeaveRoom()
   })
@@ -755,6 +799,10 @@ const setupSocketListeners = () => {
     if (joinRoomInProgress.value) {
       console.log('[CONNECTION] Clearing joinRoom flag due to room error')
       joinRoomInProgress.value = false
+    }
+    // Clear stale room from localStorage so we don't retry on next page load
+    if (msg === 'Room not found.') {
+      localStorage.removeItem('trivia_last_room')
     }
     uiStore.addNotification(msg, 'error')
   })
@@ -834,6 +882,38 @@ const setupSocketListeners = () => {
     console.log(`[AUTO-MODE] All players answered, waiting ${waitSeconds}s before reveal`)
     statusMessage.value = 'All players answered! Revealing soon...'
     statusMessageType.value = 'info'
+  })
+
+  // v5.6.0: Quiz completed - show completion screen for ALL quizzes
+  socket.on('quizCompleted', (data) => {
+    console.log('[PLAYER] Quiz completed:', data)
+    quizCompleted.value = true
+    questionDisplaying.value = false
+
+    // If results are coming, show a countdown
+    if (data.showResults) {
+      resultsCountdown.value = 5
+      if (countdownInterval) clearInterval(countdownInterval)
+      countdownInterval = setInterval(() => {
+        resultsCountdown.value--
+        if (resultsCountdown.value <= 0) {
+          clearInterval(countdownInterval)
+          countdownInterval = null
+        }
+      }, 1000)
+    }
+  })
+
+  // End-of-game results (v5.6.0) - arrives 5s after quizCompleted if enabled
+  socket.on('quizResults', (data) => {
+    if (data.showResults) {
+      quizResultsData.value = data
+      resultsCountdown.value = 0
+      if (countdownInterval) {
+        clearInterval(countdownInterval)
+        countdownInterval = null
+      }
+    }
   })
 }
 
@@ -1396,6 +1476,16 @@ const handleLeaveRoom = () => {
   answeredQuestions.clear()
   questionHistory.value = [] // Clear session-specific history
   currentPlayers.value = []
+  quizResultsData.value = null
+  quizCompleted.value = false
+  resultsCountdown.value = 0
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null }
+  revealedCount.value = 0
+  totalQuestions.value = 0
+  autoMode.value = false
+  timerStartedAt.value = null
+  timerDuration.value = null
+  timerPaused.value = false
   statusMessage.value = 'Ready to join'
   statusMessageType.value = ''
   menuOpen.value = false
@@ -1594,6 +1684,57 @@ const verifyAuthToken = async () => {
   justify-content: center;
   min-width: 0;
   box-sizing: border-box;
+}
+
+/* Quiz Complete screen (v5.6.0) */
+.quiz-complete-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+  animation: fadeInUp 0.5s ease;
+}
+
+.complete-icon {
+  color: var(--secondary-light);
+  filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.4));
+  font-size: 3rem;
+}
+
+.complete-title {
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.complete-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.countdown-number {
+  display: inline-block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--info-light);
+  min-width: 1.5ch;
+  font-variant-numeric: tabular-nums;
+  animation: countPulse 1s ease-in-out infinite;
+}
+
+@keyframes countPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .sidebar {

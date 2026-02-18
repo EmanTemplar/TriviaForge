@@ -1,12 +1,100 @@
 # TriviaForge Development Summary
 
 > **Purpose:** Summary of development changes for the current session
-> **Last Updated:** 2026-02-08
-> **Version:** v5.5.0
+> **Last Updated:** 2026-02-18
+> **Version:** v5.6.0
 
 ---
 
-## Session Summary: v5.5.0 Release
+## Session Summary: v5.6.0 Release
+
+### Overview
+
+This development period covered game experience and results display enhancements informed by live beta testing with 6-7 users across two 40-question games:
+1. **v5.6.0** - Question progress counter on Player, Display, and Presenter pages
+2. **v5.6.0** - End-of-game results podium with gold/silver/bronze and per-quiz toggle
+3. **v5.6.0** - Quiz completion screen for ALL quizzes with countdown transition
+4. **v5.6.0** - Multiple simultaneous Display/Spectator connections per room
+5. **v5.6.0** - Shuffle All Choices bug fix (skip True/False questions)
+6. **v5.6.0** - Heartbeat false positive fix (browser tab throttling threshold)
+7. **v5.6.0** - Stale room rejoin cleanup
+8. **v5.6.0** - Auto-pilot state reset on room change
+9. **v5.6.0** - Manual mode auto-complete when all questions revealed
+
+---
+
+## v5.6.0 - Game Experience & Results Display
+
+**Release Date:** 2026-02-18
+**Branch:** `feature-enhancements-v5.6.0`
+
+### Features
+
+#### Question Progress Counter
+- "X / Y" pill badge showing revealed questions vs total in Player navbar, Display sidebar, and Presenter controls
+- Server broadcasts `revealedCount` and `totalQuestions` with `questionRevealed` and `playerListUpdate` events
+- Late joiners and reconnecting players receive current count immediately
+
+#### End-of-Game Results Podium
+- Celebratory podium-style results screen with gold/silver/bronze for top 3 players
+- Staggered entrance animations for each podium slot
+- Remaining players listed below with rank and score
+- Class average chip in header
+- Per-quiz `show_results` toggle (defaults to TRUE, opt-out model)
+- Admin toggle in Quiz Sidebar dropdown menu with "Results" badge on quiz items
+
+#### Quiz Completion Screen
+- Universal "Quiz Complete!" screen shown for ALL quizzes when they finish
+- For results-enabled quizzes: animated countdown "Results in 5...4...3..." before podium appears
+- For non-results quizzes: static message "Check your Progress to see how you did!"
+- Both Player and Display pages show the completion screen
+- Smooth transition from completion screen to results podium
+
+#### Manual Mode Auto-Complete
+- When all questions are revealed in manual mode (no auto-pilot), quiz automatically completes
+- Waits for the answer display timeout so players can see the last answer
+- Then triggers the same completion flow as auto-pilot (save, broadcast, results)
+
+#### Multiple Simultaneous Displays
+- Each Display/Spectator connection gets a unique ID (e.g., `Display-a3f9`)
+- `isSpectator: true` flag sent in join payload as authoritative source for spectator detection
+- Reserved name protection: players cannot name themselves "Display" or "Spectator"
+- Reconnection lookup skips spectator entries to prevent socket hijacking
+
+#### Bug Fixes
+- **Shuffle All Choices**: Now skips True/False questions (prevents answer corruption)
+- **Heartbeat False Positives**: Raised high-latency log threshold from 1000ms to 2000ms (browser tab throttling causes ~1000ms readings on desktop)
+- **Stale Room Rejoin**: Clear `localStorage.trivia_last_room` on `roomClosed` and `roomError` events
+- **Auto-Pilot State Reset**: Reset `autoMode`, `timerStartedAt`, `timerDuration`, `timerPaused` when leaving/closing rooms on Player, Display, and Presenter pages
+
+### Database Migration
+
+**New migration:** `14-show-results-setting.sql`
+```sql
+ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS show_results BOOLEAN DEFAULT TRUE;
+```
+
+### Files Created
+- `app/init/14-show-results-setting.sql` - Database migration for show_results column
+- `app/src/components/player/GameResults.vue` - Podium-style results component
+
+### Files Modified
+- `app/server.js` - Heartbeat threshold, spectator flag, reserved names, broadcastQuizResults helper, quizCompleted broadcast to room, manual auto-complete logic, revealedCount/totalQuestions in payloads
+- `app/src/services/autoMode.service.js` - Results broadcast with delay, quizCompleted with showResults flag, revealedCount/totalQuestions in emissions
+- `app/src/controllers/quiz.controller.js` - show_results in all SQL queries and response mappings
+- `app/src/pages/PlayerPage.vue` - Progress counter, quizCompleted/quizResults listeners, GameResults integration, completion screen, countdown, localStorage cleanup, auto-mode reset
+- `app/src/pages/DisplayPage.vue` - Unique display ID, isSpectator flag, progress counter, quizCompleted/quizResults listeners, GameResults integration, completion screen, countdown, auto-mode reset
+- `app/src/pages/AdminPage.vue` - Shuffle skip T/F fix, show_results toggle handler
+- `app/src/pages/PresenterPage.vue` - Auto-mode state reset in resetRoom
+- `app/src/components/player/PlayerNavbar.vue` - Responsive logo (TriviaForge Player/TF), question counter pill, progress container gap
+- `app/src/components/presenter/QuizDisplay.vue` - "Revealed: X / Y" counter
+- `app/src/components/admin/QuizSidebar.vue` - Show Results toggle + Results badge
+- `app/src/config/version.js` - Bumped to v5.6.0
+- `docker-compose.yml` - Updated image tag for v5.6.0
+
+---
+
+## Previous Session Summary: v5.5.0 Release
 
 ### Overview
 

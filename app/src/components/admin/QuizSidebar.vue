@@ -65,6 +65,7 @@
             <span class="quiz-badges">
               <span v-if="quiz.availableLive !== false" class="badge badge-live" title="Available for Live Games">Live</span>
               <span v-if="quiz.availableSolo !== false" class="badge badge-solo" title="Available for Solo Play">Solo</span>
+              <span v-if="quiz.showResults !== false" class="badge badge-results" title="Show Results After Quiz">Results</span>
             </span>
           </div>
         </div>
@@ -80,6 +81,10 @@
             <button class="menu-item" @click="toggleAvailability(quiz, 'solo')">
               <AppIcon :name="quiz.availableSolo !== false ? 'check-square' : 'square'" size="sm" />
               <span>Available for Solo</span>
+            </button>
+            <button class="menu-item" @click="toggleAvailability(quiz, 'show_results')">
+              <AppIcon :name="quiz.showResults !== false ? 'check-square' : 'square'" size="sm" />
+              <span>Show Results</span>
             </button>
             <hr class="menu-divider" />
             <button class="menu-item menu-item-danger" @click="handleDelete(quiz.filename)">
@@ -414,6 +419,11 @@ h2 {
 .badge-solo {
   background: var(--primary-bg-30);
   color: var(--primary-light);
+}
+
+.badge-results {
+  background: var(--warning-bg-30);
+  color: var(--warning-light);
 }
 
 /* Quiz Menu */

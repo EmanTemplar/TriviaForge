@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v5.5.0 - Backend Performance, Session Health Monitoring, Rate Limiting, Auto-Mode, Solo Play, Question Bank
+**Latest Release**: v5.6.0 - Game Experience & Results Display, Progress Counter, Multiple Displays, Auto-Mode, Solo Play, Question Bank
 
 ### Key Highlights
 
@@ -32,6 +32,7 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - **Question Types**: Support for Multiple Choice and True/False questions
 - **Image Support**: Add images to questions via file upload or external URL
 - **Timer Settings**: Configure per-quiz question timers and reveal delays for auto-mode
+- **Results Display Toggle**: Per-quiz option to show celebratory results podium with gold/silver/bronze when quiz completes
 - **Drag-and-Drop Reordering**: Reorganize questions and answer choices with visual drag-and-drop or arrow buttons
 - **Smart Answer Tracking**: Correct answer automatically updates when reordering choices
 - **Excel Import**: Bulk import quizzes from professionally formatted Excel templates with duplicate review (supports 2-10 answer choices)
@@ -84,6 +85,8 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - **Session Resume**: Continue interrupted quizzes exactly where you left off
 - **Multi-room Support**: Manage multiple concurrent trivia sessions
 - **Class Performance Analytics**: View overall class statistics (total correct/incorrect, class accuracy percentage, average performance)
+- **Question Progress Counter**: Live "X / Y" counter showing revealed questions vs total
+- **Auto-Complete Detection**: Quiz automatically completes when all questions have been revealed (both manual and auto-mode)
 
 <!-- Screenshot Placeholder: Presenter View -->
 ![Presenter View](screenshots/presenter-view.png?v=202602)
@@ -104,6 +107,9 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - **Answer Locking**: Prevents re-answering after submission (even on reconnection)
 - **Smart Reconnection**: Automatically restore progress when rejoining with full state preservation via RoomSessionID
 - **Progress Tracking**: Comprehensive modal showing detailed session statistics and question-by-question history with correct/incorrect/pending status (persists across disconnections)
+- **Question Progress Counter**: Live "X / Y" counter in navbar showing game progress
+- **End-of-Game Results**: Celebratory podium display showing top 3 players with gold/silver/bronze and full rankings
+- **Quiz Complete Notification**: Clear "Quiz Complete!" screen with countdown transition when results are enabled
 - **Account System**: Guest accounts with optional registration for persistent profiles
 - **Recent Rooms**: Quick rejoin to recently played active rooms
 - **Account Management**: Update display names and manage account settings
@@ -179,6 +185,9 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - **Display Mode**: Large-screen view perfect for projectors and TVs
 - **Live Results**: Real-time answer distribution and statistics
 - **Reveal Animations**: Engaging answer reveals with visual feedback
+- **Multiple Displays**: Connect multiple spectator screens to the same room simultaneously
+- **Question Progress Counter**: Live tracking of revealed questions
+- **End-of-Game Results**: Full podium display on spectator screens when quiz completes
 
 <!-- Screenshot Placeholder: Display/Spectator View -->
 ![Spectator Display](screenshots/spectator-display.png?v=202602)

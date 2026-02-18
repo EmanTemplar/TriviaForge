@@ -255,6 +255,44 @@ const sessionHasAnswers = (room) => {
 };
 
 // --------------------
+// Helper: broadcast quiz results to players/displays (v5.6.0)
+// --------------------
+const broadcastQuizResults = (roomCode, room) => {
+  if (!room.showResults) return;
+
+  const totalQuestions = room.quizData.questions.length;
+  const players = Object.values(room.players)
+    .filter(p => !p.isSpectator && p.answers && Object.keys(p.answers).length > 0)
+    .map(p => {
+      const answers = p.answers || {};
+      let correct = 0;
+      for (const [qIdx, choice] of Object.entries(answers)) {
+        const question = room.quizData.questions[parseInt(qIdx)];
+        if (question && choice === question.correctChoice) {
+          correct++;
+        }
+      }
+      return {
+        name: p.name,
+        score: correct,
+        totalAnswered: Object.keys(answers).length
+      };
+    })
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+
+  // Compute class average
+  const totalCorrect = players.reduce((sum, p) => sum + p.score, 0);
+  const classAverage = players.length > 0 ? (totalCorrect / players.length).toFixed(1) : 0;
+
+  io.to(roomCode).emit('quizResults', {
+    players,
+    totalQuestions,
+    classAverage: parseFloat(classAverage),
+    showResults: true
+  });
+};
+
+// --------------------
 // Middleware: Authentication
 // --------------------
 
@@ -1510,6 +1548,8 @@ io.on('connection', (socket) => {
           autoMode: false,
           questionTimer: null,
           revealDelay: null,
+          // v5.6.0: Show results setting
+          showResults: quiz.showResults !== false,
         };
         console.log(`Room ${roomCode} created for quiz ID ${quizId} (${quiz.title}) by admin ${userId || 1}`);
       }
@@ -1821,7 +1861,7 @@ io.on('connection', (socket) => {
   });
 
   // Player joins a room
-  socket.on('joinRoom', async ({ roomCode, username, displayName, playerID }) => {
+  socket.on('joinRoom', async ({ roomCode, username, displayName, playerID, isSpectator: spectatorFlag }) => {
     // Rate limiting check (v5.5.0)
     const clientIP = socket.handshake.headers['x-forwarded-for']?.split(',')[0]?.trim() || socket.handshake.address || 'unknown';
     if (!checkSocketRateLimit(clientIP, 'join')) {
@@ -1901,7 +1941,17 @@ io.on('connection', (socket) => {
     }
 
     // Determine if this is a spectator (needed throughout the function)
-    const isSpectator = playerUsername === 'Display' || playerDisplayName === 'Spectator Display';
+    // Use the explicit flag from the client payload (sent by DisplayPage), with string-matching fallback for legacy
+    const isSpectator = spectatorFlag === true || playerUsername === 'Display' || playerDisplayName === 'Spectator Display';
+
+    // Prevent regular players from spoofing spectator names
+    if (!isSpectator) {
+      const reservedPattern = /^(display|spectator(\s*display)?)/i;
+      if (reservedPattern.test(playerUsername) || reservedPattern.test(playerDisplayName)) {
+        socket.emit('roomError', 'That name is reserved. Please choose a different name.');
+        return;
+      }
+    }
 
     // Check if display name is banned (skip for spectators)
     if (!isSpectator) {
@@ -1976,7 +2026,8 @@ io.on('connection', (socket) => {
     if (!existingPlayerEntry) {
       // Find ALL existing entries for this username (not just the first one)
       // This fixes the zombie connection bug where multiple disconnected entries accumulate
-      const existingPlayers = Object.entries(room.players).filter(([, player]) => player.username === playerUsername);
+      // Skip spectator entries - each display connection gets a unique ID and should not collide
+      const existingPlayers = Object.entries(room.players).filter(([, player]) => player.username === playerUsername && !player.isSpectator);
 
       if (DEBUG_ENABLED) {
         console.log('[JOIN DEBUG] Checking for existing player entries by username (FALLBACK)', {
@@ -2035,7 +2086,7 @@ io.on('connection', (socket) => {
         connected: true,
         connectionState: 'connected',
         choice: currentChoice,
-        isSpectator: playerUsername === 'Display' || playerDisplayName === 'Spectator Display',
+        isSpectator: isSpectator,
         userAgent: userAgent,
         isMobile: isMobile,
         lastHeartbeat: Date.now()
@@ -2091,7 +2142,7 @@ io.on('connection', (socket) => {
         connected: true,
         connectionState: 'connected', // 'connected' | 'away' | 'disconnected' | 'warning'
         answers: existingAnswers,
-        isSpectator: playerUsername === 'Display' || playerDisplayName === 'Spectator Display', // Flag spectators
+        isSpectator: isSpectator, // Flag spectators
         userAgent: userAgent, // Track for diagnostics and mobile-specific handling
         isMobile: isMobile,
         lastHeartbeat: Date.now() // Track connection health
@@ -2134,7 +2185,12 @@ io.on('connection', (socket) => {
       });
     }
 
-    io.to(roomCode).emit('playerListUpdate', { roomCode, players: playersToEmit });
+    io.to(roomCode).emit('playerListUpdate', {
+      roomCode,
+      players: playersToEmit,
+      revealedCount: (room.revealedQuestions || []).length,
+      totalQuestions: room.quizData.questions.length
+    });
     io.emit('activeRoomsUpdate', getActiveRoomsSummary());
 
     // Send the player's answer history with detailed information (skip for spectators)
@@ -2401,8 +2457,51 @@ io.on('connection', (socket) => {
       question,
       results,
       revealedQuestions: room.revealedQuestions,
+      revealedCount: room.revealedQuestions.length,
+      totalQuestions: room.quizData.questions.length,
       answerDisplayTime: quizOptions.answerDisplayTime
     });
+
+    // v5.6.0: Auto-complete when all questions revealed in manual mode
+    const allRevealed = room.revealedQuestions.length >= room.quizData.questions.length;
+    const isAutoModeRunning = room.autoMode && autoModeService.getState(roomCode);
+    if (allRevealed && !isAutoModeRunning && room.status !== 'completed') {
+      console.log(`[MANUAL] All ${room.quizData.questions.length} questions revealed in room ${roomCode}, auto-completing after answer display`);
+      const displayDelay = (quizOptions.answerDisplayTime || 30) * 1000;
+      setTimeout(async () => {
+        // Re-check room still exists and isn't already completed
+        const currentRoom = roomService.liveRooms[roomCode];
+        if (!currentRoom || currentRoom.status === 'completed') return;
+
+        currentRoom.status = 'completed';
+        currentRoom.completedAt = new Date().toISOString();
+        stopAutoSave(roomCode);
+
+        let savedFilename = null;
+        if (sessionHasAnswers(currentRoom)) {
+          try {
+            savedFilename = await saveSession(roomCode, currentRoom);
+            console.log(`[MANUAL] Session saved: ${savedFilename}`);
+          } catch (err) {
+            console.error('[MANUAL] Error saving session:', err);
+          }
+        }
+
+        io.to(roomCode).emit('quizCompleted', {
+          message: savedFilename ? 'Quiz completed and saved!' : 'Quiz completed (no answers recorded)',
+          filename: savedFilename,
+          showResults: currentRoom.showResults || false
+        });
+
+        if (currentRoom.showResults) {
+          setTimeout(() => {
+            broadcastQuizResults(roomCode, currentRoom);
+          }, 5000);
+        }
+
+        io.emit('activeRoomsUpdate', getActiveRoomsSummary());
+      }, displayDelay);
+    }
   });
 
   // Presenter completes quiz
@@ -2417,17 +2516,30 @@ io.on('connection', (socket) => {
     stopAutoSave(roomCode);
 
     // Save session if there are answers
+    let savedFilename = null;
     if (sessionHasAnswers(room)) {
       try {
-        const filename = await saveSession(roomCode, room);
-        console.log(`Session saved: ${filename}`);
-        socket.emit('quizCompleted', { message: 'Quiz completed and saved!', filename });
+        savedFilename = await saveSession(roomCode, room);
+        console.log(`Session saved: ${savedFilename}`);
       } catch (err) {
         console.error('Error saving session:', err);
         socket.emit('roomError', 'Failed to save quiz session.');
       }
-    } else {
-      socket.emit('quizCompleted', { message: 'Quiz completed (no answers recorded)' });
+    }
+
+    // v5.6.0: Broadcast quiz completion to ALL clients in the room (not just presenter)
+    io.to(roomCode).emit('quizCompleted', {
+      message: savedFilename ? 'Quiz completed and saved!' : 'Quiz completed (no answers recorded)',
+      filename: savedFilename,
+      showResults: room.showResults || false
+    });
+
+    // v5.6.0: Broadcast final results to players/displays if show_results is enabled
+    // Delay results slightly so clients can show the "Quiz Complete" transition first
+    if (room.showResults) {
+      setTimeout(() => {
+        broadcastQuizResults(roomCode, room);
+      }, 5000);
     }
 
     io.emit('activeRoomsUpdate', getActiveRoomsSummary());
@@ -2648,7 +2760,7 @@ io.on('connection', (socket) => {
     });
 
     // Log high latency connections for diagnostics
-    if (latency && latency > 1000) {
+    if (latency && latency > 2000) {
       console.log(`[HEARTBEAT] High latency: ${room.players[socket.id].name} - ${latency}ms`);
     }
   });

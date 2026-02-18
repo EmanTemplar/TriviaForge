@@ -1,9 +1,12 @@
 <template>
   <nav class="navbar">
-    <div class="logo">Trivia Player</div>
+    <div class="logo"><span class="logo-full">TriviaForge Player</span><span class="logo-short">TF</span></div>
 
-    <!-- Progress button in navbar -->
+    <!-- Progress button and question counter in navbar -->
     <div class="nav-progress-container">
+      <span v-if="inRoom && totalQuestions > 0" class="question-counter">
+        {{ revealedCount }} / {{ totalQuestions }}
+      </span>
       <button v-if="inRoom" id="progressBtn" class="progress-btn" @click="$emit('showProgress')">
         <AppIcon name="bar-chart-3" size="sm" /> Progress
       </button>
@@ -53,7 +56,9 @@ defineProps({
   connectionStateSymbol: { type: String, required: true },
   menuOpen: { type: Boolean, required: true },
   nonSpectatorPlayers: { type: Array, required: true },
-  loginUsername: { type: String, default: '' }
+  loginUsername: { type: String, default: '' },
+  revealedCount: { type: Number, default: 0 },
+  totalQuestions: { type: Number, default: 0 }
 });
 
 defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
@@ -78,10 +83,37 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
   flex-shrink: 0;
 }
 
+.logo-short {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .logo-full {
+    display: none;
+  }
+  .logo-short {
+    display: inline;
+  }
+}
+
 .nav-progress-container {
   flex: 1;
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+.question-counter {
+  padding: 0.35rem 0.75rem;
+  background: var(--bg-overlay-10);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .progress-btn {

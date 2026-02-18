@@ -35,7 +35,7 @@ async function getQuizById(quizId) {
   try {
     // Fetch quiz metadata
     const quizResult = await client.query(
-      'SELECT id, title, description, answer_display_timeout, created_at FROM quizzes WHERE id = $1 AND is_active = TRUE',
+      'SELECT id, title, description, answer_display_timeout, created_at, show_results FROM quizzes WHERE id = $1 AND is_active = TRUE',
       [quizId]
     );
 
@@ -100,6 +100,7 @@ async function getQuizById(quizId) {
       title: quiz.title,
       description: quiz.description,
       answerDisplayTimeout: quiz.answer_display_timeout,
+      showResults: quiz.show_results !== false,
       createdAt: quiz.created_at,
       questions,
     };
@@ -124,11 +125,12 @@ async function listQuizzesFromDB() {
       q.reveal_delay,
       q.available_live,
       q.available_solo,
+      q.show_results,
       COUNT(qq.question_id) as question_count
     FROM quizzes q
     LEFT JOIN quiz_questions qq ON q.id = qq.quiz_id
     WHERE q.is_active = TRUE
-    GROUP BY q.id, q.title, q.description, q.created_at, q.question_timer, q.reveal_delay, q.available_live, q.available_solo
+    GROUP BY q.id, q.title, q.description, q.created_at, q.question_timer, q.reveal_delay, q.available_live, q.available_solo, q.show_results
     ORDER BY q.created_at DESC
   `);
 
@@ -157,6 +159,7 @@ export async function listQuizzes(req, res, next) {
       revealDelay: q.reveal_delay,
       availableLive: q.available_live !== false, // Default true
       availableSolo: q.available_solo !== false, // Default true
+      showResults: q.show_results !== false, // Default true
     }));
 
     res.json(formatted);
@@ -219,7 +222,7 @@ export async function getQuiz(req, res, next) {
  * Body: { title, description, questions }
  */
 export async function createQuiz(req, res, next) {
-  const { title, description, questions, questionTimer, revealDelay, availableLive, availableSolo } = req.body;
+  const { title, description, questions, questionTimer, revealDelay, availableLive, availableSolo, showResults } = req.body;
   const client = await getClient();
 
   try {
@@ -228,9 +231,9 @@ export async function createQuiz(req, res, next) {
     // Insert quiz (use authenticated user's ID) - v5.4.0: includes timer and availability settings
     const userId = req.user?.user_id || 1; // Fallback for backward compatibility
     const quizResult = await client.query(
-      `INSERT INTO quizzes (title, description, created_by, question_timer, reveal_delay, available_live, available_solo)
-       VALUES ($1, $2, $3, $4, $5, COALESCE($6, TRUE), COALESCE($7, TRUE)) RETURNING id`,
-      [title, description, userId, questionTimer || null, revealDelay || null, availableLive, availableSolo]
+      `INSERT INTO quizzes (title, description, created_by, question_timer, reveal_delay, available_live, available_solo, show_results)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6, TRUE), COALESCE($7, TRUE), COALESCE($8, TRUE)) RETURNING id`,
+      [title, description, userId, questionTimer || null, revealDelay || null, availableLive, availableSolo, showResults]
     );
     const quizId = quizResult.rows[0].id;
 
@@ -304,7 +307,7 @@ export async function updateQuiz(req, res, next) {
       throw new BadRequestError('Invalid quiz ID format');
     }
 
-    const { title, description, questions, questionTimer, revealDelay, availableLive, availableSolo } = req.body;
+    const { title, description, questions, questionTimer, revealDelay, availableLive, availableSolo, showResults } = req.body;
 
     // If questions is provided, it must be an array
     if (questions !== undefined && !Array.isArray(questions)) {
@@ -346,6 +349,10 @@ export async function updateQuiz(req, res, next) {
         updates.push(`available_solo = $${paramIndex++}`);
         values.push(availableSolo);
       }
+      if (showResults !== undefined) {
+        updates.push(`show_results = $${paramIndex++}`);
+        values.push(showResults);
+      }
 
       if (updates.length > 0) {
         updates.push('updated_at = CURRENT_TIMESTAMP');
@@ -376,9 +383,10 @@ export async function updateQuiz(req, res, next) {
         reveal_delay = $4,
         available_live = COALESCE($5, TRUE),
         available_solo = COALESCE($6, TRUE),
+        show_results = COALESCE($7, TRUE),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7`,
-      [title, description, questionTimer || null, revealDelay || null, availableLive, availableSolo, quizId]
+      WHERE id = $8`,
+      [title, description, questionTimer || null, revealDelay || null, availableLive, availableSolo, showResults, quizId]
     );
 
     // Get list of questions currently associated with this quiz

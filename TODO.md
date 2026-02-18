@@ -1,8 +1,8 @@
 # TriviaForge - Active Development Tasks (2026)
 
 > **Purpose:** Current development priorities and pending tasks
-> **Last Updated:** 2026-02-08
-> **Version:** v5.5.0
+> **Last Updated:** 2026-02-18
+> **Version:** v5.6.0
 
 ---
 
@@ -32,6 +32,62 @@
 ---
 
 ## 🚀 Current Priorities (Active Development)
+
+### v5.6.0 Features - Game Experience & Results Display ✅ COMPLETE
+
+**Status:** ✅ COMPLETE
+**Priority:** HIGH
+**Completed:** 2026-02-18
+**Branch:** `feature-enhancements-v5.6.0`
+
+#### Question Progress Counter ✅
+- [x] "X / Y" pill badge in Player navbar, Display sidebar, Presenter controls
+- [x] Server broadcasts revealedCount/totalQuestions with questionRevealed and playerListUpdate
+- [x] Late joiners and reconnectors receive current count
+- [x] Responsive logo: "TriviaForge Player" on desktop, "TF" on mobile
+
+#### End-of-Game Results Podium ✅
+- [x] Podium-style results with gold/silver/bronze for top 3 players
+- [x] Staggered entrance animations
+- [x] Remaining players list with rank and score
+- [x] Class average chip
+- [x] Per-quiz `show_results` toggle (default TRUE)
+- [x] Admin toggle in Quiz Sidebar with "Results" badge
+
+#### Quiz Completion Screen ✅
+- [x] Universal "Quiz Complete!" screen for ALL quizzes on completion
+- [x] Results-enabled: animated countdown before podium appears
+- [x] Non-results: static message "Check your Progress to see how you did!"
+- [x] Both Player and Display pages
+
+#### Manual Mode Auto-Complete ✅
+- [x] Auto-complete when all questions revealed in manual mode
+- [x] Waits for answer display timeout before triggering completion
+- [x] Same completion flow as auto-pilot
+
+#### Multiple Simultaneous Displays ✅
+- [x] Unique Display IDs prevent reconnection collisions
+- [x] isSpectator flag as authoritative spectator detection
+- [x] Reserved name protection (Display, Spectator)
+- [x] Reconnection lookup skips spectator entries
+
+#### Bug Fixes ✅
+- [x] Shuffle All Choices skips True/False questions
+- [x] Heartbeat false positive threshold raised (1000ms → 2000ms)
+- [x] Stale room rejoin: clear localStorage on roomClosed/roomError
+- [x] Auto-pilot state reset on room leave/close (Player, Display, Presenter)
+
+**Files Created:**
+- `app/init/14-show-results-setting.sql` - Database migration
+- `app/src/components/player/GameResults.vue` - Podium results component
+
+**Files Modified:**
+- `app/server.js`, `app/src/services/autoMode.service.js`, `app/src/controllers/quiz.controller.js`
+- `app/src/pages/PlayerPage.vue`, `app/src/pages/DisplayPage.vue`, `app/src/pages/AdminPage.vue`, `app/src/pages/PresenterPage.vue`
+- `app/src/components/player/PlayerNavbar.vue`, `app/src/components/presenter/QuizDisplay.vue`, `app/src/components/admin/QuizSidebar.vue`
+- `app/src/config/version.js`, `docker-compose.yml`
+
+---
 
 ### v5.1.0 Features - Auto Database Migrations ✅ COMPLETE
 
@@ -578,8 +634,9 @@ Add notification to presenter when all connected players have answered the curre
 7. ~~**Auto-Mode:** Automated presenter mode with timers~~ ✅ COMPLETE (v5.4.0)
 8. ~~**Solo-Play Mode:** Self-study without presenter~~ ✅ COMPLETE (v5.4.0)
 9. ~~**Backend Performance:** Memory cleanup, rate limiting, session health~~ ✅ COMPLETE (v5.5.0)
-10. **Remember Device:** 30-day trusted device for 2FA (planned v5.6.0)
-11. **PDF Export:** Proper PDF formatting for session results (future)
+10. **v5.6.0:** Game Experience & Results Display ✅ COMPLETE
+11. **Remember Device:** 30-day trusted device for 2FA (planned v5.7.0)
+12. **PDF Export:** Proper PDF formatting for session results (future)
 
 ### Testing Priorities
 - Mobile browser testing (iOS Safari, Chrome Mobile, Firefox Mobile)
@@ -602,7 +659,7 @@ Add notification to presenter when all connected players have answered the curre
 - **v5.3.1-5.3.4 (Released):** Duplicate Detection System (Find Duplicates, Ignore Pairs, Import Review, Single Question Check) ✅
 - **v5.4.0-5.4.4 (Released):** Auto-Mode Timer System, Solo Play Mode, quiz visibility controls, bug fixes ✅
 - **v5.5.0 (Released):** Backend performance optimizations, Session Health monitoring, rate limiting, presenter layout improvements ✅
-- **v5.6.0 (Planned):** Remember device for 2FA, PDF export improvements
+- **v5.6.0 (Released):** Game Experience & Results Display - progress counter, results podium, quiz completion screen, multiple displays, manual auto-complete, bug fixes ✅
 
 ---
 
@@ -621,5 +678,5 @@ Before marking a task as complete:
 
 **Archive:** See [archive/TODO-2025.md](archive/TODO-2025.md) for historical tasks and completed features from 2025.
 
-**Last Updated:** 2026-02-08
+**Last Updated:** 2026-02-18
 **Maintained By:** TriviaForge Development Team

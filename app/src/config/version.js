@@ -4,9 +4,9 @@
  * Update this file to change version across the entire application
  */
 
-export const VERSION = '5.5.0'
-export const VERSION_NAME = 'Backend Performance & Session Health'
-export const RELEASE_DATE = '2026-02-08'
+export const VERSION = '5.6.0'
+export const VERSION_NAME = 'Game Experience & Results Display'
+export const RELEASE_DATE = '2026-02-17'
 
 export default {
   VERSION,
