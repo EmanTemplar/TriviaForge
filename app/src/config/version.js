@@ -4,9 +4,9 @@
  * Update this file to change version across the entire application
  */
 
-export const VERSION = '5.6.0'
-export const VERSION_NAME = 'Game Experience & Results Display'
-export const RELEASE_DATE = '2026-02-17'
+export const VERSION = '5.7.0'
+export const VERSION_NAME = 'Admin-Configurable Server URL'
+export const RELEASE_DATE = '2026-02-19'
 
 export default {
   VERSION,

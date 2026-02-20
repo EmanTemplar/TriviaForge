@@ -43,7 +43,8 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
       CSRF_SECRET: ${CSRF_SECRET:-default-csrf-secret-change-in-production}
       TZ: ${TZ:-America/New_York}
-      SERVER_URL: ${SERVER_URL:-http://localhost:3000}
+      # Server URL for QR codes (can also be set in Admin > Settings)
+      SERVER_URL: ${SERVER_URL:-}
       HOST_IP: ${HOST_IP:-}
       SESSION_TIMEOUT: ${SESSION_TIMEOUT:-3600000}
       APP_NAME: ${APP_NAME:-TriviaForge}

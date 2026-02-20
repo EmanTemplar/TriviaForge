@@ -100,12 +100,14 @@ apiClient.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      // Only redirect for admin/presenter auth failures, not player login failures
-      // Player login errors should be handled by the component's try-catch
-      const isPlayerLoginRequest = error.config?.url?.includes('/api/auth/player-login')
-      const isPlayerPasswordReset = error.config?.url?.includes('/api/auth/set-new-password')
+      // Only redirect for admin/presenter auth failures, not player auth failures
+      // Player auth errors should be handled by the component's try-catch
+      const url = error.config?.url || ''
+      const isPlayerAuthRequest = url.includes('/api/auth/player-login')
+        || url.includes('/api/auth/set-new-password')
+        || url.includes('/api/auth/verify-player')
 
-      if (!isPlayerLoginRequest && !isPlayerPasswordReset) {
+      if (!isPlayerAuthRequest) {
         // Admin/Presenter token expired or invalid
         const authStore = useAuthStore()
         authStore.logout()

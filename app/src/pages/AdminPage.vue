@@ -130,6 +130,7 @@
       <!-- Settings Tab -->
       <div v-if="activeTab === 'settings'" class="tab-content settings-management">
         <div class="settings-grid">
+          <ServerSettingsPanel />
           <ThemeSettingsPanel />
         </div>
       </div>
@@ -464,6 +465,7 @@ import SessionsList from '@/components/admin/SessionsList.vue'
 import SessionFilters from '@/components/admin/SessionFilters.vue'
 import QuizOptionsPanel from '@/components/admin/QuizOptionsPanel.vue'
 import ThemeSettingsPanel from '@/components/admin/ThemeSettingsPanel.vue'
+import ServerSettingsPanel from '@/components/admin/ServerSettingsPanel.vue'
 import UserManagementPanel from '@/components/admin/UserManagementPanel.vue'
 import BannedNamesPanel from '@/components/admin/BannedNamesPanel.vue'
 import AboutPanel from '@/components/admin/AboutPanel.vue'

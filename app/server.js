@@ -223,11 +223,17 @@ const getQuizById = async (quizId) => {
 // Use HOST_IP from environment (set by docker-compose), or auto-detect, or use SERVER_URL from .env
 const HOST_IP_ENV = process.env.HOST_IP;
 const LOCAL_IP = getLocalIP();
-const SERVER_URL = process.env.SERVER_URL || (HOST_IP_ENV ? `http://${HOST_IP_ENV}:${PORT}` : `http://${LOCAL_IP}:${PORT}`);
+const ENV_SERVER_URL = process.env.SERVER_URL || (HOST_IP_ENV ? `http://${HOST_IP_ENV}:${PORT}` : `http://${LOCAL_IP}:${PORT}`);
+
+// Dynamic server URL resolution: DB setting > env var/auto-detect
+function getServerUrl() {
+  if (quizOptions.serverUrl) return quizOptions.serverUrl;
+  return ENV_SERVER_URL;
+}
 
 console.log(`🌐 Detected Local IP: ${LOCAL_IP}`);
 console.log(`🌐 Host IP from environment: ${HOST_IP_ENV || 'not set'}`);
-console.log(`🔗 Server URL for QR codes: ${SERVER_URL}`);
+console.log(`🔗 Server URL for QR codes: ${ENV_SERVER_URL}`);
 console.log(`🔐 Admin password loaded: ${ADMIN_PASSWORD ? '***set***' : 'NOT SET - using default'}`);
 
 // Ensure completed folder exists
@@ -453,7 +459,7 @@ app.post('/api/auth/check', authLimiter, doubleCsrfProtection, (req, res) => {
 // Generate QR code for player page
 app.get('/api/qr/player', async (req, res) => {
   try {
-    const playerUrl = `${SERVER_URL}/player`;
+    const playerUrl = `${getServerUrl()}/player`;
     const qrCode = await QRCode.toDataURL(playerUrl, {
       width: 300,
       margin: 2,
@@ -473,7 +479,7 @@ app.get('/api/qr/player', async (req, res) => {
 app.get('/api/qr/room/:roomCode', async (req, res) => {
   try {
     const roomCode = req.params.roomCode;
-    const roomUrl = `${SERVER_URL}/player?room=${roomCode}`;
+    const roomUrl = `${getServerUrl()}/player?room=${roomCode}`;
     const qrCode = await QRCode.toDataURL(roomUrl, {
       width: 300,
       margin: 2,
@@ -499,19 +505,26 @@ app.get('/api/options', requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT setting_key, setting_value FROM app_settings
-       WHERE setting_key IN ('answer_display_time', 'default_question_timer', 'default_reveal_delay')`
+       WHERE setting_key IN ('answer_display_time', 'default_question_timer', 'default_reveal_delay', 'server_url')`
     );
 
     // Build options object from results
     const settings = {};
     for (const row of result.rows) {
-      settings[row.setting_key] = parseInt(row.setting_value);
+      if (row.setting_key === 'server_url') {
+        settings[row.setting_key] = row.setting_value;
+      } else {
+        settings[row.setting_key] = parseInt(row.setting_value);
+      }
     }
 
     res.json({
       answerDisplayTime: settings.answer_display_time || 30,
       defaultQuestionTimer: settings.default_question_timer || 30,
       defaultRevealDelay: settings.default_reveal_delay || 5,
+      serverUrl: settings.server_url || '',
+      detectedIp: LOCAL_IP,
+      activeServerUrl: getServerUrl(),
     });
   } catch (err) {
     console.error('Error fetching options:', err);
@@ -522,7 +535,7 @@ app.get('/api/options', requireAdmin, async (req, res) => {
 // Save quiz options (to database) - v5.4.0: includes auto-mode timer defaults
 app.post('/api/options', requireAdmin, async (req, res) => {
   try {
-    const { answerDisplayTime, defaultQuestionTimer, defaultRevealDelay } = req.body;
+    const { answerDisplayTime, defaultQuestionTimer, defaultRevealDelay, serverUrl } = req.body;
 
     // Validate input
     if (answerDisplayTime !== undefined && (answerDisplayTime < 5 || answerDisplayTime > 300)) {
@@ -533,6 +546,13 @@ app.post('/api/options', requireAdmin, async (req, res) => {
     }
     if (defaultRevealDelay !== undefined && (defaultRevealDelay < 2 || defaultRevealDelay > 30)) {
       return res.status(400).json({ error: 'Reveal delay must be between 2 and 30 seconds' });
+    }
+    if (serverUrl !== undefined && serverUrl !== '') {
+      try {
+        new URL(serverUrl);
+      } catch {
+        return res.status(400).json({ error: 'Server URL must be a valid URL (e.g. http://192.168.1.50:3000)' });
+      }
     }
 
     // Update settings
@@ -545,6 +565,9 @@ app.post('/api/options', requireAdmin, async (req, res) => {
     }
     if (defaultRevealDelay !== undefined) {
       settingsToUpdate.push({ key: 'default_reveal_delay', value: defaultRevealDelay, desc: 'Default delay between reveal and next question' });
+    }
+    if (serverUrl !== undefined) {
+      settingsToUpdate.push({ key: 'server_url', value: serverUrl, desc: 'Server URL for QR codes (leave empty to auto-detect from IP)' });
     }
 
     for (const setting of settingsToUpdate) {
@@ -873,7 +896,7 @@ const io = new Server(server, {
 // Live Rooms Logic with Session Recording (Phase 3: Using RoomService)
 // --------------------
 // REMOVED: const liveRooms = {}; - Now using roomService.liveRooms
-let quizOptions = { answerDisplayTime: 30 }; // Default options
+let quizOptions = { answerDisplayTime: 30, serverUrl: '' }; // Default options
 
 // Periodic Auto-Save Configuration (Phase 3: Using SessionService)
 // REMOVED: const AUTO_SAVE_INTERVAL = 120000; - Now in sessionService
@@ -893,11 +916,17 @@ function stopAutoSave(roomCode) {
 async function loadQuizOptions() {
   try {
     const result = await pool.query(
-      "SELECT setting_value FROM app_settings WHERE setting_key = 'answer_display_time'"
+      "SELECT setting_key, setting_value FROM app_settings WHERE setting_key IN ('answer_display_time', 'server_url')"
     );
 
     if (result.rows.length > 0) {
-      quizOptions.answerDisplayTime = parseInt(result.rows[0].setting_value);
+      for (const row of result.rows) {
+        if (row.setting_key === 'answer_display_time') {
+          quizOptions.answerDisplayTime = parseInt(row.setting_value);
+        } else if (row.setting_key === 'server_url') {
+          quizOptions.serverUrl = row.setting_value || '';
+        }
+      }
       console.log('📋 Quiz options loaded from database:', quizOptions);
     } else {
       console.log('📋 Using default quiz options');
