@@ -22,6 +22,7 @@ app/public/uploads/
 # Archive folders
 app/archive/
 screenshots/archive/
+archive/Session Logs/
 
 # Logs
 logs/
