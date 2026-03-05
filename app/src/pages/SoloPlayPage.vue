@@ -10,6 +10,9 @@
         <router-link to="/player" class="nav-link">
           <AppIcon name="users" size="sm" /> Multiplayer
         </router-link>
+        <router-link to="/stats" class="nav-link">
+          <AppIcon name="bar-chart-3" size="sm" /> My Stats
+        </router-link>
       </div>
     </nav>
 

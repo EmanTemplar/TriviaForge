@@ -22,6 +22,7 @@
     <div class="hamburger" @click="$emit('toggleMenu')">&#9776;</div>
     <ul class="menu" :class="{ open: menuOpen }">
       <li><RouterLink to="/display">Spectate</RouterLink></li>
+      <li v-if="loginUsername"><RouterLink to="/stats">My Stats</RouterLink></li>
       <li v-if="inRoom" id="menuLeaveRoom" class="mobile-only-menu-item">
         <a href="#" @click.prevent="$emit('leaveRoom')">Leave Room</a>
       </li>

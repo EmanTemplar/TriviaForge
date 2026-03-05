@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v5.7.0 - Admin-Configurable Server URL, Game Experience & Results Display, Progress Counter, Multiple Displays, Auto-Mode, Solo Play, Question Bank
+**Latest Release**: v5.8.0 - Player Stats Dashboard, Admin-Configurable Server URL, Game Experience & Results Display, Progress Counter, Multiple Displays, Auto-Mode, Solo Play, Question Bank
 
 ### Key Highlights
 
@@ -116,6 +116,10 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - **Account Management**: Update display names and manage account settings
 - **Session Persistence**: Stay logged in for extended periods without re-authentication
 - **Cross-Origin Support**: Join games from any device on the local network with proper CORS/CSRF handling
+- **Player Stats Dashboard**: Dedicated `/stats` page for registered players with game history, summary stats, and trend charts
+- **Performance Summary**: View total games, overall accuracy, best score, multiplayer wins, average rank, and play streak
+- **Trend Charts**: Accuracy and score trends over time with theme-aware Chart.js visualizations
+- **Game History**: Paginated table of past games with quiz name, score, accuracy, rank, and type filter (solo/multiplayer)
 
 <table>
   <tr>
@@ -212,6 +216,7 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - **State Management**: Pinia (^2.1.0) - Vue's official state management
 - **Routing**: Vue Router (^4.2.0) - SPA navigation
 - **HTTP Client**: Axios (^1.6.0)
+- **Charts**: Chart.js (^4.4.0) + vue-chartjs (^5.3.0) - Theme-aware data visualization
 - **Real-time Client**: Socket.IO Client (^4.7.0)
 - **Styling**: Modern CSS3 with custom properties and responsive design
 - **Theme System**: 4-theme support (Light, Dark, Grey, System) with enhanced light theme visibility
@@ -557,6 +562,7 @@ TriviaForge/
 │   │   │   ├── questionBank.controller.js
 │   │   │   ├── session.controller.js
 │   │   │   ├── solo.controller.js    # Solo play REST API
+│   │   │   ├── stats.controller.js   # Player stats API
 │   │   │   ├── tag.controller.js     # Tag management
 │   │   │   └── user.controller.js
 │   │   ├── middleware/   # Express middleware
@@ -568,6 +574,7 @@ TriviaForge/
 │   │   │   ├── questionBank.routes.js
 │   │   │   ├── session.routes.js
 │   │   │   ├── solo.routes.js        # Solo play routes
+│   │   │   ├── stats.routes.js       # Player stats routes
 │   │   │   ├── tag.routes.js         # Tag routes
 │   │   │   └── user.routes.js
 │   │   ├── services/     # Business logic services
@@ -595,12 +602,14 @@ TriviaForge/
 │   │   │   ├── PlayerPage.vue
 │   │   │   ├── PlayerManagePage.vue
 │   │   │   ├── DisplayPage.vue
-│   │   │   └── SoloPlayPage.vue      # Solo play mode
+│   │   │   ├── SoloPlayPage.vue      # Solo play mode
+│   │   │   └── StatsPage.vue         # Player stats dashboard
 │   │   ├── components/   # Reusable Vue components
 │   │   │   ├── admin/    # Admin panel components (Question Bank, Tags, Duplicates)
 │   │   │   ├── common/   # Shared components (Modal, Button, AppIcon, etc.)
 │   │   │   ├── modals/   # Modal components
 │   │   │   ├── player/   # Player page components (CountdownTimer, etc.)
+│   │   │   ├── stats/    # Player stats components (Summary, Charts, History, Navbar)
 │   │   │   └── presenter/ # Presenter page components
 │   │   ├── stores/       # Pinia state stores
 │   │   │   ├── auth.js
@@ -760,6 +769,16 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 
 ### Completed Features
 
+**v5.8.0 (Mar 2026) - Player Stats Dashboard**
+- [x] Dedicated `/stats` page for registered players with login required
+- [x] Summary cards: total games, overall accuracy, best score, wins, avg rank, play streak
+- [x] Accuracy and score trend charts (Chart.js + vue-chartjs) with theme-aware styling
+- [x] Paginated game history table with type filter (all/solo/multiplayer)
+- [x] Mobile-responsive layout with card view for small screens
+- [x] "My Stats" navigation links from Player and Solo Play pages
+- [x] Solo play now tracks user_id for authenticated players (enables stats)
+- [x] Three new API endpoints: /api/stats/summary, /history, /charts
+
 **v5.7.0 (Feb 2026) - Admin-Configurable Server URL**
 - [x] Server Settings panel in Admin > Settings tab for configuring QR code URLs
 - [x] Dynamic URL resolution: DB setting takes priority over env var over auto-detected IP
@@ -894,8 +913,6 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 - [ ] Email verification for admin accounts
 - [ ] Remember device for 2FA (30-day trusted devices)
 - [ ] Internationalization (i18n)
-- [ ] Player statistics dashboard
-- [ ] Performance analytics and insights
 - [ ] Custom scoring algorithms
 - [ ] Powerups and game modifiers
 

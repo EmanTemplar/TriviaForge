@@ -1,12 +1,95 @@
 # TriviaForge Development Summary
 
 > **Purpose:** Summary of development changes for the current session
-> **Last Updated:** 2026-02-19
-> **Version:** v5.7.0
+> **Last Updated:** 2026-03-05
+> **Version:** v5.8.0
 
 ---
 
-## Session Summary: v5.7.0 Release
+## Session Summary: v5.8.0 Release
+
+### Overview
+
+This development period added a player-facing statistics dashboard:
+1. **v5.8.0** - Player Stats Dashboard with game history, summary stats, and trend charts
+
+---
+
+## v5.8.0 - Player Stats Dashboard
+
+**Release Date:** 2026-03-05
+**Branch:** `main`
+
+### Technical Implementation Details
+
+#### Authentication Architecture
+- **Dedicated Player API:** playerApi composable avoids admin token conflicts
+- **Token Fallback Chain:** playerAuthToken in localStorage → axios Authorization header
+- **Solo Play Auth:** optionalAuth middleware allows authenticated players to save stats, guests remain anonymous
+- **Rank Calculation:** Based on correct_answers count from participant_answers table (not broken gp.score)
+
+#### Database Calculations
+- **Play Streak:** Consecutive days of game participation (checks created_at dates)
+- **Accuracy:** (total_correct_answers / total_questions_answered) × 100
+- **Best Score:** Max score from any game
+- **Wins:** Sessions where rank = 1
+- **Avg Rank:** Average rank across all games (solo games have rank based on score percentile)
+
+#### Chart.js Integration
+- Theme-aware styling: reads CSS custom properties (--text-primary, --bg-overlay-10, etc.) at runtime
+- 30-day lookback for accuracy trends and score data points
+- Daily aggregation of scores and accuracy percentages
+- Line charts with gradients matching app theme
+
+### Features
+
+#### Player Stats Page (/stats)
+- New dedicated stats page for registered players at `/stats`
+- Summary cards: total games played, overall accuracy %, best score, wins, average rank, day streak
+- Accuracy Over Time and Score Trend line charts (Chart.js + vue-chartjs)
+- Paginated game history table with quiz name, score, accuracy, rank
+- Type filter: All / Multiplayer / Solo with color-coded badges
+- Mobile-responsive layout (table collapses to card view on mobile)
+- Unauthenticated users see friendly "Login Required" message
+- Theme-aware charts reading CSS custom properties at runtime
+
+#### Navigation Links
+- "My Stats" link in Player navbar (visible when logged in)
+- "My Stats" link in Solo Play navbar
+
+### Dependencies Added
+- `chart.js` - Charting library for trend visualization
+- `vue-chartjs` - Vue 3 wrapper for Chart.js
+
+### API Endpoints (all require player auth)
+- `GET /api/stats/summary` - Aggregate stats (total games, accuracy, best score, wins, avg rank, streak)
+- `GET /api/stats/history?page=1&limit=20&type=all` - Paginated game history with rank
+- `GET /api/stats/charts?days=30` - Daily accuracy and score data points for charts
+
+### Files Created
+- `app/src/controllers/stats.controller.js` - Stats API handlers: /summary (aggregate stats with streaks), /history (paginated with rank), /charts (daily data points)
+- `app/src/routes/stats.routes.js` - Stats routes with requireAuth middleware
+- `app/src/pages/StatsPage.vue` - Main stats dashboard page with auth check
+- `app/src/components/stats/StatsNavbar.vue` - Stats page navbar with "Back to Player" button
+- `app/src/components/stats/StatsSummary.vue` - Summary cards: Total Games, Accuracy, Best Score, Wins, Avg Rank, Play Streak
+- `app/src/components/stats/StatsCharts.vue` - Chart.js line charts: Accuracy Over Time (30 days), Score Trends
+- `app/src/components/stats/GameHistoryTable.vue` - Paginated history table (20 items/page) with type filter (All/Multiplayer/Solo), mobile card layout
+
+### Files Modified
+- `app/server.js` - Mounted statsRoutes at `/api/stats`, added playerAuthToken fallback in useApi
+- `app/src/router.js` - Added `/stats` route
+- `app/src/composables/useApi.js` - Added playerAuthToken fallback for auth header
+- `app/src/components/player/PlayerNavbar.vue` - Added "My Stats" nav link
+- `app/src/pages/SoloPlayPage.vue` - Added "My Stats" nav link and StatsNavbar component
+- `app/src/pages/SoloPlayPage.vue` - Solo play now saves user_id for authenticated players via useApi
+- `app/src/config/version.js` - Bumped to v5.8.0
+- `app/package.json` - Added chart.js + vue-chartjs dependencies
+- `app/src/controllers/solo.controller.js` - optionalAuth middleware, solo play saves user_id
+- `app/src/routes/solo.routes.js` - optionalAuth middleware on create endpoint
+
+---
+
+## Previous Session Summary: v5.7.0 Release
 
 ### Overview
 

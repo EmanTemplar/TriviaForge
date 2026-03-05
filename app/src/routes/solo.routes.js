@@ -12,6 +12,7 @@
 
 import express from 'express';
 import rateLimit from 'express-rate-limit';
+import { optionalAuth } from '../middleware/auth.js';
 import {
   listSoloQuizzes,
   getSoloQuiz,
@@ -73,13 +74,13 @@ router.get('/quizzes', soloQuizListLimiter, listSoloQuizzes);
 router.get('/quizzes/:id', soloQuizListLimiter, getSoloQuiz);
 
 // POST /api/solo/sessions - Create a new solo session
-router.post('/sessions', soloSessionLimiter, createSoloSession);
+router.post('/sessions', soloSessionLimiter, optionalAuth, createSoloSession);
 
 // POST /api/solo/sessions/:id/answer - Submit an answer
 router.post('/sessions/:id/answer', soloAnswerLimiter, submitSoloAnswer);
 
 // POST /api/solo/sessions/:id/complete - Complete the session
-router.post('/sessions/:id/complete', soloAnswerLimiter, completeSoloSession);
+router.post('/sessions/:id/complete', soloAnswerLimiter, optionalAuth, completeSoloSession);
 
 // GET /api/solo/sessions/:id/results - Get session results
 router.get('/sessions/:id/results', getSoloResults);

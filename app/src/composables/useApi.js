@@ -38,9 +38,14 @@ apiClient.interceptors.request.use((config) => {
 
   const authStore = useAuthStore()
 
-  // Add auth token
+  // Add auth token (admin token takes priority, then player token)
   if (authStore.token) {
     config.headers.Authorization = `Bearer ${authStore.token}`
+  } else {
+    const playerToken = localStorage.getItem('playerAuthToken')
+    if (playerToken) {
+      config.headers.Authorization = `Bearer ${playerToken}`
+    }
   }
 
   // Add CSRF token for state-changing methods
@@ -106,6 +111,7 @@ apiClient.interceptors.response.use(
       const isPlayerAuthRequest = url.includes('/api/auth/player-login')
         || url.includes('/api/auth/set-new-password')
         || url.includes('/api/auth/verify-player')
+        || url.includes('/api/stats')
 
       if (!isPlayerAuthRequest) {
         // Admin/Presenter token expired or invalid

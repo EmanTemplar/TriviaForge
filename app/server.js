@@ -23,6 +23,7 @@ import userRoutes from './src/routes/user.routes.js';
 import tagRoutes from './src/routes/tag.routes.js';
 import questionBankRoutes from './src/routes/questionBank.routes.js';
 import soloRoutes from './src/routes/solo.routes.js';
+import statsRoutes from './src/routes/stats.routes.js';
 import { requireAuth, requireAdmin } from './src/middleware/auth.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { env } from './src/config/environment.js';
@@ -375,6 +376,9 @@ app.use('/api/questions', questionBankRoutes);
 
 // Solo play routes (public, no auth required) - v5.4.0
 app.use('/api/solo', soloRoutes);
+
+// Player stats routes (authenticated players) - v5.8.0
+app.use('/api/stats', statsRoutes);
 
 // --------------------
 // Admin: Memory Monitoring Endpoint (v5.5.0)

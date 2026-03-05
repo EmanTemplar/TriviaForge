@@ -1,8 +1,8 @@
 # TriviaForge - Active Development Tasks (2026)
 
 > **Purpose:** Current development priorities and pending tasks
-> **Last Updated:** 2026-02-19
-> **Version:** v5.7.0
+> **Last Updated:** 2026-03-05
+> **Version:** v5.8.0
 
 ---
 
@@ -63,6 +63,69 @@
 - `app/src/config/version.js` - Version bump to v5.7.0
 - `docker-compose.yml` - Updated SERVER_URL default
 - `.env.example` - Updated SERVER_URL comments
+
+---
+
+### v5.8.0 Features - Player Stats Dashboard ✅ COMPLETE
+
+**Status:** ✅ COMPLETE
+**Priority:** HIGH
+**Completed:** 2026-03-05
+**Branch:** `main`
+
+#### Player Stats Page ✅
+- [x] New `/stats` page for registered players
+- [x] Summary cards: total games, accuracy, best score, wins, avg rank, day streak
+- [x] Accuracy Over Time and Score Trend line charts (Chart.js + vue-chartjs)
+- [x] Paginated game history table with rank, accuracy, type badges
+- [x] Type filter: All / Multiplayer / Solo with color-coded badges
+- [x] Mobile-responsive card layout for history (table → cards on mobile)
+- [x] Unauthenticated users see login prompt
+- [x] Theme-aware Chart.js integration (reads CSS custom properties at runtime)
+
+#### Solo Play Auth Integration ✅
+- [x] Solo play saves user_id for authenticated players
+- [x] optionalAuth middleware allows guest play without user_id
+- [x] Dedicated playerApi composable avoids admin token conflicts
+- [x] playerAuthToken fallback in Authorization header
+
+#### Navigation ✅
+- [x] "My Stats" link in PlayerNavbar (visible when logged in)
+- [x] "My Stats" link in SoloPlayPage navbar
+- [x] Back button in Stats navbar
+
+#### Backend API ✅
+- [x] `GET /api/stats/summary` - Aggregate stats: total games, accuracy, best score, wins, avg rank, play streak
+- [x] `GET /api/stats/history?page=1&limit=20&type=all` - Paginated game history with rank computation
+- [x] `GET /api/stats/charts?days=30` - Daily aggregated accuracy and score data points
+- [x] Display name fallback in stats queries (for legacy sessions without user_id)
+
+#### Technical Implementation ✅
+- [x] Rank calculations based on correct_answers count from participant_answers table
+- [x] Play streak: consecutive days of game participation
+- [x] Accuracy calculation: (correct_answers / total_questions) × 100
+- [x] All scores computed from participant_answers, not broken gp.score column
+- [x] 30-day lookback for chart data
+
+**Files Created:**
+- `app/src/controllers/stats.controller.js` - Stats API handlers
+- `app/src/routes/stats.routes.js` - Stats routes with requireAuth
+- `app/src/pages/StatsPage.vue` - Main stats dashboard
+- `app/src/components/stats/StatsNavbar.vue` - Stats navbar
+- `app/src/components/stats/StatsSummary.vue` - Summary cards grid
+- `app/src/components/stats/StatsCharts.vue` - Chart.js visualizations
+- `app/src/components/stats/GameHistoryTable.vue` - Paginated history with filters
+
+**Files Modified:**
+- `app/server.js` - Mounted /api/stats routes
+- `app/src/router.js` - Added /stats route
+- `app/src/composables/useApi.js` - playerAuthToken fallback
+- `app/src/config/version.js` - Bumped to v5.8.0
+- `app/src/components/player/PlayerNavbar.vue` - Added "My Stats" link
+- `app/src/pages/SoloPlayPage.vue` - Added StatsNavbar and "My Stats" link, saves user_id
+- `app/src/controllers/solo.controller.js` - optionalAuth middleware
+- `app/src/routes/solo.routes.js` - optionalAuth on create endpoint
+- `app/package.json` - Added chart.js, vue-chartjs dependencies
 
 ---
 
@@ -619,6 +682,16 @@ Add notification to presenter when all connected players have answered the curre
 
 ---
 
+## 📋 Known Issues & Technical Debt
+
+### Solo Play Score Persistence (Low Priority)
+- **Issue:** `gp.score` column in multiplayer game_participants is broken/unreliable (scores computed differently)
+- **Current Workaround:** All stats queries use participant_answers to compute correct_answers count
+- **Future Fix:** Eventually fix saveSession() in session.service.js to properly compute and save gp.score for multiplayer
+- **Status:** Deferred - current workaround works well for stats dashboard
+
+---
+
 ## 📋 Long-term / Future Enhancements
 
 > **Note:** These are planned features but not immediate priorities. See archived TODO-2025.md for detailed specifications.
@@ -647,7 +720,7 @@ Add notification to presenter when all connected players have answered the curre
 - [x] Automated Presenter Mode with Timers (auto-reveal, auto-advance) - v5.4.0 ✅
 - [x] Solo-Play Mode for Players (self-study without presenter) - v5.4.0 ✅
 - [x] Admin-Configurable Server URL for QR codes (replaces mDNS approach) - v5.7.0 ✅
-- [ ] Session analytics with charts/graphs (future)
+- [x] Player-facing statistics dashboard with charts - v5.8.0 ✅
 
 ### Bug Investigations
 - [ ] Incorrect Answer Notification Bug (may be fixed by reconnection changes - needs testing)
@@ -657,7 +730,7 @@ Add notification to presenter when all connected players have answered the curre
 
 ## 📝 Development Notes
 
-### Current Focus Areas (v5.7.0)
+### Current Focus Areas
 1. ~~**2FA TOTP:** Two-Factor Authentication for admins~~ ✅ COMPLETE (v5.2.0)
 2. ~~**Session Export:** CSV export of session results~~ ✅ COMPLETE (v5.2.0)
 3. ~~**Session Filtering:** Date range, quiz, status filters~~ ✅ COMPLETE (v5.2.0)
@@ -667,10 +740,11 @@ Add notification to presenter when all connected players have answered the curre
 7. ~~**Auto-Mode:** Automated presenter mode with timers~~ ✅ COMPLETE (v5.4.0)
 8. ~~**Solo-Play Mode:** Self-study without presenter~~ ✅ COMPLETE (v5.4.0)
 9. ~~**Backend Performance:** Memory cleanup, rate limiting, session health~~ ✅ COMPLETE (v5.5.0)
-10. **v5.6.0:** Game Experience & Results Display ✅ COMPLETE
-11. **v5.7.0:** Admin-Configurable Server URL ✅ COMPLETE
-12. **Remember Device:** 30-day trusted device for 2FA (planned v5.8.0)
-13. **PDF Export:** Proper PDF formatting for session results (future)
+10. ~~**v5.6.0:** Game Experience & Results Display~~ ✅ COMPLETE
+11. ~~**v5.7.0:** Admin-Configurable Server URL~~ ✅ COMPLETE
+12. **v5.8.0:** Player Stats Dashboard ✅ COMPLETE
+13. **Next:** Remember Device for 2FA (30-day trusted devices) or Player Management enhancements
+14. **Backlog:** PDF Export, enhanced security audits
 
 ### Testing Priorities
 - Mobile browser testing (iOS Safari, Chrome Mobile, Firefox Mobile)
@@ -695,6 +769,7 @@ Add notification to presenter when all connected players have answered the curre
 - **v5.5.0 (Released):** Backend performance optimizations, Session Health monitoring, rate limiting, presenter layout improvements ✅
 - **v5.6.0 (Released):** Game Experience & Results Display - progress counter, results podium, quiz completion screen, multiple displays, manual auto-complete, bug fixes ✅
 - **v5.7.0 (Released):** Admin-configurable Server URL for QR codes, player auth redirect fix ✅
+- **v5.8.0 (Released):** Player Stats Dashboard - game history, summary stats, trend charts, solo auth integration ✅
 
 ---
 
@@ -713,5 +788,5 @@ Before marking a task as complete:
 
 **Archive:** See [archive/TODO-2025.md](archive/TODO-2025.md) for historical tasks and completed features from 2025.
 
-**Last Updated:** 2026-02-19
+**Last Updated:** 2026-03-05
 **Maintained By:** TriviaForge Development Team

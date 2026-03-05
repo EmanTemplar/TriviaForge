@@ -191,12 +191,27 @@ export async function createSoloSession(req, res, next) {
 
     const session = sessionResult.rows[0];
 
+    // Determine user_id: from auth token, or by looking up username
+    let userId = null;
+    if (req.user) {
+      userId = req.user.user_id;
+    } else {
+      // Try to find existing user by playerName (same as joinRoom does)
+      const userResult = await client.query(
+        'SELECT id FROM users WHERE username = $1',
+        [playerName]
+      );
+      if (userResult.rows.length > 0) {
+        userId = userResult.rows[0].id;
+      }
+    }
+
     // Create participant
     const participantResult = await client.query(
-      `INSERT INTO game_participants (game_session_id, display_name)
-       VALUES ($1, $2)
+      `INSERT INTO game_participants (game_session_id, display_name, user_id)
+       VALUES ($1, $2, $3)
        RETURNING id`,
-      [session.id, playerName]
+      [session.id, playerName, userId]
     );
 
     const participantId = participantResult.rows[0].id;

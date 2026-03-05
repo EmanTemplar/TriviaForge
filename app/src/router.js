@@ -9,6 +9,7 @@ import PresenterPage from './pages/PresenterPage.vue'
 import AdminPage from './pages/AdminPage.vue'
 import PlayerManagePage from './pages/PlayerManagePage.vue'
 import SoloPlayPage from './pages/SoloPlayPage.vue'
+import StatsPage from './pages/StatsPage.vue'
 
 const routes = [
   {
@@ -51,6 +52,12 @@ const routes = [
     path: '/solo',
     name: 'solo',
     component: SoloPlayPage,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/stats',
+    name: 'stats',
+    component: StatsPage,
     meta: { requiresAuth: false }
   }
 ]
