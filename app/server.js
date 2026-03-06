@@ -17,6 +17,7 @@ import { initializeDatabase } from './db-init.js';
 
 // Import new modular architecture
 import authRoutes from './src/routes/auth.routes.js';
+import { cleanupExpiredDevices } from './src/controllers/auth.controller.js';
 import quizRoutes, { templateRouter, importRouter } from './src/routes/quiz.routes.js';
 import sessionRoutes from './src/routes/session.routes.js';
 import userRoutes from './src/routes/user.routes.js';
@@ -1464,6 +1465,7 @@ const startCleanupScheduler = () => {
     cleanupStaleSessions();
     await cleanupExpiredRooms();
     cleanupSocketRateLimits();
+    cleanupExpiredDevices();
 
     const afterStats = getMemoryStats();
     if (VERBOSE_LOGGING) {
@@ -1483,6 +1485,7 @@ const startCleanupScheduler = () => {
     cleanupStaleSessions();
     cleanupExpiredRooms();
     cleanupSocketRateLimits();
+    cleanupExpiredDevices();
   }, 5 * 60 * 1000);
 };
 

@@ -1,29 +1,135 @@
 <template>
   <nav class="navbar">
-    <div class="logo">Trivia Presenter</div>
-    <div class="room-code" v-if="currentRoomCode">Room: {{ currentRoomCode }}</div>
-    <div v-else class="room-code"></div>
-    <div class="hamburger" @click.stop="$emit('toggleMenu')" id="hamburger">&#9776;</div>
-    <ul class="menu" :class="{ open: menuOpen }" id="menu">
-      <li><RouterLink to="/admin">Admin</RouterLink></li>
-      <li><RouterLink to="/player">Player</RouterLink></li>
-      <li><RouterLink to="/presenter">Presenter</RouterLink></li>
-      <li><RouterLink to="/display">Spectate</RouterLink></li>
-      <li class="account-dropdown">
-        <button class="account-button" @click.stop="toggleDropdown">
-          <span class="account-name">{{ username || 'Admin' }}</span>
-          <AppIcon :name="dropdownOpen ? 'chevron-up' : 'chevron-down'" size="xs" class="dropdown-arrow" />
-        </button>
-        <div v-if="dropdownOpen" class="dropdown-menu">
-          <a href="#" @click.prevent="handleSettings" class="dropdown-item">
-            <AppIcon name="settings" size="md" class="dropdown-icon" /> Account Settings
-          </a>
-          <a href="#" @click.prevent="handleLogout" class="dropdown-item logout-item">
-            <AppIcon name="log-out" size="md" class="dropdown-icon" /> Logout
-          </a>
-        </div>
-      </li>
-    </ul>
+    <!-- Brand -->
+    <div class="navbar-brand">
+      <AppIcon name="presentation" class="brand-icon" />
+      TriviaForge Presenter
+    </div>
+
+    <!-- Room code badge -->
+    <span v-if="currentRoomCode" class="navbar-room-code">{{ currentRoomCode }}</span>
+
+    <!-- Desktop nav links -->
+    <div class="navbar-links">
+      <RouterLink
+        to="/admin"
+        class="nav-link"
+        :class="{ 'nav-link--active': $route.path === '/admin' }"
+      >
+        <AppIcon name="clipboard-list" size="sm" />
+        Admin
+      </RouterLink>
+      <RouterLink
+        to="/presenter"
+        class="nav-link"
+        :class="{ 'nav-link--active': $route.path === '/presenter' }"
+      >
+        <AppIcon name="presentation" size="sm" />
+        Presenter
+      </RouterLink>
+      <RouterLink
+        to="/player"
+        class="nav-link"
+        :class="{ 'nav-link--active': $route.path === '/player' }"
+      >
+        <AppIcon name="users" size="sm" />
+        Player
+      </RouterLink>
+      <RouterLink
+        to="/solo"
+        class="nav-link"
+        :class="{ 'nav-link--active': $route.path === '/solo' }"
+      >
+        <AppIcon name="gamepad-2" size="sm" />
+        Solo
+      </RouterLink>
+      <RouterLink
+        to="/display"
+        class="nav-link"
+        :class="{ 'nav-link--active': $route.path === '/display' }"
+      >
+        <AppIcon name="monitor" size="sm" />
+        Display
+      </RouterLink>
+    </div>
+
+    <!-- Account dropdown (desktop) -->
+    <div class="navbar-account" ref="accountRef">
+      <button class="navbar-account-btn" @click.stop="toggleDropdown">
+        <AppIcon name="user" size="sm" />
+        {{ username || 'Account' }}
+        <AppIcon :name="dropdownOpen ? 'chevron-up' : 'chevron-down'" size="sm" />
+      </button>
+      <div class="navbar-dropdown" :class="{ open: dropdownOpen }">
+        <a href="#" class="nav-link" @click.prevent="handleSettings">
+          <AppIcon name="settings" size="sm" />
+          Settings
+        </a>
+        <div class="nav-separator" />
+        <a href="#" class="nav-link nav-link--danger" @click.prevent="handleLogout">
+          <AppIcon name="log-out" size="sm" />
+          Logout
+        </a>
+      </div>
+    </div>
+
+    <!-- Hamburger (mobile) -->
+    <button class="navbar-hamburger" @click.stop="$emit('toggleMenu')" aria-label="Toggle menu">
+      <AppIcon :name="menuOpen ? 'x' : 'menu'" size="md" />
+    </button>
+
+    <!-- Mobile menu -->
+    <div class="navbar-mobile-menu" :class="{ open: menuOpen }">
+      <RouterLink
+        to="/admin"
+        class="nav-link"
+        :class="{ 'nav-link--active': $route.path === '/admin' }"
+      >
+        <AppIcon name="clipboard-list" size="sm" />
+        Admin
+      </RouterLink>
+      <RouterLink
+        to="/presenter"
+        class="nav-link"
+        :class="{ 'nav-link--active': $route.path === '/presenter' }"
+      >
+        <AppIcon name="presentation" size="sm" />
+        Presenter
+      </RouterLink>
+      <RouterLink
+        to="/player"
+        class="nav-link"
+        :class="{ 'nav-link--active': $route.path === '/player' }"
+      >
+        <AppIcon name="users" size="sm" />
+        Player
+      </RouterLink>
+      <RouterLink
+        to="/solo"
+        class="nav-link"
+        :class="{ 'nav-link--active': $route.path === '/solo' }"
+      >
+        <AppIcon name="gamepad-2" size="sm" />
+        Solo
+      </RouterLink>
+      <RouterLink
+        to="/display"
+        class="nav-link"
+        :class="{ 'nav-link--active': $route.path === '/display' }"
+      >
+        <AppIcon name="monitor" size="sm" />
+        Display
+      </RouterLink>
+      <div class="nav-separator" />
+      <a href="#" class="nav-link" @click.prevent="handleSettings">
+        <AppIcon name="settings" size="sm" />
+        Settings
+      </a>
+      <a href="#" class="nav-link nav-link--danger" @click.prevent="handleLogout">
+        <AppIcon name="log-out" size="sm" />
+        Logout
+      </a>
+    </div>
   </nav>
 </template>
 
@@ -41,6 +147,7 @@ defineProps({
 const emit = defineEmits(['toggleMenu', 'logout', 'settings'])
 
 const dropdownOpen = ref(false)
+const accountRef = ref(null)
 
 const toggleDropdown = () => {
   dropdownOpen.value = !dropdownOpen.value
@@ -60,10 +167,8 @@ const handleLogout = () => {
   emit('logout')
 }
 
-// Handle clicks outside the dropdown
 const handleClickOutside = (event) => {
-  const dropdown = document.querySelector('.account-dropdown')
-  if (dropdown && !dropdown.contains(event.target)) {
+  if (accountRef.value && !accountRef.value.contains(event.target)) {
     closeDropdown()
   }
 }
@@ -78,200 +183,9 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.navbar {
-  background: var(--bg-secondary);
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--border-color);
-  flex-wrap: wrap;
-  position: relative;
-  z-index: 100;
-}
-
-.logo {
-  font-weight: bold;
-  font-size: 1.2rem;
-  color: var(--info-light);
-}
-
-.room-code {
-  color: var(--text-tertiary);
-  font-size: 0.9rem;
-  flex: 1;
-  text-align: center;
-  min-height: 20px;
-}
-
-.hamburger {
-  display: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--info-light);
-}
-
-.menu {
-  display: flex;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  gap: 1rem;
-  align-items: center;
-}
-
-.menu li {
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
-.menu a {
-  color: var(--text-primary);
-  text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-
-.menu a:hover {
-  background: var(--info-bg-20);
-}
-
-/* Account Dropdown */
-.account-dropdown {
-  position: relative;
-}
-
-.account-button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--info-bg-20);
-  border: 1px solid var(--info-light);
-  border-radius: 8px;
-  color: var(--info-light);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.95rem;
-}
-
-.account-button:hover {
-  background: var(--info-bg-30);
-}
-
-.dropdown-arrow {
-  font-size: 0.7rem;
-  opacity: 0.7;
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
-  min-width: 180px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px var(--bg-overlay-50);
-  overflow: hidden;
-  z-index: 1000;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  color: var(--text-primary);
-  text-decoration: none;
-  transition: background 0.2s;
-  font-size: 0.9rem;
-}
-
-.dropdown-item:hover {
-  background: var(--bg-overlay-20);
-  color: var(--info-light);
-}
-
-.dropdown-icon {
-  font-size: 1rem;
-}
-
-.dropdown-item.logout-item {
-  border-top: 1px solid var(--border-color);
-  color: var(--danger-light);
-}
-
-.dropdown-item.logout-item:hover {
-  background: var(--danger-bg-10);
-  color: var(--danger-color);
-}
-
 @media (max-width: 1024px) {
-  .hamburger {
-    display: block !important;
-    z-index: 101;
-  }
-
-  .menu {
-    position: absolute;
-    top: 60px;
-    left: 0;
-    right: 0;
-    flex-direction: column;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
-    padding: 1rem;
-    gap: 0.5rem;
-    display: none !important;
-    z-index: 99;
-  }
-
-  .menu.open {
-    display: flex !important;
-  }
-
-  .menu li {
-    width: 100%;
-    white-space: normal;
-  }
-
-  .menu a {
-    display: block;
-    padding: 0.75rem;
-    width: 100%;
-    border-radius: 8px;
-  }
-
-  /* Mobile dropdown adjustments */
-  .account-dropdown {
-    width: 100%;
-  }
-
-  .account-button {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .dropdown-menu {
-    position: static;
-    width: 100%;
-    margin-top: 0.5rem;
-    box-shadow: none;
-    border: 1px solid var(--border-color);
-  }
-}
-
-@media (max-width: 600px) {
-  .navbar {
-    padding: 0.75rem;
-  }
-
-  .logo {
-    font-size: 1rem;
+  .navbar-account {
+    display: none;
   }
 }
 </style>

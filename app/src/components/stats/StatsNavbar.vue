@@ -1,17 +1,108 @@
 <template>
-  <nav class="stats-navbar">
+  <nav class="navbar">
     <div class="navbar-brand">
-      <AppIcon name="bar-chart-3" size="lg" />
-      <span class="brand-text">TriviaForge Stats</span>
+      <AppIcon name="bar-chart-3" class="brand-icon" />
+      <span>TriviaForge Stats</span>
     </div>
-    <div class="navbar-actions">
-      <router-link to="/player" class="nav-link">
+
+    <div class="navbar-links">
+      <!-- Admin links -->
+      <RouterLink
+        v-if="authStore.userRole === 'admin'"
+        to="/admin"
+        class="nav-link nav-link--admin"
+        :class="{ 'nav-link--active': route.path.startsWith('/admin') }"
+      >
+        <AppIcon name="clipboard-list" size="sm" /> Admin
+      </RouterLink>
+      <RouterLink
+        v-if="authStore.userRole === 'admin'"
+        to="/presenter"
+        class="nav-link nav-link--admin"
+        :class="{ 'nav-link--active': route.path.startsWith('/presenter') }"
+      >
+        <AppIcon name="presentation" size="sm" /> Presenter
+      </RouterLink>
+
+      <span v-if="authStore.userRole === 'admin'" class="nav-separator" />
+
+      <!-- Always visible links -->
+      <RouterLink
+        to="/player"
+        class="nav-link"
+        :class="{ 'nav-link--active': route.path.startsWith('/player') }"
+      >
         <AppIcon name="users" size="sm" /> Multiplayer
-      </router-link>
-      <router-link to="/solo" class="nav-link">
+      </RouterLink>
+      <RouterLink
+        to="/solo"
+        class="nav-link"
+        :class="{ 'nav-link--active': route.path.startsWith('/solo') }"
+      >
         <AppIcon name="gamepad-2" size="sm" /> Solo
-      </router-link>
-      <button v-if="showLogout" class="logout-btn" @click="$emit('logout')">
+      </RouterLink>
+    </div>
+
+    <div class="navbar-actions">
+      <button
+        v-if="showLogout"
+        class="nav-link nav-link--danger"
+        @click="$emit('logout')"
+      >
+        <AppIcon name="log-out" size="sm" /> Logout
+      </button>
+    </div>
+
+    <!-- Hamburger -->
+    <button class="navbar-hamburger" @click="menuOpen = !menuOpen" aria-label="Toggle menu">
+      <AppIcon :name="menuOpen ? 'x' : 'menu'" size="sm" />
+    </button>
+
+    <!-- Mobile menu -->
+    <div class="navbar-mobile-menu" :class="{ open: menuOpen }">
+      <RouterLink
+        v-if="authStore.userRole === 'admin'"
+        to="/admin"
+        class="nav-link nav-link--admin"
+        :class="{ 'nav-link--active': route.path.startsWith('/admin') }"
+        @click="menuOpen = false"
+      >
+        <AppIcon name="clipboard-list" size="sm" /> Admin
+      </RouterLink>
+      <RouterLink
+        v-if="authStore.userRole === 'admin'"
+        to="/presenter"
+        class="nav-link nav-link--admin"
+        :class="{ 'nav-link--active': route.path.startsWith('/presenter') }"
+        @click="menuOpen = false"
+      >
+        <AppIcon name="presentation" size="sm" /> Presenter
+      </RouterLink>
+
+      <RouterLink
+        to="/player"
+        class="nav-link"
+        :class="{ 'nav-link--active': route.path.startsWith('/player') }"
+        @click="menuOpen = false"
+      >
+        <AppIcon name="users" size="sm" /> Multiplayer
+      </RouterLink>
+      <RouterLink
+        to="/solo"
+        class="nav-link"
+        :class="{ 'nav-link--active': route.path.startsWith('/solo') }"
+        @click="menuOpen = false"
+      >
+        <AppIcon name="gamepad-2" size="sm" /> Solo
+      </RouterLink>
+
+      <span v-if="showLogout" class="nav-separator" />
+
+      <button
+        v-if="showLogout"
+        class="nav-link nav-link--danger"
+        @click="$emit('logout'); menuOpen = false"
+      >
         <AppIcon name="log-out" size="sm" /> Logout
       </button>
     </div>
@@ -19,7 +110,9 @@
 </template>
 
 <script setup>
-import { RouterLink } from 'vue-router'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute, RouterLink } from 'vue-router'
+import { useAuthStore } from '@/stores/auth.js'
 import AppIcon from '@/components/common/AppIcon.vue'
 
 defineProps({
@@ -27,78 +120,21 @@ defineProps({
 })
 
 defineEmits(['logout'])
+
+const route = useRoute()
+const authStore = useAuthStore()
+const menuOpen = ref(false)
+
+// Click outside to close mobile menu
+const closeMenu = (e) => {
+  if (menuOpen.value && !e.target.closest('.navbar')) {
+    menuOpen.value = false
+  }
+}
+onMounted(() => document.addEventListener('click', closeMenu))
+onBeforeUnmount(() => document.removeEventListener('click', closeMenu))
 </script>
 
 <style scoped>
-.stats-navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.5rem;
-  background: var(--bg-tertiary-30);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.navbar-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: bold;
-  font-size: 1.2rem;
-  color: var(--text-primary);
-}
-
-.navbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  color: var(--text-primary);
-  text-decoration: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  transition: background 0.2s;
-  font-size: 0.9rem;
-}
-
-.nav-link:hover {
-  background: var(--bg-overlay-10);
-  color: var(--info-light);
-}
-
-.logout-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  background: none;
-  border: 1px solid var(--danger-light);
-  color: var(--danger-light);
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-}
-
-.logout-btn:hover {
-  background: var(--danger-bg-20, rgba(239, 68, 68, 0.2));
-}
-
-@media (max-width: 600px) {
-  .stats-navbar {
-    padding: 0.75rem 1rem;
-  }
-  .brand-text {
-    font-size: 1rem;
-  }
-  .nav-link span,
-  .logout-btn span {
-    display: none;
-  }
-}
+/* All base styles from navbars.css — only component-specific overrides here */
 </style>

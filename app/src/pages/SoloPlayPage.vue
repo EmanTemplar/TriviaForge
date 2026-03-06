@@ -1,18 +1,53 @@
 <template>
   <div class="solo-play-page">
     <!-- Navbar -->
-    <nav class="solo-navbar">
+    <nav class="navbar">
       <div class="navbar-brand">
-        <AppIcon name="gamepad-2" size="lg" />
-        <span class="brand-text">Trivia Forge - Solo Mode</span>
+        <AppIcon name="gamepad-2" class="brand-icon" /> TriviaForge Solo
       </div>
-      <div class="navbar-actions">
+
+      <div class="navbar-links">
+        <router-link v-if="authStore.userRole === 'admin'" to="/admin" class="nav-link nav-link--admin" :class="{ 'nav-link--active': false }">
+          <AppIcon name="clipboard-list" size="sm" /> Admin
+        </router-link>
+        <router-link v-if="authStore.userRole === 'admin'" to="/presenter" class="nav-link nav-link--admin" :class="{ 'nav-link--active': false }">
+          <AppIcon name="presentation" size="sm" /> Presenter
+        </router-link>
         <router-link to="/player" class="nav-link">
           <AppIcon name="users" size="sm" /> Multiplayer
         </router-link>
         <router-link to="/stats" class="nav-link">
           <AppIcon name="bar-chart-3" size="sm" /> My Stats
         </router-link>
+      </div>
+
+      <div class="navbar-actions">
+        <button v-if="authStore.isLoggedIn" class="nav-link nav-link--danger" @click="handleLogout">
+          <AppIcon name="log-out" size="sm" /> Logout
+        </button>
+      </div>
+
+      <button class="navbar-hamburger" @click="navMenuOpen = !navMenuOpen">
+        <AppIcon :name="navMenuOpen ? 'x' : 'menu'" size="md" />
+      </button>
+
+      <div class="navbar-mobile-menu" :class="{ open: navMenuOpen }">
+        <router-link v-if="authStore.userRole === 'admin'" to="/admin" class="nav-link nav-link--admin" @click="navMenuOpen = false">
+          <AppIcon name="clipboard-list" size="sm" /> Admin
+        </router-link>
+        <router-link v-if="authStore.userRole === 'admin'" to="/presenter" class="nav-link nav-link--admin" @click="navMenuOpen = false">
+          <AppIcon name="presentation" size="sm" /> Presenter
+        </router-link>
+        <router-link to="/player" class="nav-link" @click="navMenuOpen = false">
+          <AppIcon name="users" size="sm" /> Multiplayer
+        </router-link>
+        <router-link to="/stats" class="nav-link" @click="navMenuOpen = false">
+          <AppIcon name="bar-chart-3" size="sm" /> My Stats
+        </router-link>
+        <div v-if="authStore.isLoggedIn" class="nav-separator"></div>
+        <button v-if="authStore.isLoggedIn" class="nav-link nav-link--danger" @click="handleLogout; navMenuOpen = false">
+          <AppIcon name="log-out" size="sm" /> Logout
+        </button>
       </div>
     </nav>
 
@@ -241,6 +276,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useSoloGame } from '@/composables/useSoloGame.js'
+import { useAuthStore } from '@/stores/auth.js'
 import AppIcon from '@/components/common/AppIcon.vue'
 import CountdownTimer from '@/components/player/CountdownTimer.vue'
 import Modal from '@/components/common/Modal.vue'
@@ -274,6 +310,14 @@ const {
   resetGame,
   playAgain
 } = useSoloGame()
+
+const authStore = useAuthStore()
+const navMenuOpen = ref(false)
+
+function handleLogout() {
+  authStore.logout()
+  navMenuOpen.value = false
+}
 
 const playerNameInput = ref('')
 const selectedAnswer = ref(null)
@@ -351,44 +395,6 @@ function goToNextQuestion() {
 .solo-play-page {
   min-height: 100vh;
   background: var(--bg-primary);
-  color: var(--text-primary);
-}
-
-/* Navbar */
-.solo-navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 2rem;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.navbar-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.brand-text {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  color: var(--text-secondary);
-  text-decoration: none;
-  border-radius: 6px;
-  transition: all 0.2s;
-}
-
-.nav-link:hover {
-  background: var(--bg-overlay-20);
   color: var(--text-primary);
 }
 
@@ -939,10 +945,6 @@ function goToNextQuestion() {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .solo-navbar {
-    padding: 0.75rem 1rem;
-  }
-
   .solo-container {
     padding: 1rem;
   }

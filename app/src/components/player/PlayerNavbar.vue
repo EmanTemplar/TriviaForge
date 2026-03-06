@@ -1,8 +1,12 @@
 <template>
   <nav class="navbar">
-    <div class="logo"><span class="logo-full">TriviaForge Player</span><span class="logo-short">TF</span></div>
+    <!-- Brand -->
+    <div class="navbar-brand">
+      <AppIcon name="users" size="sm" class="brand-icon" />
+      TriviaForge Player
+    </div>
 
-    <!-- Progress button and question counter in navbar -->
+    <!-- Center: progress button and question counter -->
     <div class="nav-progress-container">
       <span v-if="inRoom && totalQuestions > 0" class="question-counter">
         {{ revealedCount }} / {{ totalQuestions }}
@@ -12,43 +16,107 @@
       </button>
     </div>
 
-    <div v-if="inRoom" class="nav-room-info" :class="{ active: inRoom }">
-      <span class="nav-room-code">{{ currentRoomCode || '----' }}</span>
-      <span class="nav-connection-status" :class="connectionStateClass">{{ connectionStateSymbol }}</span>
+    <!-- Desktop links -->
+    <div class="navbar-links">
+      <template v-if="authStore.userRole === 'admin'">
+        <RouterLink to="/admin" class="nav-link" :class="{ 'nav-link--active': route.path === '/admin' }">
+          <AppIcon name="clipboard-list" size="sm" /> Admin
+        </RouterLink>
+        <RouterLink to="/presenter" class="nav-link" :class="{ 'nav-link--active': route.path === '/presenter' }">
+          <AppIcon name="presentation" size="sm" /> Presenter
+        </RouterLink>
+        <span class="nav-separator"></span>
+      </template>
+
+      <RouterLink to="/display" class="nav-link" :class="{ 'nav-link--active': route.path === '/display' }">
+        <AppIcon name="monitor" size="sm" /> Spectate
+      </RouterLink>
+
+      <RouterLink v-if="loginUsername" to="/stats" class="nav-link" :class="{ 'nav-link--active': route.path === '/stats' }">
+        <AppIcon name="bar-chart-3" size="sm" /> My Stats
+      </RouterLink>
+
+      <RouterLink to="/solo" class="nav-link" :class="{ 'nav-link--active': route.path === '/solo' }">
+        <AppIcon name="gamepad-2" size="sm" /> Solo
+      </RouterLink>
     </div>
 
-    <ThemeSelector />
+    <!-- Actions: room code, connection status, theme, hamburger -->
+    <div class="navbar-actions">
+      <template v-if="inRoom">
+        <span class="navbar-room-code">{{ currentRoomCode || '----' }}</span>
+        <span class="connection-status" :class="connectionStateClass">{{ connectionStateSymbol }}</span>
+      </template>
 
-    <div class="hamburger" @click="$emit('toggleMenu')">&#9776;</div>
-    <ul class="menu" :class="{ open: menuOpen }">
-      <li><RouterLink to="/display">Spectate</RouterLink></li>
-      <li v-if="loginUsername"><RouterLink to="/stats">My Stats</RouterLink></li>
-      <li v-if="inRoom" id="menuLeaveRoom" class="mobile-only-menu-item">
-        <a href="#" @click.prevent="$emit('leaveRoom')">Leave Room</a>
-      </li>
-      <li v-if="inRoom" id="menuPlayersSection" class="mobile-only-menu-item">
-        <div>Players in Room</div>
-        <div id="menuPlayersList" class="menu-players">
-          <div v-for="(player, idx) in nonSpectatorPlayers" :key="player.id" class="player-item">
-            <span>{{ idx + 1 }}.</span>
-            <span class="player-status" :class="{ online: player.connected, offline: !player.connected }">●</span>
-            <span>{{ player.name }}</span>
-            <AppIcon v-if="player.choice !== null" name="check" size="sm" class="player-answered" />
+      <ThemeSelector />
+
+      <button class="navbar-hamburger" @click="$emit('toggleMenu')" aria-label="Toggle menu">
+        <AppIcon :name="menuOpen ? 'x' : 'menu'" size="sm" />
+      </button>
+    </div>
+
+    <!-- Mobile menu -->
+    <div class="navbar-mobile-menu" :class="{ open: menuOpen }">
+      <template v-if="authStore.userRole === 'admin'">
+        <RouterLink to="/admin" class="nav-link" :class="{ 'nav-link--active': route.path === '/admin' }" @click="$emit('toggleMenu')">
+          <AppIcon name="clipboard-list" size="sm" /> Admin
+        </RouterLink>
+        <RouterLink to="/presenter" class="nav-link" :class="{ 'nav-link--active': route.path === '/presenter' }" @click="$emit('toggleMenu')">
+          <AppIcon name="presentation" size="sm" /> Presenter
+        </RouterLink>
+      </template>
+
+      <RouterLink to="/display" class="nav-link" :class="{ 'nav-link--active': route.path === '/display' }" @click="$emit('toggleMenu')">
+        <AppIcon name="monitor" size="sm" /> Spectate / Display
+      </RouterLink>
+
+      <RouterLink v-if="loginUsername" to="/stats" class="nav-link" :class="{ 'nav-link--active': route.path === '/stats' }" @click="$emit('toggleMenu')">
+        <AppIcon name="bar-chart-3" size="sm" /> My Stats
+      </RouterLink>
+
+      <RouterLink to="/solo" class="nav-link" :class="{ 'nav-link--active': route.path === '/solo' }" @click="$emit('toggleMenu')">
+        <AppIcon name="gamepad-2" size="sm" /> Solo
+      </RouterLink>
+
+      <template v-if="inRoom">
+        <span class="nav-separator"></span>
+        <a href="#" class="nav-link nav-link--danger" @click.prevent="$emit('leaveRoom'); $emit('toggleMenu')">
+          <AppIcon name="log-out" size="sm" /> Leave Room
+        </a>
+
+        <!-- Players list (mobile only) -->
+        <div class="mobile-players-section">
+          <div class="mobile-players-label">Players in Room</div>
+          <div class="menu-players">
+            <div v-for="(player, idx) in nonSpectatorPlayers" :key="player.id" class="player-item">
+              <span>{{ idx + 1 }}.</span>
+              <span class="player-status" :class="{ online: player.connected, offline: !player.connected }">●</span>
+              <span>{{ player.name }}</span>
+              <AppIcon v-if="player.choice !== null" name="check" size="sm" class="player-answered" />
+            </div>
+            <em v-if="nonSpectatorPlayers.length === 0">Not in a room yet</em>
           </div>
-          <em v-if="nonSpectatorPlayers.length === 0">Not in a room yet</em>
         </div>
-      </li>
-      <li v-if="loginUsername" class="logout-item">
-        <a href="#" @click.prevent="$emit('logout')" class="logout-link">Logout</a>
-      </li>
-    </ul>
+      </template>
+
+      <template v-if="loginUsername">
+        <span class="nav-separator"></span>
+        <a href="#" class="nav-link nav-link--danger" @click.prevent="$emit('logout'); $emit('toggleMenu')">
+          <AppIcon name="log-out" size="sm" /> Logout
+        </a>
+      </template>
+    </div>
   </nav>
 </template>
 
 <script setup>
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import ThemeSelector from './ThemeSelector.vue';
 import AppIcon from '@/components/common/AppIcon.vue';
+import { useAuthStore } from '@/stores/auth.js';
+
+const route = useRoute();
+const authStore = useAuthStore();
 
 defineProps({
   inRoom: { type: Boolean, required: true },
@@ -66,109 +134,67 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
 </script>
 
 <style scoped>
-.navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem;
-  background: var(--bg-tertiary-30);
-  border-bottom: 1px solid var(--border-color);
-  gap: 1rem;
-  position: relative;
-  z-index: 100;
-}
-
-.logo {
-  font-weight: bold;
-  font-size: 1.2rem;
-  flex-shrink: 0;
-}
-
-.logo-short {
-  display: none;
-}
-
-@media (max-width: 1024px) {
-  .logo-full {
-    display: none;
-  }
-  .logo-short {
-    display: inline;
-  }
-}
-
+/* Center area: progress button + question counter */
 .nav-progress-container {
   flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .question-counter {
-  padding: 0.35rem 0.75rem;
+  padding: 0.25rem 0.65rem;
   background: var(--bg-overlay-10);
   border: 1px solid var(--border-color);
   border-radius: 20px;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .progress-btn {
-  padding: 0.5rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
   background: var(--info-bg-20);
   border: 1px solid var(--info-light);
   border-radius: 8px;
   color: var(--info-light);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  transition: all 0.2s;
+  transition: background 0.2s;
 }
 
 .progress-btn:hover {
   background: var(--info-bg-30);
 }
 
-.nav-room-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.nav-room-code {
-  color: var(--info-light);
-  font-weight: bold;
-}
-
-.nav-connection-status {
-  font-size: 1.2rem;
+/* Connection status indicator */
+.connection-status {
+  font-size: 1.1rem;
   transition: color 0.2s;
+  flex-shrink: 0;
 }
 
-/* Connection states */
-.nav-connection-status.status-connected,
-.status-connected {
-  color: var(--secondary-light); /* Green */
+.connection-status.status-connected {
+  color: var(--secondary-light);
 }
 
-.nav-connection-status.status-away,
-.status-away {
-  color: var(--warning-light); /* Orange */
+.connection-status.status-away {
+  color: var(--warning-light);
 }
 
-.nav-connection-status.status-disconnected,
-.status-disconnected {
-  color: var(--danger-light); /* Red */
+.connection-status.status-disconnected {
+  color: var(--danger-light);
 }
 
-.nav-connection-status.status-warning,
-.status-warning {
-  color: var(--warning-light); /* Yellow/Warning */
+.connection-status.status-warning {
+  color: var(--warning-light);
   animation: pulse-warning 1.5s ease-in-out infinite;
 }
 
@@ -177,69 +203,22 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
   50% { opacity: 0.5; }
 }
 
-
-.hamburger {
-  display: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  flex-shrink: 0;
+/* Mobile players section */
+.mobile-players-section {
+  padding: 0.5rem 0.75rem;
+  width: 100%;
 }
 
-.menu {
-  display: flex;
-  list-style: none;
-  gap: 1.5rem;
-  padding: 0;
-  margin: 0;
-}
-
-.menu li {
-  display: flex;
-  align-items: center;
-}
-
-.menu a {
-  color: var(--text-primary);
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.menu a:hover {
-  color: var(--info-light);
-}
-
-.logout-link {
-  color: var(--danger-light);
-}
-
-.logout-link:hover {
-  color: var(--danger-color);
-}
-
-/* Hide mobile-only menu items on desktop */
-@media (min-width: 1025px) {
-  .mobile-only-menu-item {
-    display: none !important;
-  }
-}
-
-.logout-item {
-  border-top: none;
-  padding-top: 0;
-  margin-top: 0;
-}
-
-/* Show separator only on mobile */
-@media (max-width: 1024px) {
-  .logout-item {
-    border-top: 1px solid var(--border-color);
-    padding-top: 0.5rem;
-    margin-top: 0.5rem;
-  }
+.mobile-players-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
 }
 
 .menu-players {
-  margin-top: 0.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -251,10 +230,13 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
   gap: 0.5rem;
   font-size: 0.9rem;
   color: var(--text-primary);
+  padding: 0.4rem 0.5rem;
+  background: var(--bg-overlay-10);
+  border-radius: 6px;
 }
 
 .player-status {
-  font-size: 1.2rem;
+  font-size: 1rem;
   flex-shrink: 0;
 }
 
@@ -268,101 +250,13 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
 
 .player-answered {
   color: var(--secondary-light);
+  margin-left: auto;
 }
 
-/* Mobile styles */
-@media (max-width: 1024px) {
-  .hamburger {
-    display: block !important;
-    z-index: 101;
-  }
-
-  .menu {
-    position: fixed;
-    top: 60px;
-    left: 0;
-    right: 0;
-    flex-direction: column;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--info-light);
-    padding: 1rem;
-    gap: 0.5rem;
-    display: none !important;
-    z-index: 999;
-    max-height: calc(100vh - 60px);
-    overflow-y: auto;
-    box-shadow: 0 4px 6px var(--bg-overlay-70);
-  }
-
-  .menu.open {
-    display: flex !important;
-  }
-
-  .menu li {
-    width: 100%;
-    white-space: normal;
-    flex-direction: column;
-    align-items: flex-start;
-    border-bottom: 1px solid var(--bg-overlay-10);
-    padding: 0.5rem 0;
-  }
-
-  .menu li:last-child {
-    border-bottom: none;
-  }
-
-  .menu a {
-    display: block;
-    padding: 0.75rem;
-    width: 100%;
-    border-radius: 8px;
-    transition: background 0.2s;
-  }
-
-  .menu a:hover {
-    background: var(--info-bg-10);
-  }
-
-  .menu-players {
-    margin-left: 0;
-    margin-top: 0.5rem;
-    width: 100%;
-  }
-
-  .menu-players .player-item {
-    padding: 0.5rem 0.75rem;
-    background: var(--bg-overlay-10);
-    border-radius: 6px;
-    margin-bottom: 0.25rem;
-  }
-
-  /* Leave Room button - red outline */
-  #menuLeaveRoom a {
-    border: 2px solid var(--danger-light);
-    background: var(--danger-bg-10);
-  }
-
-  #menuLeaveRoom a:hover {
-    background: var(--danger-bg-20);
-    border-color: var(--danger-color);
-  }
-
-  /* Logout button - red transparent background */
-  .logout-item a {
-    background: var(--danger-bg-20);
-    border: 2px solid var(--danger-light);
-  }
-
-  .logout-item a:hover {
-    background: var(--danger-bg-30);
-    border-color: var(--danger-color);
-  }
-}
-
-@media (max-width: 768px) {
-  .menu {
-    background: var(--bg-primary);
-    backdrop-filter: blur(10px);
+/* Hide progress container on very small screens if needed */
+@media (max-width: 480px) {
+  .nav-progress-container {
+    display: none;
   }
 }
 </style>

@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v5.8.0 - Player Stats Dashboard, Admin-Configurable Server URL, Game Experience & Results Display, Progress Counter, Multiple Displays, Auto-Mode, Solo Play, Question Bank
+**Latest Release**: v5.10.0 - Unified Navbar Redesign, Trusted Devices for 2FA, Score Fix, Player Stats Dashboard, Admin-Configurable Server URL, Game Experience & Results Display, Auto-Mode, Solo Play, Question Bank
 
 ### Key Highlights
 
@@ -768,6 +768,19 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 ## Roadmap
 
 ### Completed Features
+
+**v5.10.0 (Mar 2026) - Unified Navbar Redesign**
+- [x] Unified navbar design system across all 5 navbars with shared CSS classes
+- [x] Admin/Presenter links visible on player-side pages when logged in as admin
+- [x] Consistent right-aligned links, AppIcon on every link, active page underline
+- [x] Hover: color change + subtle bottom border, danger links in red
+- [x] Hamburger mobile menu with tight spacing, replaced emoji rank medals with AppIcon
+
+**v5.9.0 (Mar 2026) - Trusted Devices & Score Fix**
+- [x] "Remember this device for 30 days" checkbox on 2FA login - skips TOTP on trusted devices
+- [x] Secure device token storage with 30-day expiry and periodic cleanup
+- [x] Fixed `game_participants.score` always being 0 - now computes correct answer count on save
+- [x] Guest participant scores also updated on re-save
 
 **v5.8.0 (Mar 2026) - Player Stats Dashboard**
 - [x] Dedicated `/stats` page for registered players with login required

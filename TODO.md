@@ -1,8 +1,8 @@
 # TriviaForge - Active Development Tasks (2026)
 
 > **Purpose:** Current development priorities and pending tasks
-> **Last Updated:** 2026-03-05
-> **Version:** v5.8.0
+> **Last Updated:** 2026-03-06
+> **Version:** v5.10.0
 
 ---
 
@@ -63,6 +63,74 @@
 - `app/src/config/version.js` - Version bump to v5.7.0
 - `docker-compose.yml` - Updated SERVER_URL default
 - `.env.example` - Updated SERVER_URL comments
+
+---
+
+### v5.10.0 Features - Unified Navbar Redesign ✅ COMPLETE
+
+**Status:** ✅ COMPLETE
+**Priority:** HIGH
+**Completed:** 2026-03-06
+**Branch:** `main`
+
+#### Unified Navbar Design System ✅
+- [x] Complete rewrite of shared `navbars.css` with semantic class names
+- [x] All 5 navbars unified: AdminNavbar, PresenterNavbar, PlayerNavbar, StatsNavbar, SoloPlayPage
+- [x] Consistent right-aligned link placement across all pages
+- [x] AppIcon (Lucide) on every navigation link
+- [x] Active page bottom border underline (`--info-light`)
+- [x] Hover: color change + subtle bottom border (no text underline)
+- [x] Danger links (Logout, Leave) in red with danger hover
+- [x] Admin-only links with `--info-light` color + opacity
+- [x] Hamburger mobile menu at <=1024px with tight spacing
+- [x] Admin/Presenter links visible on player-side pages when logged in as admin
+- [x] Replaced emoji rank medals with AppIcon in Stats GameHistoryTable
+- [x] Fixed global `a:hover` text-decoration override
+
+**Files Modified:**
+- `app/src/styles/shared/navbars.css` - Complete rewrite
+- `app/src/components/admin/AdminNavbar.vue` - Complete rewrite
+- `app/src/components/presenter/PresenterNavbar.vue` - Complete rewrite
+- `app/src/components/player/PlayerNavbar.vue` - Complete rewrite
+- `app/src/components/stats/StatsNavbar.vue` - Complete rewrite
+- `app/src/pages/SoloPlayPage.vue` - Navbar unified + authStore
+- `app/src/components/stats/GameHistoryTable.vue` - Emoji to AppIcon
+- `app/src/config/version.js` - Bumped to v5.10.0
+
+---
+
+### v5.9.0 Features - Trusted Devices & Score Fix ✅ COMPLETE
+
+**Status:** ✅ COMPLETE
+**Priority:** HIGH
+**Completed:** 2026-03-05
+**Branch:** `main`
+
+#### Remember Device for 2FA (30-day Trusted Devices) ✅
+- [x] `trusted_devices` database table with token, expiry, user agent
+- [x] Device token check in adminLogin() - skip 2FA for valid tokens
+- [x] Device token generation in verifyTOTP() when "Remember" checked
+- [x] "Remember this device for 30 days" checkbox on TOTP form
+- [x] localStorage storage/retrieval of device token
+- [x] Device token cleared on logout
+- [x] All trusted devices removed when 2FA disabled
+- [x] Expired device cleanup in periodic server scheduler
+
+#### Fix gp.score Persistence ✅
+- [x] Compute playerScore from answers vs correctChoice in saveSession()
+- [x] Persist score for registered users (INSERT + ON CONFLICT UPDATE)
+- [x] Persist score for guest users (INSERT + UPDATE on re-save)
+- [x] Resolves long-standing issue where game_participants.score was always 0
+
+**Files Created:**
+- `app/init/16-trusted-devices.sql` - Database migration
+
+**Files Modified:**
+- `app/src/controllers/auth.controller.js` - Trusted device backend logic
+- `app/src/services/session.service.js` - Score computation and persistence
+- `app/src/pages/LoginPage.vue` - Remember device checkbox + localStorage
+- `app/server.js` - cleanupExpiredDevices in scheduler
+- `app/src/config/version.js` - Version bump to v5.9.0
 
 ---
 
@@ -677,18 +745,17 @@ Add notification to presenter when all connected players have answered the curre
 - `app/init/08-totp-support.sql` - Database migration for 2FA
 
 **Future Consideration:**
-- [ ] Remember device for 2FA (30-day trusted devices) - deferred to v5.3.0
+- [x] Remember device for 2FA (30-day trusted devices) - v5.9.0 ✅
 - [ ] PDF export with proper formatting - deferred to future version
 
 ---
 
 ## 📋 Known Issues & Technical Debt
 
-### Solo Play Score Persistence (Low Priority)
-- **Issue:** `gp.score` column in multiplayer game_participants is broken/unreliable (scores computed differently)
-- **Current Workaround:** All stats queries use participant_answers to compute correct_answers count
-- **Future Fix:** Eventually fix saveSession() in session.service.js to properly compute and save gp.score for multiplayer
-- **Status:** Deferred - current workaround works well for stats dashboard
+### Solo Play Score Persistence (FIXED in v5.9.0) ✅
+- **Issue:** `gp.score` column in multiplayer game_participants was always 0
+- **Fix:** saveSession() now computes correct answer count from player answers and persists to gp.score
+- **Note:** Stats queries still use participant_answers for robustness (belt-and-suspenders approach)
 
 ---
 
@@ -708,7 +775,7 @@ Add notification to presenter when all connected players have answered the curre
 - [ ] Enhanced Player Security & Management (needs re-review post v3.2.1 improvements)
 - [x] Multi-Admin Support System (isolated instances) - v5.0.0 ✅
 - [x] Two-Factor Authentication (TOTP) for admins - v5.2.0 ✅
-- [ ] Remember device for 2FA (30-day trusted devices) - planned v5.3.0
+- [x] Remember device for 2FA (30-day trusted devices) - v5.9.0 ✅
 - [ ] Email verification for admin accounts
 
 ### Question Types & Media
@@ -743,8 +810,10 @@ Add notification to presenter when all connected players have answered the curre
 10. ~~**v5.6.0:** Game Experience & Results Display~~ ✅ COMPLETE
 11. ~~**v5.7.0:** Admin-Configurable Server URL~~ ✅ COMPLETE
 12. **v5.8.0:** Player Stats Dashboard ✅ COMPLETE
-13. **Next:** Remember Device for 2FA (30-day trusted devices) or Player Management enhancements
-14. **Backlog:** PDF Export, enhanced security audits
+13. **v5.9.0:** Trusted Devices for 2FA + gp.score fix ✅ COMPLETE
+14. **v5.10.0:** Unified Navbar Redesign ✅ COMPLETE
+15. **Next:** Player Management enhancements, Ban system, or GitHub Actions CI/CD
+15. **Backlog:** PDF Export, enhanced security audits
 
 ### Testing Priorities
 - Mobile browser testing (iOS Safari, Chrome Mobile, Firefox Mobile)
@@ -770,6 +839,8 @@ Add notification to presenter when all connected players have answered the curre
 - **v5.6.0 (Released):** Game Experience & Results Display - progress counter, results podium, quiz completion screen, multiple displays, manual auto-complete, bug fixes ✅
 - **v5.7.0 (Released):** Admin-configurable Server URL for QR codes, player auth redirect fix ✅
 - **v5.8.0 (Released):** Player Stats Dashboard - game history, summary stats, trend charts, solo auth integration ✅
+- **v5.9.0 (Released):** Trusted Devices for 2FA (30-day remember), gp.score persistence fix ✅
+- **v5.10.0 (Released):** Unified Navbar Redesign - shared CSS design system, admin links on player pages, consistent styling ✅
 
 ---
 
@@ -788,5 +859,5 @@ Before marking a task as complete:
 
 **Archive:** See [archive/TODO-2025.md](archive/TODO-2025.md) for historical tasks and completed features from 2025.
 
-**Last Updated:** 2026-03-05
+**Last Updated:** 2026-03-06
 **Maintained By:** TriviaForge Development Team

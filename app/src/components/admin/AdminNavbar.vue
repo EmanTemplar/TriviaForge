@@ -1,33 +1,79 @@
 <template>
   <nav class="navbar">
-    <div class="logo">Trivia Admin</div>
-    <div class="hamburger" @click.stop="$emit('toggle-menu')">&#9776;</div>
-    <ul class="menu" :class="{ open: menuOpen }" id="menu">
-      <li><RouterLink to="/admin">Admin</RouterLink></li>
-      <li><RouterLink to="/player">Player</RouterLink></li>
-      <li><RouterLink to="/presenter">Presenter</RouterLink></li>
-      <li><RouterLink to="/display">Spectate</RouterLink></li>
-      <li class="account-dropdown">
-        <button class="account-button" @click.stop="toggleDropdown">
-          <span class="account-name">{{ username || 'Admin' }}</span>
-          <AppIcon :name="dropdownOpen ? 'chevron-up' : 'chevron-down'" size="xs" class="dropdown-arrow" />
+    <div class="navbar-brand">
+      <AppIcon name="clipboard-list" class="brand-icon" /> TriviaForge Admin
+    </div>
+
+    <div class="navbar-links">
+      <router-link to="/admin" class="nav-link" :class="{ 'nav-link--active': $route.path === '/admin' }">
+        <AppIcon name="clipboard-list" size="sm" /> Admin
+      </router-link>
+      <router-link to="/presenter" class="nav-link" :class="{ 'nav-link--active': $route.path === '/presenter' }">
+        <AppIcon name="presentation" size="sm" /> Presenter
+      </router-link>
+      <router-link to="/player" class="nav-link" :class="{ 'nav-link--active': $route.path === '/player' }">
+        <AppIcon name="users" size="sm" /> Player
+      </router-link>
+      <router-link to="/solo" class="nav-link" :class="{ 'nav-link--active': $route.path === '/solo' }">
+        <AppIcon name="gamepad-2" size="sm" /> Solo
+      </router-link>
+      <router-link to="/display" class="nav-link" :class="{ 'nav-link--active': $route.path === '/display' }">
+        <AppIcon name="monitor" size="sm" /> Display
+      </router-link>
+    </div>
+
+    <!-- Account dropdown -->
+    <div class="navbar-account" ref="dropdownRef">
+      <button class="navbar-account-btn" @click="dropdownOpen = !dropdownOpen">
+        <AppIcon name="user" size="sm" /> {{ username || 'Admin' }}
+        <AppIcon :name="dropdownOpen ? 'chevron-up' : 'chevron-down'" size="xs" />
+      </button>
+      <div class="navbar-dropdown" :class="{ open: dropdownOpen }">
+        <button class="nav-link" @click="$emit('settings'); dropdownOpen = false">
+          <AppIcon name="settings" size="sm" /> Settings
         </button>
-        <div v-if="dropdownOpen" class="dropdown-menu">
-          <a href="#" @click.prevent="handleSettings" class="dropdown-item">
-            <AppIcon name="settings" size="md" class="dropdown-icon" /> Account Settings
-          </a>
-          <a href="#" @click.prevent="handleLogout" class="dropdown-item logout-item">
-            <AppIcon name="log-out" size="md" class="dropdown-icon" /> Logout
-          </a>
-        </div>
-      </li>
-    </ul>
+        <button class="nav-link nav-link--danger" @click="$emit('logout'); dropdownOpen = false">
+          <AppIcon name="log-out" size="sm" /> Logout
+        </button>
+      </div>
+    </div>
+
+    <!-- Hamburger -->
+    <button class="navbar-hamburger" @click="$emit('toggle-menu')">
+      <AppIcon :name="menuOpen ? 'x' : 'menu'" size="md" />
+    </button>
+
+    <!-- Mobile menu -->
+    <div class="navbar-mobile-menu" :class="{ open: menuOpen }">
+      <router-link to="/admin" class="nav-link" :class="{ 'nav-link--active': $route.path === '/admin' }" @click="$emit('toggle-menu')">
+        <AppIcon name="clipboard-list" size="sm" /> Admin
+      </router-link>
+      <router-link to="/presenter" class="nav-link" :class="{ 'nav-link--active': $route.path === '/presenter' }" @click="$emit('toggle-menu')">
+        <AppIcon name="presentation" size="sm" /> Presenter
+      </router-link>
+      <router-link to="/player" class="nav-link" :class="{ 'nav-link--active': $route.path === '/player' }" @click="$emit('toggle-menu')">
+        <AppIcon name="users" size="sm" /> Player
+      </router-link>
+      <router-link to="/solo" class="nav-link" :class="{ 'nav-link--active': $route.path === '/solo' }" @click="$emit('toggle-menu')">
+        <AppIcon name="gamepad-2" size="sm" /> Solo
+      </router-link>
+      <router-link to="/display" class="nav-link" :class="{ 'nav-link--active': $route.path === '/display' }" @click="$emit('toggle-menu')">
+        <AppIcon name="monitor" size="sm" /> Display
+      </router-link>
+      <div class="nav-separator"></div>
+      <button class="nav-link" @click="$emit('settings'); $emit('toggle-menu')">
+        <AppIcon name="settings" size="sm" /> Settings
+      </button>
+      <button class="nav-link nav-link--danger" @click="$emit('logout'); $emit('toggle-menu')">
+        <AppIcon name="log-out" size="sm" /> Logout
+      </button>
+    </div>
   </nav>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
-import { RouterLink } from 'vue-router';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { useRoute } from 'vue-router';
 import AppIcon from '@/components/common/AppIcon.vue';
 
 defineProps({
@@ -35,34 +81,14 @@ defineProps({
   menuOpen: { type: Boolean, required: true }
 });
 
-const emit = defineEmits(['toggle-menu', 'logout', 'settings']);
+defineEmits(['toggle-menu', 'logout', 'settings']);
 
 const dropdownOpen = ref(false);
 const dropdownRef = ref(null);
 
-const toggleDropdown = () => {
-  dropdownOpen.value = !dropdownOpen.value;
-};
-
-const closeDropdown = () => {
-  dropdownOpen.value = false;
-};
-
-const handleSettings = () => {
-  closeDropdown();
-  emit('settings');
-};
-
-const handleLogout = () => {
-  closeDropdown();
-  emit('logout');
-};
-
-// Handle clicks outside the dropdown
 const handleClickOutside = (event) => {
-  const dropdown = document.querySelector('.account-dropdown');
-  if (dropdown && !dropdown.contains(event.target)) {
-    closeDropdown();
+  if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
+    dropdownOpen.value = false;
   }
 };
 
@@ -70,200 +96,16 @@ onMounted(() => {
   document.addEventListener('click', handleClickOutside);
 });
 
-onUnmounted(() => {
+onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside);
 });
 </script>
 
 <style scoped>
-.navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem;
-  background: var(--bg-tertiary-30);
-  border-bottom: 1px solid var(--border-color);
-  position: relative;
-  z-index: 100;
-}
-
-.logo {
-  font-weight: bold;
-  font-size: 1.2rem;
-  flex-shrink: 0;
-}
-
-.hamburger {
-  display: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  flex-shrink: 0;
-  color: var(--text-primary);
-}
-
-.menu {
-  display: flex;
-  list-style: none;
-  gap: 1.5rem;
-  padding: 0;
-  margin: 0;
-}
-
-.menu li {
-  display: flex;
-  align-items: center;
-}
-
-.menu a {
-  color: var(--text-primary);
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.menu a:hover {
-  color: var(--info-light);
-}
-
-/* Account Dropdown */
-.account-dropdown {
-  position: relative;
-}
-
-.account-button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--info-bg-20);
-  border: 1px solid var(--info-light);
-  border-radius: 8px;
-  color: var(--info-light);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.95rem;
-}
-
-.account-button:hover {
-  background: var(--info-bg-30);
-}
-
-.dropdown-arrow {
-  font-size: 0.7rem;
-  opacity: 0.7;
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
-  min-width: 180px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px var(--bg-overlay-50);
-  overflow: hidden;
-  z-index: 1000;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  color: var(--text-primary);
-  text-decoration: none;
-  transition: background 0.2s;
-  font-size: 0.9rem;
-}
-
-.dropdown-item:hover {
-  background: var(--bg-overlay-20);
-  color: var(--info-light);
-}
-
-.dropdown-icon {
-  font-size: 1rem;
-}
-
-.dropdown-item.logout-item {
-  border-top: 1px solid var(--border-color);
-  color: var(--danger-light);
-}
-
-.dropdown-item.logout-item:hover {
-  background: var(--danger-bg-10);
-  color: var(--danger-color);
-}
-
-/* Mobile styles */
+/* Hide account dropdown on mobile (shown in mobile menu instead) */
 @media (max-width: 1024px) {
-  .hamburger {
-    display: block !important;
-    z-index: 101;
-  }
-
-  .menu {
-    position: fixed;
-    top: 60px;
-    left: 0;
-    right: 0;
-    flex-direction: column;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--info-light);
-    padding: 1rem;
-    gap: 0.5rem;
-    display: none !important;
-    z-index: 999;
-    max-height: calc(100vh - 60px);
-    overflow-y: auto;
-    box-shadow: 0 4px 6px var(--bg-overlay-70);
-  }
-
-  .menu.open {
-    display: flex !important;
-  }
-
-  .menu li {
-    width: 100%;
-    white-space: normal;
-  }
-
-  .menu a {
-    display: block;
-    padding: 0.75rem;
-    width: 100%;
-    border-radius: 8px;
-    transition: background 0.2s;
-  }
-
-  .menu a:hover {
-    background: var(--info-bg-10);
-  }
-
-  /* Mobile dropdown adjustments */
-  .account-dropdown {
-    width: 100%;
-  }
-
-  .account-button {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .dropdown-menu {
-    position: static;
-    width: 100%;
-    margin-top: 0.5rem;
-    box-shadow: none;
-    border: 1px solid var(--border-color);
-  }
-}
-
-@media (max-width: 768px) {
-  .menu {
-    background: var(--bg-primary);
-    backdrop-filter: blur(10px);
+  .navbar-account {
+    display: none;
   }
 }
 </style>

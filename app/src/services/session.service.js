@@ -93,6 +93,17 @@ class SessionService {
         // Skip spectators from database saves
         if (player.isSpectator) continue;
 
+        // Compute player's correct answer count
+        let playerScore = 0;
+        if (player.answers && room.quizData && room.quizData.questions) {
+          for (const [qIdx, choice] of Object.entries(player.answers)) {
+            const question = room.quizData.questions[parseInt(qIdx)];
+            if (question && choice === question.correctChoice) {
+              playerScore++;
+            }
+          }
+        }
+
         // Insert or update participant with user_id from guest/registered account
         // For guests (null user_id), we can't use ON CONFLICT since the partial
         // unique index only applies to non-null user_ids. Use socket_id to find existing.
@@ -111,6 +122,7 @@ class SessionService {
             WHERE user_id IS NOT NULL
             DO UPDATE SET
               display_name = EXCLUDED.display_name,
+              score = EXCLUDED.score,
               is_connected = EXCLUDED.is_connected,
               socket_id = EXCLUDED.socket_id,
               last_seen = EXCLUDED.last_seen
@@ -120,7 +132,7 @@ class SessionService {
               player.userId,
               sessionId,
               player.name,
-              0,
+              playerScore,
               player.connected || false,
               player.id,
               new Date(),
@@ -148,7 +160,7 @@ class SessionService {
               [
                 sessionId,
                 player.name,
-                0,
+                playerScore,
                 player.connected || false,
                 player.id,
                 new Date(),
@@ -161,11 +173,12 @@ class SessionService {
               `
               UPDATE game_participants SET
                 display_name = $1,
-                is_connected = $2,
-                last_seen = $3
-              WHERE id = $4
+                score = $2,
+                is_connected = $3,
+                last_seen = $4
+              WHERE id = $5
             `,
-              [player.name, player.connected || false, new Date(), participantResult.rows[0].id]
+              [player.name, playerScore, player.connected || false, new Date(), participantResult.rows[0].id]
             );
           }
         }

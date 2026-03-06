@@ -53,9 +53,9 @@
             </td>
             <td>
               <span class="rank-badge">
-                <span v-if="game.rank === 1" class="rank-medal">&#x1F947;</span>
-                <span v-else-if="game.rank === 2" class="rank-medal">&#x1F948;</span>
-                <span v-else-if="game.rank === 3" class="rank-medal">&#x1F949;</span>
+                <AppIcon v-if="game.rank === 1" name="medal" size="sm" color="#FFD700" />
+                <AppIcon v-else-if="game.rank === 2" name="medal" size="sm" color="#C0C0C0" />
+                <AppIcon v-else-if="game.rank === 3" name="medal" size="sm" color="#CD7F32" />
                 <span v-else>#{{ game.rank }}</span>
                 <span v-if="game.totalPlayers > 1" class="rank-total"> / {{ game.totalPlayers }}</span>
               </span>
@@ -90,7 +90,9 @@
             <div class="card-stat">
               <span class="card-stat-label">Rank</span>
               <span class="card-stat-value">
-                <span v-if="game.rank <= 3" class="rank-medal">{{ ['', '&#x1F947;', '&#x1F948;', '&#x1F949;'][game.rank] }}</span>
+                <AppIcon v-if="game.rank === 1" name="medal" size="sm" color="#FFD700" />
+                <AppIcon v-else-if="game.rank === 2" name="medal" size="sm" color="#C0C0C0" />
+                <AppIcon v-else-if="game.rank === 3" name="medal" size="sm" color="#CD7F32" />
                 <span v-else>#{{ game.rank }}</span>
                 <span v-if="game.totalPlayers > 1"> / {{ game.totalPlayers }}</span>
               </span>
@@ -291,10 +293,6 @@ function accuracyClass(accuracy) {
   display: flex;
   align-items: center;
   gap: 0.2rem;
-}
-
-.rank-medal {
-  font-size: 1.1rem;
 }
 
 .rank-total {

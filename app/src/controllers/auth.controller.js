@@ -10,6 +10,7 @@
  */
 
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { query } from '../config/database.js';
 import { env } from '../config/environment.js';
 import { DEFAULTS, USER_ROLES } from '../config/constants.js';
@@ -76,25 +77,58 @@ export async function adminLogin(req, res, next) {
 
     // Check if 2FA is enabled
     if (user.totp_enabled && user.totp_secret) {
-      // Create a temporary token for 2FA verification (expires in 5 minutes)
-      const tempSessionResult = await query(
-        `INSERT INTO user_sessions (user_id, expires_at)
-         VALUES ($1, NOW() + INTERVAL '5 minutes')
-         RETURNING token`,
-        [user.id]
-      );
-
-      const tempToken = tempSessionResult.rows[0].token;
-
-      // Return 2FA required response
-      return res.json({
-        requires2FA: true,
-        tempToken,
-        user: {
-          id: user.id,
-          username: user.username,
-        },
-      });
+      // Check for trusted device token
+      const { deviceToken } = req.body;
+      if (deviceToken) {
+        const deviceResult = await query(
+          `SELECT id FROM trusted_devices
+           WHERE user_id = $1 AND device_token = $2 AND expires_at > NOW()`,
+          [user.id, deviceToken]
+        );
+        if (deviceResult.rows.length > 0) {
+          // Trusted device found - update last_used_at and skip 2FA
+          await query(
+            'UPDATE trusted_devices SET last_used_at = NOW() WHERE id = $1',
+            [deviceResult.rows[0].id]
+          );
+          console.log(`[LOGIN] Trusted device recognized for ${user.username} - skipping 2FA`);
+          // Fall through to normal login below
+        } else {
+          // Device token provided but not valid - require 2FA
+          const tempSessionResult = await query(
+            `INSERT INTO user_sessions (user_id, expires_at)
+             VALUES ($1, NOW() + INTERVAL '5 minutes')
+             RETURNING token`,
+            [user.id]
+          );
+          const tempToken = tempSessionResult.rows[0].token;
+          return res.json({
+            requires2FA: true,
+            tempToken,
+            user: {
+              id: user.id,
+              username: user.username,
+            },
+          });
+        }
+      } else {
+        // No device token provided - require 2FA as normal
+        const tempSessionResult = await query(
+          `INSERT INTO user_sessions (user_id, expires_at)
+           VALUES ($1, NOW() + INTERVAL '5 minutes')
+           RETURNING token`,
+          [user.id]
+        );
+        const tempToken = tempSessionResult.rows[0].token;
+        return res.json({
+          requires2FA: true,
+          tempToken,
+          user: {
+            id: user.id,
+            username: user.username,
+          },
+        });
+      }
     }
 
     // No 2FA - create full session token
@@ -1054,6 +1088,9 @@ export async function disableTOTP(req, res, next) {
       [adminId]
     );
 
+    // Also remove all trusted devices
+    await query('DELETE FROM trusted_devices WHERE user_id = $1', [adminId]);
+
     console.log(`[TOTP DISABLE] Admin ${username} disabled 2FA`);
 
     sendSuccess(res, null, '2FA has been disabled successfully');
@@ -1141,6 +1178,19 @@ export async function verifyTOTP(req, res, next) {
 
     console.log(`[TOTP VERIFY] Admin ${session.username} completed 2FA login`);
 
+    // Register trusted device if requested
+    let deviceToken = null;
+    if (req.body.rememberDevice) {
+      deviceToken = crypto.randomBytes(32).toString('hex');
+      const deviceName = req.headers['user-agent'] || 'Unknown device';
+      await query(
+        `INSERT INTO trusted_devices (user_id, device_token, device_name, expires_at)
+         VALUES ($1, $2, $3, NOW() + INTERVAL '30 days')`,
+        [session.user_id, deviceToken, deviceName.substring(0, 255)]
+      );
+      console.log(`[TOTP VERIFY] Trusted device registered for ${session.username}`);
+    }
+
     res.json({
       token: newSession.token,
       user: {
@@ -1149,6 +1199,7 @@ export async function verifyTOTP(req, res, next) {
         account_type: session.account_type,
       },
       expires_at: newSession.expires_at,
+      deviceToken,
     });
   } catch (err) {
     next(err);
@@ -1252,6 +1303,21 @@ export async function getTOTPStatus(req, res, next) {
   }
 }
 
+/**
+ * Clean up expired trusted device tokens
+ * Should be called periodically (e.g., on server startup or via cron)
+ */
+export async function cleanupExpiredDevices() {
+  try {
+    const result = await query('DELETE FROM trusted_devices WHERE expires_at < NOW()');
+    if (result.rowCount > 0) {
+      console.log(`[TRUSTED DEVICES] Cleaned up ${result.rowCount} expired device tokens`);
+    }
+  } catch (err) {
+    console.error('[TRUSTED DEVICES] Cleanup error:', err);
+  }
+}
+
 // Export all controller functions
 export default {
   adminLogin,
@@ -1277,4 +1343,6 @@ export default {
   verifyTOTP,
   regenerateBackupCodes,
   getTOTPStatus,
+  // Trusted devices
+  cleanupExpiredDevices,
 };

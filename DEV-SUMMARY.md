@@ -1,12 +1,132 @@
 # TriviaForge Development Summary
 
 > **Purpose:** Summary of development changes for the current session
-> **Last Updated:** 2026-03-05
-> **Version:** v5.8.0
+> **Last Updated:** 2026-03-06
+> **Version:** v5.10.0
 
 ---
 
-## Session Summary: v5.8.0 Release
+## Session Summary: v5.10.0 Release
+
+### Overview
+
+This development period redesigned the navbar across the entire application:
+1. **v5.10.0** - Unified Navbar Redesign with shared CSS design system
+2. **v5.9.0** - Remember Device for 2FA (30-day trusted devices)
+3. **v5.9.0** - Fix gp.score persistence in game_participants table
+
+---
+
+## v5.10.0 - Unified Navbar Redesign
+
+**Release Date:** 2026-03-06
+**Branch:** `main`
+
+### Features
+
+#### Unified Navbar Design System
+- Complete rewrite of `navbars.css` shared stylesheet with semantic class names
+- All 5 navbars (Admin, Presenter, Player, Stats, Solo) now share identical structure and styling
+- Consistent right-aligned link placement with `margin-left: auto` on `.navbar-links`
+- Brand on the left, navigation links pushed right, actions (account/logout) at far right
+- AppIcon (Lucide) on every navigation link for quick identification
+- Active page indicated by solid `--info-light` bottom border underline
+- Hover state: color change to `--info-light` + subtle `--text-muted` bottom border
+- Danger links (Logout, Leave Room) styled in red with danger-specific hover
+- Admin-only links (`nav-link--admin`) with `--info-light` color and opacity treatment
+- Vertical `.nav-separator` dividers between admin links and page links
+- Hamburger menu at `<=1024px` breakpoint with `menu`/`x` icon toggle
+- Mobile menu: absolute positioned below navbar with tight padding (`0.4rem 0.75rem`)
+- Fixed global `a:hover { text-decoration: underline }` override with `text-decoration: none` on `.nav-link:hover`
+
+#### Admin/Presenter Links on Player-Side Pages
+- Admin and Presenter navigation links now appear on Player, Stats, and Solo pages
+- Only visible when logged in as admin (`authStore.userRole === 'admin'`)
+- Enables quick page switching without navigating back to admin area
+- Consistent positioning across all navbars (always first, before page-specific links)
+
+#### Per-Navbar Updates
+- **AdminNavbar**: Complete rewrite with account dropdown, mobile menu, click-outside detection
+- **PresenterNavbar**: Complete rewrite with room code badge, account dropdown, unified icon sizes
+- **PlayerNavbar**: Complete rewrite with admin links, progress counter, room code, connection status, players list in mobile menu
+- **StatsNavbar**: Complete rewrite with admin links, hamburger menu, click-outside detection
+- **SoloPlayPage**: Inline navbar replaced with unified `.navbar` structure, added auth store, logout handler
+
+### Files Modified
+- `app/src/styles/shared/navbars.css` - Complete rewrite of shared navbar design system
+- `app/src/styles/main.css` - Global `a:hover` text-decoration override (existing, not modified)
+- `app/src/components/admin/AdminNavbar.vue` - Complete rewrite with unified design
+- `app/src/components/presenter/PresenterNavbar.vue` - Complete rewrite with unified design
+- `app/src/components/player/PlayerNavbar.vue` - Complete rewrite with admin links, unified design
+- `app/src/components/stats/StatsNavbar.vue` - Complete rewrite with admin links, unified design
+- `app/src/pages/SoloPlayPage.vue` - Navbar replaced with unified design, added authStore + logout
+- `app/src/components/stats/GameHistoryTable.vue` - Replaced emoji rank medals with AppIcon
+- `app/src/config/version.js` - Bumped to v5.10.0
+
+---
+
+## Previous Session Summary: v5.9.0 Release
+
+### Overview
+
+This development period added two quick-win improvements:
+1. **v5.9.0** - Remember Device for 2FA (30-day trusted devices)
+2. **v5.9.0** - Fix gp.score persistence in game_participants table
+
+---
+
+## v5.9.0 - Trusted Devices & Score Fix
+
+**Release Date:** 2026-03-05
+**Branch:** `main`
+
+### Features
+
+#### Remember Device for 2FA (30-day Trusted Devices)
+- "Remember this device for 30 days" checkbox on the TOTP verification form
+- Secure device token (64-char hex via crypto.randomBytes) stored in localStorage
+- On subsequent logins, device token sent with credentials to skip 2FA
+- Server validates device token against `trusted_devices` table (checks expiry)
+- Trusted device `last_used_at` updated on each successful skip
+- Device tokens automatically cleaned up when expired (periodic cleanup scheduler)
+- All trusted devices removed when admin disables 2FA
+- Device tokens cleared from localStorage on logout
+
+#### Fix gp.score Persistence
+- `saveSession()` now computes correct answer count from player's answers before persisting
+- Score calculated by comparing each answer against `question.correctChoice`
+- Registered user ON CONFLICT updates score on re-save
+- Guest participant score updated on re-save (was previously only display_name/connected/last_seen)
+- Fixes long-standing issue where `game_participants.score` was always 0
+
+### Database Migration
+
+**New migration:** `16-trusted-devices.sql`
+```sql
+CREATE TABLE IF NOT EXISTS trusted_devices (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  device_token VARCHAR(64) NOT NULL UNIQUE,
+  device_name VARCHAR(255),
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMPTZ NOT NULL,
+  last_used_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Files Created
+- `app/init/16-trusted-devices.sql` - Trusted devices table migration
+
+### Files Modified
+- `app/src/controllers/auth.controller.js` - Trusted device check in adminLogin, device registration in verifyTOTP, cleanup in disableTOTP, new cleanupExpiredDevices export
+- `app/src/services/session.service.js` - Compute playerScore from answers, persist to gp.score for registered and guest users
+- `app/src/pages/LoginPage.vue` - Remember device checkbox, localStorage device token management
+- `app/server.js` - Import and call cleanupExpiredDevices in periodic and initial cleanup
+- `app/src/config/version.js` - Bumped to v5.9.0
+
+---
+
+## Previous: v5.8.0 Release
 
 ### Overview
 

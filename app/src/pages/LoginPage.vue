@@ -60,6 +60,11 @@
           Verify
         </Button>
 
+        <label class="remember-device">
+          <input type="checkbox" v-model="rememberDevice" />
+          <span>Remember this device for 30 days</span>
+        </label>
+
         <div class="totp-options">
           <button
             type="button"
@@ -172,6 +177,7 @@ const totpError = ref(null)
 const isVerifying = ref(false)
 const showBackupCodeInput = ref(false)
 const backupCode = ref('')
+const rememberDevice = ref(false)
 
 // Check if already authenticated
 onMounted(async () => {
@@ -196,7 +202,8 @@ const attemptLogin = async () => {
   try {
     const response = await post('/api/auth/login', {
       username: username.value.trim(),
-      password: password.value.trim()
+      password: password.value.trim(),
+      deviceToken: localStorage.getItem('trustedDeviceToken')
     })
 
     const data = response.data
@@ -243,7 +250,8 @@ const verifyTOTP = async () => {
     const response = await post('/api/auth/totp/verify', {
       tempToken: tempToken.value,
       code: totpCode.value,
-      isBackupCode: false
+      isBackupCode: false,
+      rememberDevice: rememberDevice.value
     })
 
     await completeLogin(response.data)
@@ -266,7 +274,8 @@ const verifyBackupCode = async () => {
     const response = await post('/api/auth/totp/verify', {
       tempToken: tempToken.value,
       code: backupCode.value.replace('-', ''),
-      isBackupCode: true
+      isBackupCode: true,
+      rememberDevice: rememberDevice.value
     })
 
     await completeLogin(response.data)
@@ -280,6 +289,11 @@ const verifyBackupCode = async () => {
 }
 
 const completeLogin = async (data) => {
+  // Store trusted device token if provided
+  if (data.deviceToken) {
+    localStorage.setItem('trustedDeviceToken', data.deviceToken)
+  }
+
   // Store auth with user ID
   authStore.setAuth(data.token, data.user.username, 'admin', data.user.id)
   isLoggedIn.value = true
@@ -311,6 +325,7 @@ const resetTwoFactorState = () => {
   totpError.value = null
   showBackupCodeInput.value = false
   backupCode.value = ''
+  rememberDevice.value = false
 }
 
 const performLogout = async () => {
@@ -328,6 +343,7 @@ const performLogout = async () => {
   } finally {
     // Clear local auth
     authStore.logout()
+    localStorage.removeItem('trustedDeviceToken')
     isLoggedIn.value = false
     username.value = 'admin'
     password.value = ''
@@ -531,6 +547,23 @@ const performLogout = async () => {
 
 .solo-link:hover {
   background: var(--primary-bg-50);
+}
+
+.remember-device {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  user-select: none;
+}
+
+.remember-device input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--info-light);
+  cursor: pointer;
 }
 
 @media (max-width: 640px) {
