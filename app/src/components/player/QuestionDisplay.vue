@@ -203,9 +203,7 @@ const handleImageError = (event) => {
 /* Answer choice text - allows wrapping */
 .choice-text {
   flex: 1;
-  word-wrap: break-word;
   overflow-wrap: break-word;
-  word-break: break-word; /* Breaks long unbroken words (URLs, technical terms) */
   line-height: 1.4;
 }
 

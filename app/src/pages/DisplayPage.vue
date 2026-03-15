@@ -534,14 +534,16 @@ onUnmounted(() => {
   animation: fadeIn 0.3s ease-in;
   box-sizing: border-box;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* Display Countdown Timer (v5.4.0) */
 .display-countdown-timer {
-  margin-bottom: 1.5rem;
+  margin-bottom: clamp(0.5rem, 1.5vmin, 1.5rem);
   max-width: 600px;
   width: 100%;
   align-self: center;
+  flex-shrink: 0;
 }
 
 /* Display Question Image Styles */
@@ -550,61 +552,54 @@ onUnmounted(() => {
   justify-content: center;
   align-items: center;
   width: 100%;
-  max-height: 350px;
-  margin-bottom: 1.5rem;
+  max-height: min(350px, 30vh);
+  margin-bottom: clamp(0.5rem, 1.5vmin, 1.5rem);
   overflow: hidden;
+  flex-shrink: 1;
 }
 
 .display-question-image {
   max-width: 100%;
-  max-height: 350px;
+  max-height: min(350px, 30vh);
   object-fit: contain;
   border-radius: 12px;
   box-shadow: 0 4px 20px var(--bg-overlay-30);
 }
 
 .question-text {
-  font-size: clamp(1.5rem, 5vw, 3rem);
-  margin: 0 0 2rem 0;
+  font-size: clamp(1.2rem, 3.5vmin, 3rem);
+  margin: 0 0 clamp(0.5rem, 2vmin, 2rem) 0;
   line-height: 1.3;
-  word-wrap: break-word;
   overflow-wrap: break-word;
-  hyphens: auto;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   text-align: center;
   color: var(--text-primary);
-  flex-shrink: 0;
+  flex-shrink: 1;
 }
 
 .choices-display {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: min-content;
-  gap: 1rem;
+  grid-auto-rows: minmax(0, auto);
+  gap: clamp(0.4rem, 1vmin, 1rem);
   width: 100%;
   box-sizing: border-box;
   flex: 1;
   min-height: 0;
-  align-content: start;
+  align-content: center;
 }
 
 .choice-display {
-  padding: 1rem;
+  padding: clamp(0.4rem, 1.5vmin, 1rem);
   background: var(--bg-overlay-10);
   border: 3px solid var(--border-color);
   border-radius: 15px;
-  font-size: clamp(1rem, 2vw, 1.5rem);
+  font-size: clamp(0.85rem, 2vmin, 1.5rem);
   text-align: center;
   transition: all 0.3s;
-  word-wrap: break-word;
   overflow-wrap: break-word;
-  word-break: break-word;
-  -webkit-hyphens: auto;
-  -moz-hyphens: auto;
-  -ms-hyphens: auto;
-  hyphens: auto;
   box-sizing: border-box;
   min-width: 0;
   overflow: hidden;
@@ -766,27 +761,87 @@ onUnmounted(() => {
 
 /* Button styles now in Button component */
 
-@media (max-width: 768px) {
-  .choices-display {
-    grid-template-columns: 1fr;
-  }
-
-  .choice-display {
-    font-size: 1.2rem;
-    padding: 1.5rem;
+@media (max-width: 1024px) {
+  .main-display {
+    padding: 1rem;
   }
 
   .question-text {
-    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .choices-display {
+    gap: 0.75rem;
+  }
+
+  .choice-display {
+    padding: 0.75rem;
+  }
+
+  .sidebar-display {
+    width: 240px;
+    min-width: 240px;
+    padding: 1rem;
+  }
+
+  .qr-code {
+    width: 150px;
+    height: 150px;
+  }
+
+  .room-code {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .display-container {
+    flex-direction: column;
+  }
+
+  .main-display {
+    padding: 0.75rem;
+  }
+
+  .question-text {
+    font-size: clamp(1.1rem, 4vw, 1.8rem);
+    margin-bottom: 0.75rem;
+  }
+
+  .choices-display {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .choice-display {
+    font-size: 1rem;
+    padding: 0.75rem;
   }
 
   .sidebar-display {
     width: 100%;
-    max-height: 40vh;
+    min-width: unset;
+    max-height: 35vh;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
   }
 
-  .display-container {
-    flex-direction: column;
+  .qr-code {
+    width: 120px;
+    height: 120px;
+  }
+
+  .room-code {
+    font-size: 1.25rem;
+  }
+
+  .display-image-container {
+    max-height: 200px;
+    margin-bottom: 0.75rem;
+  }
+
+  .display-question-image {
+    max-height: 200px;
   }
 }
 </style>

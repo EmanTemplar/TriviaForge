@@ -324,7 +324,9 @@ class AutoModeService {
     // Emit player list update (matches server.js line 1809)
     this.io.to(roomCode).emit('playerListUpdate', {
       roomCode,
-      players: Object.values(room.players).filter(p => !p.isSpectator)
+      players: Object.values(room.players).filter(p => !p.isSpectator),
+      revealedCount: (room.revealedQuestions || []).length,
+      totalQuestions: (room.quizData?.questions || []).length
     });
 
     // Start the question timer

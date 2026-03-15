@@ -1622,7 +1622,9 @@ io.on('connection', (socket) => {
       // Send current player list to presenter (especially important on reconnection)
       io.to(roomCode).emit('playerListUpdate', {
         roomCode,
-        players: Object.values(roomService.liveRooms[roomCode].players).filter(p => !p.isSpectator)
+        players: Object.values(roomService.liveRooms[roomCode].players).filter(p => !p.isSpectator),
+        revealedCount: (roomService.liveRooms[roomCode].revealedQuestions || []).length,
+        totalQuestions: roomService.liveRooms[roomCode].quizData.questions.length
       });
 
       io.emit('activeRoomsUpdate', getActiveRoomsSummary());
@@ -1837,7 +1839,9 @@ io.on('connection', (socket) => {
       // Send the player list to the presenter (shows disconnected players from previous session, excluding spectators)
       io.to(roomCode).emit('playerListUpdate', {
         roomCode,
-        players: Object.values(roomService.liveRooms[roomCode].players).filter(p => !p.isSpectator)
+        players: Object.values(roomService.liveRooms[roomCode].players).filter(p => !p.isSpectator),
+        revealedCount: (roomService.liveRooms[roomCode].revealedQuestions || []).length,
+        totalQuestions: roomService.liveRooms[roomCode].quizData.questions.length
       });
 
       // Start auto-save if session has already been in progress
@@ -2318,7 +2322,7 @@ io.on('connection', (socket) => {
     }
 
     // Broadcast updated player list to all clients in the room
-    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
+    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator), revealedCount: (room.revealedQuestions || []).length, totalQuestions: room.quizData.questions.length });
   });
 
   // Presenter presents a question
@@ -2355,7 +2359,7 @@ io.on('connection', (socket) => {
     io.to(roomCode).emit('questionPresented', { questionIndex, question, presentedQuestions: room.presentedQuestions });
 
     // Update player list to show reset choices
-    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
+    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator), revealedCount: (room.revealedQuestions || []).length, totalQuestions: room.quizData.questions.length });
   });
 
   // Player submits answer
@@ -2450,7 +2454,7 @@ io.on('connection', (socket) => {
         });
       }
 
-      io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
+      io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator), revealedCount: (room.revealedQuestions || []).length, totalQuestions: room.quizData.questions.length });
 
       console.log(`${player.name} answered question ${room.currentQuestionIndex} with choice ${choice}`);
 
@@ -2780,7 +2784,7 @@ io.on('connection', (socket) => {
     delete room.players[playerSocketId];
 
     // Update player list for everyone
-    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
+    io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator), revealedCount: (room.revealedQuestions || []).length, totalQuestions: room.quizData.questions.length });
 
     console.log(`Player ${username} kicked from room ${roomCode} by presenter`);
   });
@@ -2838,7 +2842,7 @@ io.on('connection', (socket) => {
         // Mark as disconnected instead of deleting
         room.players[socket.id].connected = false;
         room.players[socket.id].connectionState = 'disconnected';
-        io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator) });
+        io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator), revealedCount: (room.revealedQuestions || []).length, totalQuestions: room.quizData.questions.length });
         io.emit('activeRoomsUpdate', getActiveRoomsSummary());
         console.log(`${playerName} disconnected from room ${roomCode}`);
       }
@@ -2921,7 +2925,9 @@ setInterval(() => {
     if (totalDuplicatesRemoved > 0) {
       io.to(roomCode).emit('playerListUpdate', {
         roomCode,
-        players: Object.values(room.players).filter(p => !p.isSpectator)
+        players: Object.values(room.players).filter(p => !p.isSpectator),
+        revealedCount: (room.revealedQuestions || []).length,
+        totalQuestions: room.quizData.questions.length
       });
     }
   }

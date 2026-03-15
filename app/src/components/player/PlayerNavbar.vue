@@ -12,7 +12,7 @@
         {{ revealedCount }} / {{ totalQuestions }}
       </span>
       <button v-if="inRoom" id="progressBtn" class="progress-btn" @click="$emit('showProgress')">
-        <AppIcon name="bar-chart-3" size="sm" /> Progress
+        <AppIcon name="bar-chart-3" size="sm" /> <span class="progress-btn-label">Progress</span>
       </button>
     </div>
 
@@ -253,10 +253,20 @@ defineEmits(['showProgress', 'toggleMenu', 'leaveRoom', 'logout']);
   margin-left: auto;
 }
 
-/* Hide progress container on very small screens if needed */
+/* On small screens, collapse progress button to icon-only */
 @media (max-width: 480px) {
-  .nav-progress-container {
+  .progress-btn-label {
     display: none;
+  }
+
+  .progress-btn {
+    padding: 0.4rem 0.6rem;
+    gap: 0;
+  }
+
+  .nav-progress-container {
+    flex: 0;
+    gap: 0.4rem;
   }
 }
 </style>

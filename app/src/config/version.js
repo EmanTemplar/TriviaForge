@@ -4,8 +4,8 @@
  * Update this file to change version across the entire application
  */
 
-export const VERSION = '5.10.3'
-export const VERSION_NAME = 'Auto-Pilot State Sync'
+export const VERSION = '5.10.4'
+export const VERSION_NAME = 'Display & Player UI Polish'
 export const RELEASE_DATE = '2026-03-15'
 
 export default {
