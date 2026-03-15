@@ -8,7 +8,7 @@
 import { query } from '../config/database.js';
 import { UnauthorizedError, ForbiddenError } from '../utils/errors.js';
 import { USER_ROLES } from '../config/constants.js';
-import env from '../config/environment.js';
+import { env } from '../config/environment.js';
 
 /**
  * Require authentication middleware
