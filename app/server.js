@@ -1826,7 +1826,12 @@ io.on('connection', (socket) => {
         presentedQuestions: roomService.liveRooms[roomCode].presentedQuestions,
         revealedQuestions: roomService.liveRooms[roomCode].revealedQuestions,
         isResumed: true,
-        originalRoomCode: session.original_room_code
+        originalRoomCode: session.original_room_code,
+        // Add auto-mode state
+        autoMode: roomService.liveRooms[roomCode].autoMode || false,
+        questionTimer: roomService.liveRooms[roomCode].questionTimer,
+        revealDelay: roomService.liveRooms[roomCode].revealDelay,
+        autoModeState: autoModeService.getState(roomCode)
       });
 
       // Send the player list to the presenter (shows disconnected players from previous session, excluding spectators)
@@ -1878,7 +1883,12 @@ io.on('connection', (socket) => {
       currentQuestionIndex: room.currentQuestionIndex,
       players: Object.values(room.players).filter(p => !p.isSpectator), // Filter out spectators
       presentedQuestions: room.presentedQuestions || [],
-      revealedQuestions: room.revealedQuestions || []
+      revealedQuestions: room.revealedQuestions || [],
+      // Add auto-mode state
+      autoMode: room.autoMode || false,
+      questionTimer: room.questionTimer,
+      revealDelay: room.revealDelay,
+      autoModeState: autoModeService.getState(roomCode)
     });
 
     // If there's a current question active, send it to the viewer
@@ -1893,7 +1903,15 @@ io.on('connection', (socket) => {
         correctChoice: isRevealed ? question.correctChoice : undefined
       };
 
-      socket.emit('questionPresented', { questionIndex: room.currentQuestionIndex, question: questionData });
+      // Include auto-mode timer info if auto-mode is active
+      const autoState = autoModeService.getState(roomCode);
+      const autoModeFields = room.autoMode && autoState ? {
+        autoMode: true,
+        timerStartedAt: autoState.state === 'question_timer' ? autoState.timerStartedAt || new Date().toISOString() : null,
+        timerDuration: autoState.questionTimerSeconds
+      } : {};
+
+      socket.emit('questionPresented', { questionIndex: room.currentQuestionIndex, question: questionData, presentedQuestions: room.presentedQuestions, ...autoModeFields });
     }
   });
 
@@ -2603,12 +2621,15 @@ io.on('connection', (socket) => {
       revealDelaySeconds: revealDelay || 5
     });
 
-    // Notify all clients in room
+    // Notify all clients in room with actual state from service
+    const autoState = autoModeService.getState(roomCode);
     io.to(roomCode).emit('autoModeStateChanged', {
       enabled: true,
-      state: 'question_timer',
+      state: autoState?.state || 'question_timer',
       questionTimer: questionTimer || 30,
-      revealDelay: revealDelay || 5
+      revealDelay: revealDelay || 5,
+      timerStartedAt: autoState?.timerStartedAt,
+      timerDuration: autoState?.questionTimerSeconds
     });
   });
 

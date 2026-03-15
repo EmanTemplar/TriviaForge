@@ -802,7 +802,7 @@ const setupSocketListeners = () => {
     // Presenter manages multiple rooms from a list - they'll click to view the room they want
   })
 
-  socketInstance.on('roomCreated', ({ roomCode, quizFilename, quizTitle, questions, currentQuestionIndex: serverCurrentQuestionIndex, presentedQuestions: serverPresentedQuestions, revealedQuestions: serverRevealedQuestions, isResumed, originalRoomCode }) => {
+  socketInstance.on('roomCreated', ({ roomCode, quizFilename, quizTitle, questions, currentQuestionIndex: serverCurrentQuestionIndex, presentedQuestions: serverPresentedQuestions, revealedQuestions: serverRevealedQuestions, isResumed, originalRoomCode, autoMode: serverAutoMode, questionTimer: serverQuestionTimer, revealDelay: serverRevealDelay, autoModeState: serverAutoModeState }) => {
     currentRoomCode.value = roomCode
     currentQuizFilename.value = quizFilename // Store for reconnection
     currentQuestions.value = questions || []
@@ -846,12 +846,22 @@ const setupSocketListeners = () => {
       console.log('[PRESENTER] No active question - starting fresh')
     }
 
+    // Restore auto-mode state (v5.4.0)
+    if (serverAutoMode) {
+      autoMode.value = true
+      autoModeState.value = serverAutoModeState?.state || 'question_timer'
+      if (serverQuestionTimer) questionTimer.value = serverQuestionTimer
+      if (serverRevealDelay) revealDelay.value = serverRevealDelay
+      if (serverAutoModeState?.timerStartedAt) timerStartedAt.value = serverAutoModeState.timerStartedAt
+      if (serverAutoModeState?.questionTimerSeconds) timerDuration.value = serverAutoModeState.questionTimerSeconds
+    }
+
     if (isResumed) {
       showAlert(`Session resumed!\n\nNew room code: ${roomCode}\nOriginal room: ${originalRoomCode}\n\nPlayers should rejoin with their original names.`, 'Session Resumed')
     }
   })
 
-  socketInstance.on('roomRestored', ({ roomCode, quizTitle, questions, currentQuestionIndex: serverCurrentQuestionIndex, players, presentedQuestions: serverPresentedQuestions, revealedQuestions: serverRevealedQuestions }) => {
+  socketInstance.on('roomRestored', ({ roomCode, quizTitle, questions, currentQuestionIndex: serverCurrentQuestionIndex, players, presentedQuestions: serverPresentedQuestions, revealedQuestions: serverRevealedQuestions, autoMode: serverAutoMode, questionTimer: serverQuestionTimer, revealDelay: serverRevealDelay, autoModeState: serverAutoModeState }) => {
     if (roomCode !== currentRoomCode.value) return
     currentQuestions.value = questions || []
     presentedQuestions.value = serverPresentedQuestions || []
@@ -893,6 +903,19 @@ const setupSocketListeners = () => {
       currentQuestionIndex.value = 0
       presentedQuestionIndex.value = null
       console.log('[PRESENTER] No active question in restored room')
+    }
+
+    // Restore auto-mode state
+    if (serverAutoMode) {
+      autoMode.value = true
+      autoModeState.value = serverAutoModeState?.state || 'question_timer'
+      if (serverQuestionTimer) questionTimer.value = serverQuestionTimer
+      if (serverRevealDelay) revealDelay.value = serverRevealDelay
+      if (serverAutoModeState?.timerStartedAt) timerStartedAt.value = serverAutoModeState.timerStartedAt
+      if (serverAutoModeState?.questionTimerSeconds) timerDuration.value = serverAutoModeState.questionTimerSeconds
+    } else {
+      autoMode.value = false
+      autoModeState.value = 'idle'
     }
   })
 

@@ -248,6 +248,7 @@ class AutoModeService {
       questionTimerSeconds: state.questionTimerSeconds,
       revealDelaySeconds: state.revealDelaySeconds,
       timeRemaining,
+      timerStartedAt: state.timerStartedAt,
       pausedState: state.pausedState
     };
   }
