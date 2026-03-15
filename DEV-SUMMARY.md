@@ -2,18 +2,53 @@
 
 > **Purpose:** Summary of development changes for the current session
 > **Last Updated:** 2026-03-15
-> **Version:** v5.10.1
+> **Version:** v5.10.2
 
 ---
 
-## Session Summary: v5.10.1 Release
+## Session Summary: v5.10.2 Release
 
 ### Overview
 
-Bugfix release addressing two user-reported issues:
-1. **v5.10.1** - Fix CSRF validation failures in Docker environments & quiz import duplicate key crash
-2. **v5.10.0** - Unified Navbar Redesign with shared CSS design system
-3. **v5.9.0** - Remember Device for 2FA (30-day trusted devices)
+Bugfix releases addressing user-reported issues and session resilience:
+1. **v5.10.2** - Sliding session expiry & CSRF auto-retry for long-lived sessions
+2. **v5.10.1** - Fix CSRF validation failures in Docker environments & quiz import duplicate key crash
+3. **v5.10.0** - Unified Navbar Redesign with shared CSS design system
+4. **v5.9.0** - Remember Device for 2FA (30-day trusted devices)
+
+---
+
+## v5.10.2 - Session & CSRF Resilience
+
+**Release Date:** 2026-03-15
+**Branch:** `main`
+
+### Bug Fixes
+
+#### Sliding Session Expiry (Active Users Never Kicked Out)
+- **Symptom:** Users actively working in the app got logged out after exactly 1 hour regardless of activity
+- **Root Cause:** `requireAuth` middleware updated `last_used_at` on every request but never extended `expires_at` — the session hard-expired at its original creation-time deadline
+- **Fix:** `requireAuth` now resets `expires_at` to `NOW() + sessionTimeout` on every authenticated request, creating a true sliding window — sessions only expire after the configured timeout of *inactivity*
+
+#### CSRF Token Auto-Retry on Expiry
+- **Symptom:** Long-lived SPA sessions (page open > 1 hour without refresh) silently failed with 403 on any mutation (create quiz, import, etc.) because the CSRF cookie expired
+- **Root Cause:** The frontend cached the CSRF token forever in a module variable and the response interceptor had no 403 handler — expired tokens were never refreshed
+- **Fix:** Added a 403 response interceptor in `useApi.js` that clears the cached token, fetches a fresh one from `/api/csrf-token`, and transparently retries the failed request once (with `_csrfRetried` guard to prevent loops)
+
+#### CSRF Cookie MaxAge Synced to Session Timeout
+- **Symptom:** CSRF cookie and session token had independent 1-hour clocks that could drift out of sync
+- **Fix:** CSRF cookie `maxAge` now reads from `env.sessionTimeout` instead of a hardcoded value, ensuring both clocks are always aligned
+
+#### Quiz Settings Reset on Question Add/Update
+- **Symptom:** Toggling Solo/Results/Live OFF for a quiz, then adding or updating a question, caused all toggles to reset back to ON
+- **Root Cause:** Question-save PUT calls sent `{title, description, questions}` without toggle settings; the server's full-update path used `COALESCE($param, TRUE)` for missing values, forcing all three toggles back to `TRUE`
+- **Fix:** Changed `COALESCE($param, TRUE)` to `COALESCE($param, available_live/available_solo/show_results)` so omitted settings preserve their current database value
+
+### Files Changed
+- `app/src/middleware/auth.js` — Sliding session: extends `expires_at` on every authenticated request
+- `app/src/composables/useApi.js` — Added 403 interceptor for automatic CSRF token refresh + retry
+- `app/server.js` — CSRF cookie `maxAge` now uses `env.sessionTimeout` for consistency
+- `app/src/controllers/quiz.controller.js` — Quiz settings preserved when not explicitly provided in update
 
 ---
 

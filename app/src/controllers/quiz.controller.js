@@ -381,9 +381,9 @@ export async function updateQuiz(req, res, next) {
         description = $2,
         question_timer = $3,
         reveal_delay = $4,
-        available_live = COALESCE($5, TRUE),
-        available_solo = COALESCE($6, TRUE),
-        show_results = COALESCE($7, TRUE),
+        available_live = COALESCE($5, available_live),
+        available_solo = COALESCE($6, available_solo),
+        show_results = COALESCE($7, show_results),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $8`,
       [title, description, questionTimer || null, revealDelay || null, availableLive, availableSolo, showResults, quizId]

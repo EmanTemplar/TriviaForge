@@ -8,6 +8,7 @@
 import { query } from '../config/database.js';
 import { UnauthorizedError, ForbiddenError } from '../utils/errors.js';
 import { USER_ROLES } from '../config/constants.js';
+import env from '../config/environment.js';
 
 /**
  * Require authentication middleware
@@ -42,9 +43,10 @@ export async function requireAuth(req, res, next) {
       return next(new UnauthorizedError('Invalid or expired session'));
     }
 
-    // Update last_used_at timestamp
+    // Sliding session: update last_used_at and extend expires_at on every request
+    // so active users are never kicked out mid-work
     await query(
-      'UPDATE user_sessions SET last_used_at = NOW() WHERE token = $1',
+      `UPDATE user_sessions SET last_used_at = NOW(), expires_at = NOW() + INTERVAL '${env.sessionTimeout} milliseconds' WHERE token = $1`,
       [token]
     );
 

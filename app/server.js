@@ -195,7 +195,7 @@ const csrfProtection = doubleCsrf({
     // 'strict' would block all cross-origin requests, breaking mobile access
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 3600000 // 1 hour
+    maxAge: env.sessionTimeout // Matches session timeout (default 1 hour)
   },
   size: 64,
   ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],

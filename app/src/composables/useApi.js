@@ -93,7 +93,7 @@ apiClient.interceptors.response.use(
     })
     return response
   },
-  (error) => {
+  async (error) => {
     if (DEBUG) {
       console.error('[API] Response error:', {
         url: error.config?.url,
@@ -102,6 +102,18 @@ apiClient.interceptors.response.use(
         message: error.message,
         data: error.response?.data
       })
+    }
+
+    // CSRF token expired — clear cache, fetch fresh token, retry once
+    if (error.response?.status === 403 && !error.config?._csrfRetried) {
+      debugLog('CSRF token expired, refreshing and retrying request')
+      csrfToken = null
+      await fetchCsrfToken()
+      if (csrfToken) {
+        error.config._csrfRetried = true
+        error.config.headers['x-csrf-token'] = csrfToken
+        return apiClient.request(error.config)
+      }
     }
 
     if (error.response?.status === 401) {
