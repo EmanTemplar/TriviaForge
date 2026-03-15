@@ -147,9 +147,11 @@ export function useApi() {
   }
 
   const upload = async (url, formData, onUploadProgress) => {
+    if (!csrfToken) await fetchCsrfToken()
     return apiClient.post(url, formData, {
       headers: {
-        'Content-Type': 'multipart/form-data'
+        'Content-Type': 'multipart/form-data',
+        ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
       },
       onUploadProgress
     })

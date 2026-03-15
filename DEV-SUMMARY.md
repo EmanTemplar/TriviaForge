@@ -1,19 +1,44 @@
 # TriviaForge Development Summary
 
 > **Purpose:** Summary of development changes for the current session
-> **Last Updated:** 2026-03-06
-> **Version:** v5.10.0
+> **Last Updated:** 2026-03-15
+> **Version:** v5.10.1
 
 ---
 
-## Session Summary: v5.10.0 Release
+## Session Summary: v5.10.1 Release
 
 ### Overview
 
-This development period redesigned the navbar across the entire application:
-1. **v5.10.0** - Unified Navbar Redesign with shared CSS design system
-2. **v5.9.0** - Remember Device for 2FA (30-day trusted devices)
-3. **v5.9.0** - Fix gp.score persistence in game_participants table
+Bugfix release addressing two user-reported issues:
+1. **v5.10.1** - Fix CSRF validation failures in Docker environments & quiz import duplicate key crash
+2. **v5.10.0** - Unified Navbar Redesign with shared CSS design system
+3. **v5.9.0** - Remember Device for 2FA (30-day trusted devices)
+
+---
+
+## v5.10.1 - CSRF & Import Bugfix
+
+**Release Date:** 2026-03-15
+**Branch:** `main`
+
+### Bug Fixes
+
+#### CSRF Token Validation Failures in Docker (User-Reported)
+- **Symptom:** Creating quizzes and importing Excel files returned 403 "invalid csrf token" in Docker deployments
+- **Root Cause 1:** `upload()` in `useApi.js` passed explicit `headers` that overwrote the interceptor-set `x-csrf-token`, so all file uploads were sent without CSRF tokens
+- **Root Cause 2:** `getSessionIdentifier` fell back to `req.ip` (no session middleware installed), which is unstable behind Docker's NAT bridge — the IP seen on the token-fetch GET could differ from the mutating POST
+- **Fix:** Added `app.set('trust proxy', 1)` to `server.js` so Express resolves a stable client IP through Docker's proxy layer; `upload()` now explicitly includes the CSRF token in its headers
+
+#### Quiz Import "Use Existing" Duplicate Key Crash
+- **Symptom:** Importing a quiz where all questions already exist in the database and choosing "Use Existing" crashed with `duplicate key value violates unique constraint "quiz_questions_pkey"`
+- **Root Cause:** Multiple import rows can fuzzy-match the same existing question ID — the INSERT had no conflict guard, so the second insert for the same `(quiz_id, question_id)` pair crashed
+- **Fix:** Changed INSERT to `ON CONFLICT (quiz_id, question_id) DO NOTHING RETURNING question_id` — duplicates are silently skipped and counted in `skippedCount`
+
+### Files Changed
+- `app/server.js` — Added `trust proxy` setting for Docker CSRF stability
+- `app/src/composables/useApi.js` — Fixed `upload()` to include CSRF token in headers
+- `app/src/controllers/quiz.controller.js` — Added `ON CONFLICT DO NOTHING` to quiz import use-existing path
 
 ---
 

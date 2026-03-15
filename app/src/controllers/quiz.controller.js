@@ -890,12 +890,17 @@ export async function importQuiz(req, res, next) {
           );
 
           if (existingCheck.rows.length > 0) {
-            // Link existing question to quiz
-            await client.query(
-              'INSERT INTO quiz_questions (quiz_id, question_id, question_order) VALUES ($1, $2, $3)',
-              [quizId, decision.existingQuestionId, questionOrder++]
+            // Link existing question to quiz (skip if already linked)
+            const insertResult = await client.query(
+              'INSERT INTO quiz_questions (quiz_id, question_id, question_order) VALUES ($1, $2, $3) ON CONFLICT (quiz_id, question_id) DO NOTHING RETURNING question_id',
+              [quizId, decision.existingQuestionId, questionOrder]
             );
-            linkedCount++;
+            if (insertResult.rows.length > 0) {
+              questionOrder++;
+              linkedCount++;
+            } else {
+              skippedCount++;
+            }
             continue;
           }
           // If existing question not found, fall through to create new
