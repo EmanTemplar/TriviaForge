@@ -67,8 +67,20 @@ class AutoModeService {
       pausedState: null
     });
 
-    // Begin presenting the next unpresented question
-    this._presentNextQuestion(roomCode);
+    // Check if there's already a live question (presented but not yet revealed)
+    const currentIdx = room.currentQuestionIndex;
+    const hasLiveQuestion = currentIdx !== null && currentIdx !== undefined
+      && room.presentedQuestions.includes(currentIdx)
+      && !room.revealedQuestions.includes(currentIdx);
+
+    if (hasLiveQuestion) {
+      // Start the timer on the current live question instead of advancing
+      if (DEBUG_ENABLED) console.log(`[AutoMode] Live question ${currentIdx} detected, starting timer on it`);
+      this._startQuestionTimer(roomCode);
+    } else {
+      // No live question — present the next unpresented question
+      this._presentNextQuestion(roomCode);
+    }
   }
 
   /**
@@ -145,11 +157,17 @@ class AutoModeService {
       return;
     }
 
-    if (DEBUG_ENABLED) console.log(`[AutoMode] Resuming room ${roomCode} (was: ${state.pausedState}, remaining: ${state.remainingTime.toFixed(1)}s)`);
+    // Ensure remaining time is at least 1 second to prevent instant cascade
+    const remaining = Math.max(1, state.remainingTime);
+
+    if (DEBUG_ENABLED) console.log(`[AutoMode] Resuming room ${roomCode} (was: ${state.pausedState}, remaining: ${remaining.toFixed(1)}s)`);
 
     const previousState = state.pausedState;
     state.state = previousState;
     state.pausedState = null;
+    // Store the effective timer duration for this resumed segment
+    // so getState() can compute timeRemaining correctly
+    state.resumedDuration = remaining;
     state.timerStartedAt = new Date().toISOString();
 
     let callback;
@@ -159,7 +177,7 @@ class AutoModeService {
       callback = () => this._presentNextQuestion(roomCode);
     }
 
-    state.currentTimerId = setTimeout(callback, state.remainingTime * 1000);
+    state.currentTimerId = setTimeout(callback, remaining * 1000);
   }
 
   /**
@@ -186,6 +204,7 @@ class AutoModeService {
     // Update state to show we're in the pre-reveal wait period
     state.state = 'all_answered_wait';
     state.timerStartedAt = new Date().toISOString();
+    state.resumedDuration = null; // Fresh timer, not a resume
 
     // Notify clients that all players answered (they can show a brief message)
     this.io.to(roomCode).emit('allPlayersAnswered', {
@@ -229,8 +248,11 @@ class AutoModeService {
     let timeRemaining = null;
     if (state.state === 'question_timer' || state.state === 'reveal_delay' || state.state === 'all_answered_wait') {
       const elapsed = (Date.now() - new Date(state.timerStartedAt).getTime()) / 1000;
+      // If resumed, use the resumed duration instead of the full timer duration
       let totalTime;
-      if (state.state === 'question_timer') {
+      if (state.resumedDuration) {
+        totalTime = state.resumedDuration;
+      } else if (state.state === 'question_timer') {
         totalTime = state.questionTimerSeconds;
       } else if (state.state === 'all_answered_wait') {
         totalTime = Math.max(2, state.revealDelaySeconds);
@@ -343,6 +365,7 @@ class AutoModeService {
 
     state.state = 'question_timer';
     state.timerStartedAt = new Date().toISOString();
+    state.resumedDuration = null; // Fresh timer, not a resume
 
     if (DEBUG_ENABLED) console.log(`[AutoMode] Question timer started for room ${roomCode} (${state.questionTimerSeconds}s)`);
 
@@ -414,6 +437,7 @@ class AutoModeService {
 
     state.state = 'reveal_delay';
     state.timerStartedAt = new Date().toISOString();
+    state.resumedDuration = null; // Fresh timer, not a resume
 
     if (DEBUG_ENABLED) console.log(`[AutoMode] Reveal delay started for room ${roomCode} (${state.revealDelaySeconds}s)`);
 

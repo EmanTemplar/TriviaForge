@@ -1,8 +1,8 @@
 # TriviaForge - Active Development Tasks (2026)
 
 > **Purpose:** Current development priorities and pending tasks
-> **Last Updated:** 2026-03-06
-> **Version:** v5.10.0
+> **Last Updated:** 2026-04-05
+> **Version:** v5.10.5
 
 ---
 
@@ -812,8 +812,9 @@ Add notification to presenter when all connected players have answered the curre
 12. **v5.8.0:** Player Stats Dashboard ✅ COMPLETE
 13. **v5.9.0:** Trusted Devices for 2FA + gp.score fix ✅ COMPLETE
 14. **v5.10.0:** Unified Navbar Redesign ✅ COMPLETE
-15. **Next:** Player Management enhancements, Ban system, or GitHub Actions CI/CD
-15. **Backlog:** PDF Export, enhanced security audits
+15. **v5.10.5:** Auto-Pilot Fixes & Connection Optimization ✅ COMPLETE
+16. **Next:** Player Management enhancements, Ban system, or GitHub Actions CI/CD
+17. **Backlog:** PDF Export, enhanced security audits
 
 ### Testing Priorities
 - Mobile browser testing (iOS Safari, Chrome Mobile, Firefox Mobile)
@@ -841,6 +842,7 @@ Add notification to presenter when all connected players have answered the curre
 - **v5.8.0 (Released):** Player Stats Dashboard - game history, summary stats, trend charts, solo auth integration ✅
 - **v5.9.0 (Released):** Trusted Devices for 2FA (30-day remember), gp.score persistence fix ✅
 - **v5.10.0 (Released):** Unified Navbar Redesign - shared CSS design system, admin links on player pages, consistent styling ✅
+- **v5.10.5 (Released):** Auto-Pilot fixes (live question start, resume, double-reveal, banner reset), Display ghost user prevention, connection optimization (removed redundant heartbeat, reduced pingTimeout) ✅
 
 ---
 

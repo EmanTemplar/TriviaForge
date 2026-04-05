@@ -665,26 +665,35 @@ const resetAllAnsweredState = () => {
   }
 }
 
-// Start auto-reveal countdown (3 seconds)
-const startAutoRevealCountdown = () => {
-  if (!autoRevealEnabled.value) {
+// Start auto-reveal countdown
+// @param {number} seconds - countdown duration (default 3)
+// @param {boolean} displayOnly - if true, only show countdown without triggering revealAnswer (for auto-mode)
+const startAutoRevealCountdown = (seconds = 3, displayOnly = false) => {
+  if (!displayOnly && !autoRevealEnabled.value) {
     console.log('[AUTO-REVEAL] Auto-reveal is disabled, skipping countdown')
     return
   }
 
-  autoRevealCountdown.value = 3
-  console.log('[AUTO-REVEAL] Starting 3-second countdown...')
+  // Clear any existing timer
+  if (autoRevealTimer) {
+    clearInterval(autoRevealTimer)
+    autoRevealTimer = null
+  }
+
+  autoRevealCountdown.value = seconds
+  console.log(`[AUTO-REVEAL] Starting ${seconds}-second countdown...${displayOnly ? ' (display-only)' : ''}`)
 
   autoRevealTimer = setInterval(() => {
     autoRevealCountdown.value--
-    console.log(`[AUTO-REVEAL] Countdown: ${autoRevealCountdown.value}`)
 
     if (autoRevealCountdown.value <= 0) {
       clearInterval(autoRevealTimer)
       autoRevealTimer = null
       autoRevealCountdown.value = null
-      console.log('[AUTO-REVEAL] Countdown complete, revealing answer...')
-      revealAnswer()
+      if (!displayOnly) {
+        console.log('[AUTO-REVEAL] Countdown complete, revealing answer...')
+        revealAnswer()
+      }
     }
   }, 1000)
 }
@@ -939,6 +948,8 @@ const setupSocketListeners = () => {
     if (serverPresentedQuestions) {
       presentedQuestions.value = serverPresentedQuestions
     }
+    // Reset "all answered" banner for the new question
+    resetAllAnsweredState()
     // Update auto-mode timer state for presenter sync
     if (isAutoMode) {
       timerStartedAt.value = serverTimerStartedAt
@@ -952,6 +963,9 @@ const setupSocketListeners = () => {
     if (serverRevealedQuestions) {
       revealedQuestions.value = serverRevealedQuestions
     }
+
+    // Clear "all answered" banner — answer is now revealed
+    resetAllAnsweredState()
 
     // Filter out spectators from results by cross-referencing with connectedPlayers
     const nonSpectatorResults = results.filter(r => {
@@ -986,13 +1000,23 @@ const setupSocketListeners = () => {
     loadIncompleteSessions()
   })
 
-  socketInstance.on('allPlayersAnswered', ({ questionIndex, totalPlayers, timestamp }) => {
-    console.log(`[ALL ANSWERED] Received notification: ${totalPlayers} players answered question ${questionIndex}`)
+  socketInstance.on('allPlayersAnswered', ({ questionIndex, totalPlayers, timestamp, waitSeconds }) => {
+    console.log(`[ALL ANSWERED] Received notification: ${totalPlayers || '?'} players answered question ${questionIndex ?? '?'}, waitSeconds=${waitSeconds}`)
+
+    // Auto-mode service sends a second event with waitSeconds — use it for display-only countdown
+    if (autoMode.value && waitSeconds) {
+      allPlayersAnswered.value = true
+      startAutoRevealCountdown(waitSeconds, true) // display-only, no revealAnswer call
+      return
+    }
 
     // Only show notification if this is the currently presented question
     if (questionIndex === presentedQuestionIndex.value) {
       allPlayersAnswered.value = true
-      startAutoRevealCountdown()
+      // In manual mode, start countdown that triggers revealAnswer
+      if (!autoMode.value) {
+        startAutoRevealCountdown()
+      }
     }
   })
 

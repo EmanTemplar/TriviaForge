@@ -11,7 +11,6 @@ const debugLog = (...args) => {
 // CRITICAL: All refs must be module-scoped to match module-scoped socket
 // This ensures event listeners always update the SAME refs that components are watching
 let socket = null
-let heartbeatInterval = null
 let onlineHandler = null
 let offlineHandler = null
 let isConnecting = false  // Guard against concurrent socket creation
@@ -90,31 +89,6 @@ const getOrCreatePlayerID = () => {
 export function useSocket() {
   const authStore = useAuthStore()
 
-  const startHeartbeat = () => {
-    // Clear any existing heartbeat interval
-    if (heartbeatInterval) {
-      clearInterval(heartbeatInterval)
-    }
-
-    // Send heartbeat every 15 seconds
-    heartbeatInterval = setInterval(() => {
-      if (socket?.connected && currentRoomCode.value) {
-        socket.emit('heartbeat', {
-          roomCode: currentRoomCode.value,
-          username: currentUsername.value,
-          timestamp: Date.now() // Add timestamp for round-trip latency calculation
-        })
-      }
-    }, 15000) // 15 seconds
-  }
-
-  const stopHeartbeat = () => {
-    if (heartbeatInterval) {
-      clearInterval(heartbeatInterval)
-      heartbeatInterval = null
-    }
-  }
-
   const connect = () => {
     debugLog('connect() called', {
       socketExists: !!socket,
@@ -166,11 +140,7 @@ export function useSocket() {
 
       transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
       upgrade: true,                     // Allow upgrading from polling to websocket
-      closeOnBeforeunload: false,        // CRITICAL for iOS Safari - prevents disconnect on page hide
-
-      // NEW: Explicit ping/pong configuration
-      pingInterval: 25000,               // Send ping every 25 seconds
-      pingTimeout: 20000                 // Wait 20 seconds for pong response
+      closeOnBeforeunload: false         // CRITICAL for iOS Safari - prevents disconnect on page hide
     })
 
     socket.on('connect', () => {
@@ -185,16 +155,10 @@ export function useSocket() {
         timestamp: new Date().toISOString()
       })
 
-      // Restart heartbeat if we were in a room
-      if (currentRoomCode.value) {
-        debugLog('Restarting heartbeat for room:', currentRoomCode.value)
-        startHeartbeat()
-      }
     })
 
     socket.on('disconnect', () => {
       isConnected.value = false
-      stopHeartbeat()
       console.log('Socket.IO disconnected')
       debugLog('Socket DISCONNECT event fired', {
         currentRoomCode: currentRoomCode.value,
@@ -211,11 +175,6 @@ export function useSocket() {
         authToken: authStore.token ? 'present' : 'MISSING',
         timestamp: new Date().toISOString()
       })
-    })
-
-    // Listen for heartbeat acknowledgment (optional - for debugging)
-    socket.on('heartbeat-ack', () => {
-      // Heartbeat successful - connection is healthy
     })
 
     // Network change event listeners for instant reconnection
@@ -259,12 +218,6 @@ export function useSocket() {
     })
     currentRoomCode.value = roomCode
     currentUsername.value = username
-
-    // Start heartbeat when joining a room
-    if (roomCode && username && socket?.connected) {
-      debugLog('Starting heartbeat after setRoomContext')
-      startHeartbeat()
-    }
   }
 
   const clearRoomContext = () => {
@@ -273,7 +226,6 @@ export function useSocket() {
       previousUsername: currentUsername.value,
       timestamp: new Date().toISOString()
     })
-    stopHeartbeat()
     currentRoomCode.value = null
     currentUsername.value = null
   }
@@ -287,7 +239,6 @@ export function useSocket() {
       currentUsername: currentUsername.value,
       timestamp: new Date().toISOString()
     })
-    stopHeartbeat()
 
     // Clean up network event listeners
     if (onlineHandler) {

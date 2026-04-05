@@ -894,8 +894,8 @@ app.get('/api/room/progress/:roomCode', async (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*' },
-  pingTimeout: 360000,   // 360 seconds (6 minutes) - must be longer than max answer display timeout (300s)
-  pingInterval: 25000    // 25 seconds - keep default
+  pingTimeout: 60000,    // 60 seconds - detect dead sockets within ~1 minute
+  pingInterval: 25000    // 25 seconds - standard keepalive interval
 });
 
 // --------------------
@@ -1880,6 +1880,10 @@ io.on('connection', (socket) => {
     // Leave any previous rooms before joining new one (prevents cross-room event pollution)
     leaveAllRooms();
     socket.join(roomCode);
+
+    // Update presenter socket ID so auto-mode controls work after refresh
+    room.presenterId = socket.id;
+
     socket.emit('roomRestored', {
       roomCode,
       quizTitle: room.quizData.title,
@@ -2022,38 +2026,36 @@ io.on('connection', (socket) => {
     }
 
     // Create or retrieve guest user account (using username)
+    // Skip user creation entirely for spectators/displays — they don't need DB records
     let userId = null;
-    try {
-      // Check if user already exists
-      const userResult = await pool.query(
-        'SELECT id, account_type FROM users WHERE username = $1',
-        [playerUsername]
-      );
+    if (!isSpectator) {
+      try {
+        // Check if user already exists
+        const userResult = await pool.query(
+          'SELECT id, account_type FROM users WHERE username = $1',
+          [playerUsername]
+        );
 
-      if (userResult.rows.length > 0) {
-        // User already exists
-        userId = userResult.rows[0].id;
-        // Only log for non-spectators to reduce noise
-        if (!isSpectator) {
+        if (userResult.rows.length > 0) {
+          // User already exists
+          userId = userResult.rows[0].id;
           const accountType = userResult.rows[0].account_type;
           const accountTypeLabel = accountType === 'player' ? 'Registered player' : 'Guest user';
           console.log(`${accountTypeLabel} "${playerUsername}" already exists with ID: ${userId}`);
-        }
-      } else {
-        // Create new guest user
-        const createResult = await pool.query(
-          'INSERT INTO users (username, account_type, password_hash) VALUES ($1, $2, NULL) RETURNING id',
-          [playerUsername, 'guest']
-        );
-        userId = createResult.rows[0].id;
-        if (!isSpectator) {
+        } else {
+          // Create new guest user
+          const createResult = await pool.query(
+            'INSERT INTO users (username, account_type, password_hash) VALUES ($1, $2, NULL) RETURNING id',
+            [playerUsername, 'guest']
+          );
+          userId = createResult.rows[0].id;
           console.log(`Created new guest user "${playerUsername}" with ID: ${userId}`);
         }
+      } catch (err) {
+        console.error('Error creating/retrieving guest user:', err);
+        socket.emit('roomError', 'Failed to create user account. Please try again.');
+        return;
       }
-    } catch (err) {
-      console.error('Error creating/retrieving guest user:', err);
-      socket.emit('roomError', 'Failed to create user account. Please try again.');
-      return;
     }
 
     // PHASE 2: Check if PlayerID exists in room (reconnection scenario)
@@ -2147,8 +2149,7 @@ io.on('connection', (socket) => {
         choice: currentChoice,
         isSpectator: isSpectator,
         userAgent: userAgent,
-        isMobile: isMobile,
-        lastHeartbeat: Date.now()
+        isMobile: isMobile
       };
 
       socket.join(roomCode);
@@ -2203,8 +2204,7 @@ io.on('connection', (socket) => {
         answers: existingAnswers,
         isSpectator: isSpectator, // Flag spectators
         userAgent: userAgent, // Track for diagnostics and mobile-specific handling
-        isMobile: isMobile,
-        lastHeartbeat: Date.now() // Track connection health
+        isMobile: isMobile
       };
       socket.join(roomCode);
       // Only log for non-spectators (use isSpectator variable defined earlier)
@@ -2496,12 +2496,16 @@ io.on('connection', (socket) => {
     const room = roomService.liveRooms[roomCode];
     if (!room || room.currentQuestionIndex === null) return;
 
+    // Guard: skip if this question was already revealed (prevents double-reveal)
+    if (room.revealedQuestions.includes(room.currentQuestionIndex)) {
+      if (DEBUG_ENABLED) console.log(`[REVEAL] Question ${room.currentQuestionIndex} already revealed in room ${roomCode}, skipping`);
+      return;
+    }
+
     const question = room.quizData.questions[room.currentQuestionIndex];
 
     // Track revealed questions
-    if (!room.revealedQuestions.includes(room.currentQuestionIndex)) {
-      room.revealedQuestions.push(room.currentQuestionIndex);
-    }
+    room.revealedQuestions.push(room.currentQuestionIndex);
 
     const results = Object.values(room.players)
       .filter(p => !p.isSpectator)
@@ -2688,18 +2692,22 @@ io.on('connection', (socket) => {
     autoModeService.resumeAutoMode(roomCode);
     const state = autoModeService.getState(roomCode);
 
-    // Calculate new timerStartedAt so clients can sync their timers
-    // This represents when the timer would have started to give the remaining time
-    const timerStartedAt = state?.timeRemaining
-      ? new Date(Date.now() - ((state.questionTimerSeconds - state.timeRemaining) * 1000)).toISOString()
-      : new Date().toISOString();
+    // Determine the correct timer duration based on the resumed state
+    let timerDuration;
+    if (state?.state === 'question_timer' || state?.state === 'all_answered_wait') {
+      timerDuration = state.timeRemaining; // Use remaining time as the effective duration
+    } else if (state?.state === 'reveal_delay') {
+      timerDuration = state.timeRemaining;
+    } else {
+      timerDuration = state?.questionTimerSeconds;
+    }
 
     io.to(roomCode).emit('autoModeStateChanged', {
       enabled: true,
       state: state?.state || 'question_timer',
       timeRemaining: state?.timeRemaining,
-      timerStartedAt,
-      timerDuration: state?.questionTimerSeconds
+      timerStartedAt: new Date().toISOString(), // Timer starts now with the remaining duration
+      timerDuration
     });
   });
 
@@ -2787,44 +2795,6 @@ io.on('connection', (socket) => {
     io.to(roomCode).emit('playerListUpdate', { roomCode, players: Object.values(room.players).filter(p => !p.isSpectator), revealedCount: (room.revealedQuestions || []).length, totalQuestions: room.quizData.questions.length });
 
     console.log(`Player ${username} kicked from room ${roomCode} by presenter`);
-  });
-
-  // Heartbeat mechanism to track connection health
-  socket.on('heartbeat', ({ roomCode, username, timestamp }) => {
-    const room = roomService.liveRooms[roomCode];
-    if (!room || !room.players[socket.id]) return;
-
-    const now = Date.now();
-    room.players[socket.id].lastHeartbeat = now;
-
-    // Calculate round-trip latency if timestamp provided
-    const latency = timestamp ? now - timestamp : null;
-
-    // Determine connection quality based on latency
-    let connectionQuality = 'unknown';
-    if (latency !== null) {
-      if (latency < 100) {
-        connectionQuality = 'excellent';
-      } else if (latency < 300) {
-        connectionQuality = 'good';
-      } else if (latency < 500) {
-        connectionQuality = 'fair';
-      } else {
-        connectionQuality = 'poor';
-      }
-    }
-
-    // Respond with ack and latency data
-    socket.emit('heartbeat-ack', {
-      timestamp: now,
-      latency: latency,
-      connectionQuality: connectionQuality
-    });
-
-    // Log high latency connections for diagnostics
-    if (latency && latency > 2000) {
-      console.log(`[HEARTBEAT] High latency: ${room.players[socket.id].name} - ${latency}ms`);
-    }
   });
 
   // Handle disconnect

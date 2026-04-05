@@ -36,8 +36,8 @@
           <div class="notification-content">
             <AppIcon name="target" size="lg" class="notification-icon" />
             <span class="notification-text">All players have answered!</span>
-            <span v-if="autoRevealCountdown !== null" class="countdown-badge">Auto-revealing in {{ autoRevealCountdown }}s</span>
-            <button v-if="autoRevealCountdown !== null" @click="$emit('cancelAutoReveal')" class="btn-cancel-auto">Cancel</button>
+            <span v-if="autoRevealCountdown !== null" class="countdown-badge">Revealing in {{ autoRevealCountdown }}s</span>
+            <button v-if="autoRevealCountdown !== null && !autoMode" @click="$emit('cancelAutoReveal')" class="btn-cancel-auto">Cancel</button>
           </div>
         </div>
 
