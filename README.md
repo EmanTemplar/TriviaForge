@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v5.10.5 - Auto-Pilot Fixes & Connection Optimization, PDF Session Export, GitHub Actions CI/CD
+**Latest Release**: v5.11.0 - PDF Session Export & GitHub Actions CI/CD
 
 ### Key Highlights
 
@@ -771,6 +771,14 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 ## Roadmap
 
 ### Completed Features
+
+**v5.11.0 (Apr 2026) - PDF Session Export & GitHub Actions CI/CD**
+- [x] Rich PDF session reports: summary page with podium (top-3 gold/silver/bronze), full leaderboard, per-question accuracy bar chart
+- [x] Per-question pages: question text, embedded images (WebP/GIF/AVIF auto-converted to PNG), color-coded answer choices, player response grid
+- [x] Bulk PDF export — multiple sessions downloaded as a ZIP archive (one PDF per session)
+- [x] Export PDF buttons added alongside existing CSV buttons in session list and session detail modal
+- [x] GitHub Actions CI/CD: auto-builds and pushes Docker image to Docker Hub on version tag push (`v*.*.*`)
+- [x] Publishes both `:latest` and `:vX.Y.Z` tags to `emancodetemplar/triviaforge` on Docker Hub
 
 **v5.10.5 (Apr 2026) - Auto-Pilot Fixes & Connection Optimization**
 - [x] Fixed auto-pilot skipping the live question when starting mid-session
