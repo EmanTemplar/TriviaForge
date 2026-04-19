@@ -10,6 +10,8 @@
 import { getClient, query } from '../config/database.js';
 import { NotFoundError, BadRequestError } from '../utils/errors.js';
 import { generateCSV } from '../services/export.service.js';
+import { generatePDF } from '../services/pdfExport.service.js';
+import archiver from 'archiver';
 
 /**
  * Helper: List sessions from database with optional filtering
@@ -730,6 +732,68 @@ export async function exportBulkCSV(req, res, next) {
   }
 }
 
+/**
+ * Export session as PDF
+ * GET /api/sessions/:filename/export/pdf
+ */
+export async function exportPDF(req, res, next) {
+  try {
+    const sessionId = parseSessionId(req.params.filename);
+    const sessionData = await getFullSessionData(sessionId);
+    const pdfBuffer = await generatePDF(sessionData);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="triviaforge_session_${sessionId}.pdf"`
+    );
+    res.send(pdfBuffer);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Bulk export sessions as a ZIP of individual PDFs
+ * POST /api/sessions/export/bulk/pdf
+ * Body: { sessionIds: [1, 2, 3] }
+ */
+export async function exportBulkPDF(req, res, next) {
+  try {
+    const { sessionIds } = req.body;
+
+    if (!Array.isArray(sessionIds) || sessionIds.length === 0) {
+      throw new BadRequestError('sessionIds must be a non-empty array');
+    }
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="triviaforge_sessions_${Date.now()}.zip"`
+    );
+
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    archive.on('error', (err) => next(err));
+    archive.pipe(res);
+
+    for (const id of sessionIds) {
+      const sessionId = parseInt(id, 10);
+      if (isNaN(sessionId)) continue;
+      try {
+        const sessionData = await getFullSessionData(sessionId);
+        const pdfBuffer = await generatePDF(sessionData);
+        archive.append(pdfBuffer, { name: `triviaforge_session_${sessionId}.pdf` });
+      } catch (err) {
+        console.error(`Failed to generate PDF for session ${id}:`, err.message);
+      }
+    }
+
+    await archive.finalize();
+  } catch (err) {
+    next(err);
+  }
+}
+
 // Export all controller functions
 export default {
   listSessions,
@@ -740,4 +804,6 @@ export default {
   bulkDeleteSessions,
   exportCSV,
   exportBulkCSV,
+  exportPDF,
+  exportBulkPDF,
 };

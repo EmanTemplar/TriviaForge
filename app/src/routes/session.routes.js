@@ -67,6 +67,23 @@ router.get('/:filename/export/csv', requireAdmin, asyncHandler(sessionController
 router.post('/export/bulk/csv', requireAdmin, asyncHandler(sessionController.exportBulkCSV));
 
 /**
+ * Export session as PDF
+ * GET /api/sessions/:filename/export/pdf
+ *
+ * Returns: PDF file download
+ */
+router.get('/:filename/export/pdf', requireAdmin, asyncHandler(sessionController.exportPDF));
+
+/**
+ * Bulk export sessions as ZIP of PDFs
+ * POST /api/sessions/export/bulk/pdf
+ *
+ * Body: { sessionIds: [1, 2, 3] }
+ * Returns: ZIP file containing one PDF per session
+ */
+router.post('/export/bulk/pdf', requireAdmin, asyncHandler(sessionController.exportBulkPDF));
+
+/**
  * Get single session by ID
  * GET /api/sessions/:filename
  *

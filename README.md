@@ -2,7 +2,7 @@
 
 A production-ready, real-time interactive trivia game platform built with **Vue 3**, **Socket.IO**, and **PostgreSQL**. Designed for educators, event organizers, and trivia enthusiasts with robust connection stability, persistent player sessions, and estimated capacity for 50+ concurrent players.
 
-**Latest Release**: v5.10.0 - Unified Navbar Redesign, Trusted Devices for 2FA, Score Fix, Player Stats Dashboard, Admin-Configurable Server URL, Game Experience & Results Display, Auto-Mode, Solo Play, Question Bank
+**Latest Release**: v5.10.5 - Auto-Pilot Fixes & Connection Optimization, PDF Session Export, GitHub Actions CI/CD
 
 ### Key Highlights
 
@@ -45,6 +45,8 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 - **Account Settings**: Update email and password from any admin page
 - **Session Health Monitoring**: View memory usage, active sessions, and live room statistics in real-time
 - **Server Settings**: Configure the server URL for QR codes directly from the admin panel (no container rebuild needed)
+- **PDF Export**: Export richly formatted session reports as PDF — includes podium leaderboard, full player rankings, per-question accuracy chart, and detailed question breakdown with embedded images
+- **Bulk PDF Export**: Select multiple sessions and download a ZIP archive of individual PDF reports
 
 <!-- Screenshot Placeholder: Admin Dashboard -->
 ![Admin Dashboard](screenshots/admin-dashboard.png?v=202602)
@@ -223,6 +225,7 @@ A production-ready, real-time interactive trivia game platform built with **Vue 
 
 ### Infrastructure
 - **Containerization**: Docker & Docker Compose
+- **CI/CD**: GitHub Actions — automatically builds and pushes Docker images to Docker Hub on version tag push (`v*.*.*`)
 - **Database**: PostgreSQL 15 (official Docker image)
 - **Schema**: Fully normalized relational design with foreign keys
 - **Connection Pooling**: Optimized for concurrent sessions
@@ -768,6 +771,38 @@ We welcome contributions from the community! Please read our [CONTRIBUTING.md](C
 ## Roadmap
 
 ### Completed Features
+
+**v5.10.5 (Apr 2026) - Auto-Pilot Fixes & Connection Optimization**
+- [x] Fixed auto-pilot skipping the live question when starting mid-session
+- [x] Fixed auto-pilot resume not correctly calculating remaining time after pause
+- [x] Fixed answer reveal modal appearing twice when auto-mode and auto-reveal both active
+- [x] Fixed "All players answered" banner stuck on presenter across question transitions
+- [x] Fixed presenter losing auto-pilot control after page refresh (viewRoom now updates presenterId)
+- [x] Prevented Display/spectator connections from creating ghost users in the database
+- [x] Removed redundant app-level heartbeat (saves ~240 WebSocket messages/minute at 30 players)
+- [x] Reduced socket pingTimeout from 360s to 60s — dead connections detected within ~85 seconds
+
+**v5.10.4 (Mar 2026) - Display & Player UI Polish**
+- [x] Fixed Display page content breaking words mid-character on small viewports
+- [x] Display page now scales with vmin-based clamp() — never scrolls on any screen size
+- [x] Fixed player choice text breaking mid-word (removed aggressive word-break)
+- [x] Fixed player navbar question progress pill hidden on mobile (≤480px)
+- [x] Player progress counter (X/Y) now updates correctly in real-time
+
+**v5.10.3 (Mar 2026) - Auto-Pilot State Sync**
+- [x] Auto-pilot timer and state now correctly sync to all connected clients on start
+- [x] Presenter reconnection fully restores auto-mode state (timer, settings, active status)
+- [x] Second browser/viewRoom no longer loses auto-mode UI
+- [x] Session resume now includes auto-mode state in room restore payload
+
+**v5.10.2 (Mar 2026) - Session & CSRF Resilience**
+- [x] Sliding session expiry — sessions extend on activity, not fixed timeout from login
+- [x] CSRF token auto-retry: expired tokens transparently refreshed and request retried once
+- [x] Quiz settings no longer reset to defaults when a partial update is submitted
+
+**v5.10.1 (Mar 2026) - CSRF & Import Bugfix**
+- [x] Fixed CSRF token validation failures in Docker behind a proxy (trust proxy setting)
+- [x] Fixed quiz import "Use Existing" option crashing with duplicate key error
 
 **v5.10.0 (Mar 2026) - Unified Navbar Redesign**
 - [x] Unified navbar design system across all 5 navbars with shared CSS classes

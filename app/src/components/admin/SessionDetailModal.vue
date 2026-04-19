@@ -33,7 +33,10 @@
     <template #footer>
       <div class="footer-left">
         <button class="btn-export" @click="$emit('exportCSV', session)" title="Export as CSV">
-          <AppIcon name="bar-chart-3" size="md" class="export-icon" /> Export CSV
+          <AppIcon name="file-text" size="md" class="export-icon" /> Export CSV
+        </button>
+        <button class="btn-export btn-export-pdf" @click="$emit('exportPDF', session)" title="Export as PDF">
+          <AppIcon name="file-down" size="md" class="export-icon" /> Export PDF
         </button>
       </div>
       <div class="footer-right">
@@ -58,7 +61,7 @@ const props = defineProps({
   formatDate: { type: Function, required: true }
 });
 
-defineEmits(['close', 'deleteSession', 'toggleQuestion', 'exportCSV']);
+defineEmits(['close', 'deleteSession', 'toggleQuestion', 'exportCSV', 'exportPDF']);
 
 const rankedPlayers = computed(() => {
   if (!props.session || !props.session.playerResults) return [];
@@ -193,6 +196,16 @@ const rankedPlayers = computed(() => {
 
 .btn-export:hover {
   background: var(--info-bg-30);
+}
+
+.btn-export-pdf {
+  background: var(--secondary-bg-20);
+  border-color: var(--secondary-light);
+  color: var(--secondary-light);
+}
+
+.btn-export-pdf:hover {
+  background: var(--secondary-bg-30, var(--secondary-bg-20));
 }
 
 .export-icon {

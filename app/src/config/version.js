@@ -4,9 +4,9 @@
  * Update this file to change version across the entire application
  */
 
-export const VERSION = '5.10.5'
-export const VERSION_NAME = 'Auto-Pilot Fixes & Connection Optimization'
-export const RELEASE_DATE = '2026-04-05'
+export const VERSION = '5.11.0'
+export const VERSION_NAME = 'PDF Export & GitHub Actions CI/CD'
+export const RELEASE_DATE = '2026-04-19'
 
 export default {
   VERSION,

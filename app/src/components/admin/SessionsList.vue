@@ -22,6 +22,9 @@
         <button class="btn-export" @click="$emit('bulkExportCSV', selectedSessionIds)" title="Export CSV">
           <AppIcon name="file-text" size="sm" /> Export CSV
         </button>
+        <button class="btn-export btn-export-pdf" @click="$emit('bulkExportPDF', selectedSessionIds)" title="Export PDF">
+          <AppIcon name="file-down" size="sm" /> Export PDF
+        </button>
         <button class="btn-danger-sm" @click="$emit('bulkDelete', selectedSessionIds)" title="Delete Selected">
           <AppIcon name="trash-2" size="sm" /> Delete Selected
         </button>
@@ -69,7 +72,7 @@ const props = defineProps({
   selectable: { type: Boolean, default: true }
 });
 
-const emit = defineEmits(['viewSession', 'deleteSession', 'bulkDelete', 'bulkExportCSV']);
+const emit = defineEmits(['viewSession', 'deleteSession', 'bulkDelete', 'bulkExportCSV', 'bulkExportPDF']);
 
 // Track selected session IDs
 const selectedIds = ref(new Set());
@@ -200,6 +203,16 @@ h2 {
 .btn-export:hover {
   background: var(--bg-overlay-30);
   border-color: var(--primary-light);
+}
+
+.btn-export-pdf {
+  border-color: var(--info-light);
+  color: var(--info-light);
+}
+
+.btn-export-pdf:hover {
+  background: var(--info-bg-20);
+  border-color: var(--info-light);
 }
 
 .btn-danger-sm {

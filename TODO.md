@@ -813,8 +813,9 @@ Add notification to presenter when all connected players have answered the curre
 13. **v5.9.0:** Trusted Devices for 2FA + gp.score fix ✅ COMPLETE
 14. **v5.10.0:** Unified Navbar Redesign ✅ COMPLETE
 15. **v5.10.5:** Auto-Pilot Fixes & Connection Optimization ✅ COMPLETE
-16. **Next:** Player Management enhancements, Ban system, or GitHub Actions CI/CD
-17. **Backlog:** PDF Export, enhanced security audits
+16. **v5.11.0:** PDF Export & GitHub Actions CI/CD ✅ COMPLETE
+17. **Next:** Player Management enhancements, Ban system, branding/logo
+18. **Backlog:** Enhanced security audits, PDF branding header (pending logo)
 
 ### Testing Priorities
 - Mobile browser testing (iOS Safari, Chrome Mobile, Firefox Mobile)
@@ -843,6 +844,7 @@ Add notification to presenter when all connected players have answered the curre
 - **v5.9.0 (Released):** Trusted Devices for 2FA (30-day remember), gp.score persistence fix ✅
 - **v5.10.0 (Released):** Unified Navbar Redesign - shared CSS design system, admin links on player pages, consistent styling ✅
 - **v5.10.5 (Released):** Auto-Pilot fixes (live question start, resume, double-reveal, banner reset), Display ghost user prevention, connection optimization (removed redundant heartbeat, reduced pingTimeout) ✅
+- **v5.11.0 (Released):** Rich PDF session export (podium, leaderboard, per-question breakdown, embedded images with WebP conversion), bulk PDF as ZIP, GitHub Actions CI/CD (auto Docker push on version tag) ✅
 
 ---
 

@@ -113,6 +113,7 @@
           @deleteSession="deleteSessionFromList"
           @bulkDelete="confirmBulkDelete"
           @bulkExportCSV="bulkExportCSV"
+          @bulkExportPDF="bulkExportPDF"
         />
       </div>
 
@@ -200,6 +201,7 @@
       @deleteSession="confirmDeleteSession"
       @toggleQuestion="toggleQuestionExpanded"
       @exportCSV="exportSessionCSV"
+      @exportPDF="exportSessionPDF"
     />
 
     <!-- Delete Confirmation Modal -->
@@ -1401,6 +1403,16 @@ const exportSessionCSV = async (session) => {
   }
 }
 
+const exportSessionPDF = async (session) => {
+  try {
+    const response = await get(`/api/sessions/${session.filename}/export/pdf`, { responseType: 'blob' })
+    downloadFile(response.data, `triviaforge_session_${session.sessionId}.pdf`, 'application/pdf')
+  } catch (err) {
+    console.error('Error exporting PDF:', err)
+    showAlert('Failed to export PDF', 'Error')
+  }
+}
+
 // Bulk export functions
 const bulkExportCSV = async (sessionIds) => {
   if (!sessionIds || sessionIds.length === 0) {
@@ -1414,6 +1426,21 @@ const bulkExportCSV = async (sessionIds) => {
   } catch (err) {
     console.error('Error exporting bulk CSV:', err)
     showAlert('Failed to export sessions', 'Error')
+  }
+}
+
+const bulkExportPDF = async (sessionIds) => {
+  if (!sessionIds || sessionIds.length === 0) {
+    showAlert('No sessions selected', 'Info')
+    return
+  }
+  try {
+    const response = await post('/api/sessions/export/bulk/pdf', { sessionIds }, { responseType: 'blob' })
+    downloadFile(response.data, `triviaforge_sessions_${Date.now()}.zip`, 'application/zip')
+    showAlert(`Exported ${sessionIds.length} session(s) to PDF (ZIP)`, 'Export Complete')
+  } catch (err) {
+    console.error('Error exporting bulk PDF:', err)
+    showAlert('Failed to export sessions as PDF', 'Error')
   }
 }
 
