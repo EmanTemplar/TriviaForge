@@ -4,8 +4,8 @@
  * Update this file to change version across the entire application
  */
 
-export const VERSION = '5.11.0'
-export const VERSION_NAME = 'PDF Export & GitHub Actions CI/CD'
+export const VERSION = '5.11.1'
+export const VERSION_NAME = 'Dependency Security & Vite 8 Upgrade'
 export const RELEASE_DATE = '2026-04-19'
 
 export default {

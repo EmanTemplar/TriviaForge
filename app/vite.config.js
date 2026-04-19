@@ -28,10 +28,10 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vue': ['vue', 'vue-router', 'pinia'],
-          'socket.io': ['socket.io-client'],
-          'utils': ['axios']
+        manualChunks(id) {
+          if (id.includes('vue') || id.includes('vue-router') || id.includes('pinia')) return 'vue'
+          if (id.includes('socket.io-client')) return 'socket.io'
+          if (id.includes('axios')) return 'utils'
         }
       }
     }
