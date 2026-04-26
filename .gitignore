@@ -59,3 +59,7 @@ LOCAL-AI/
 
 # Vite build output
 app/dist/
+.gitnexus
+
+# Git worktrees
+.worktrees/
