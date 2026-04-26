@@ -18,10 +18,10 @@ import {
   ConflictError,
 } from '../utils/errors.js';
 import {
-  findSimilarQuestions,
-  findDuplicateGroups,
-  generateTextHash,
-} from '../utils/similarity.js';
+  checkForDuplicates,
+  checkBatchForDuplicates,
+  findAllDuplicateGroups,
+} from '../services/deduplication.service.js';
 
 /**
  * List all questions with pagination, filtering, and sorting
@@ -869,90 +869,16 @@ export async function checkDuplicates(req, res) {
     });
   }
 
-  // First, check for exact hash match (fast)
-  const newHash = generateTextHash(questionText);
-  let exactMatch = null;
-
-  if (newHash) {
-    const exactResult = await query(
-      `SELECT q.id, q.question_text, q.question_type, q.text_hash,
-              COUNT(DISTINCT qq.quiz_id) as usage_count,
-              COALESCE(
-                json_agg(
-                  DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'color', t.color)
-                ) FILTER (WHERE t.id IS NOT NULL),
-                '[]'
-              ) as tags
-       FROM questions q
-       LEFT JOIN quiz_questions qq ON q.id = qq.question_id
-       LEFT JOIN question_tags qt ON q.id = qt.question_id
-       LEFT JOIN tags t ON qt.tag_id = t.id
-       WHERE q.text_hash = $1 AND q.is_archived = FALSE
-       ${excludeId ? 'AND q.id != $2' : ''}
-       GROUP BY q.id
-       LIMIT 1`,
-      excludeId ? [newHash, excludeId] : [newHash]
-    );
-
-    if (exactResult.rows.length > 0) {
-      exactMatch = {
-        ...exactResult.rows[0],
-        usage_count: parseInt(exactResult.rows[0].usage_count, 10),
-        similarity: 1.0,
-        isExactMatch: true,
-      };
-    }
-  }
-
-  // If exact match found, return it
-  if (exactMatch) {
-    return res.json({
-      success: true,
-      hasDuplicates: true,
-      exactMatch,
-      similarQuestions: [],
-    });
-  }
-
-  // Fetch all non-archived questions for fuzzy matching
-  // In production with large datasets, this should be optimized
-  const questionsResult = await query(
-    `SELECT q.id, q.question_text, q.question_type, q.text_hash,
-            COUNT(DISTINCT qq.quiz_id) as usage_count,
-            COALESCE(
-              json_agg(
-                DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'color', t.color)
-              ) FILTER (WHERE t.id IS NOT NULL),
-              '[]'
-            ) as tags
-     FROM questions q
-     LEFT JOIN quiz_questions qq ON q.id = qq.question_id
-     LEFT JOIN question_tags qt ON q.id = qt.question_id
-     LEFT JOIN tags t ON qt.tag_id = t.id
-     WHERE q.is_archived = FALSE
-     ${excludeId ? 'AND q.id != $1' : ''}
-     GROUP BY q.id`,
-    excludeId ? [excludeId] : []
-  );
-
-  const existingQuestions = questionsResult.rows.map((q) => ({
-    ...q,
-    usage_count: parseInt(q.usage_count, 10),
-  }));
-
-  // Find similar questions
-  const similarQuestions = findSimilarQuestions(
+  const { hasDuplicates, exactMatch, similarQuestions } = await checkForDuplicates(
     questionText,
-    existingQuestions,
-    threshold,
-    excludeId
+    { excludeId, threshold }
   );
 
   res.json({
     success: true,
-    hasDuplicates: similarQuestions.length > 0,
-    exactMatch: null,
-    similarQuestions: similarQuestions.slice(0, 10), // Limit to top 10
+    hasDuplicates,
+    exactMatch: exactMatch ?? null,
+    similarQuestions,
   });
 }
 
@@ -971,62 +897,10 @@ export async function checkDuplicatesBatch(req, res) {
     throw new BadRequestError('Questions array is required');
   }
 
-  // Fetch all existing questions
-  const existingResult = await query(
-    `SELECT q.id, q.question_text, q.question_type, q.text_hash,
-            COUNT(DISTINCT qq.quiz_id) as usage_count,
-            COALESCE(
-              json_agg(
-                DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'color', t.color)
-              ) FILTER (WHERE t.id IS NOT NULL),
-              '[]'
-            ) as tags
-     FROM questions q
-     LEFT JOIN quiz_questions qq ON q.id = qq.question_id
-     LEFT JOIN question_tags qt ON q.id = qt.question_id
-     LEFT JOIN tags t ON qt.tag_id = t.id
-     WHERE q.is_archived = FALSE
-     GROUP BY q.id`
+  const { results, totalDuplicates } = await checkBatchForDuplicates(
+    questions,
+    { threshold }
   );
-
-  const existingQuestions = existingResult.rows.map((q) => ({
-    ...q,
-    usage_count: parseInt(q.usage_count, 10),
-  }));
-
-  // Check each incoming question
-  const results = [];
-  let totalDuplicates = 0;
-
-  for (const item of questions) {
-    const { text, rowIndex } = item;
-
-    if (!text?.trim() || text.trim().length < 10) {
-      results.push({
-        rowIndex,
-        hasDuplicates: false,
-        similarQuestions: [],
-      });
-      continue;
-    }
-
-    const similarQuestions = findSimilarQuestions(
-      text,
-      existingQuestions,
-      threshold,
-      null
-    );
-
-    const hasDuplicates = similarQuestions.length > 0;
-    if (hasDuplicates) totalDuplicates++;
-
-    results.push({
-      rowIndex,
-      questionText: text,
-      hasDuplicates,
-      similarQuestions: similarQuestions.slice(0, 3), // Top 3 per question
-    });
-  }
 
   res.json({
     success: true,
@@ -1051,72 +925,13 @@ export async function findDuplicates(req, res) {
     throw new BadRequestError('Threshold must be a number between 0 and 1');
   }
 
-  // Fetch all non-archived questions
-  const questionsResult = await query(
-    `SELECT q.id, q.question_text, q.question_type, q.text_hash, q.created_at,
-            COUNT(DISTINCT qq.quiz_id) as usage_count,
-            COALESCE(
-              json_agg(
-                DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'color', t.color)
-              ) FILTER (WHERE t.id IS NOT NULL),
-              '[]'
-            ) as tags
-     FROM questions q
-     LEFT JOIN quiz_questions qq ON q.id = qq.question_id
-     LEFT JOIN question_tags qt ON q.id = qt.question_id
-     LEFT JOIN tags t ON qt.tag_id = t.id
-     WHERE q.is_archived = FALSE
-     GROUP BY q.id
-     ORDER BY q.created_at DESC`
-  );
-
-  const questions = questionsResult.rows.map((q) => ({
-    ...q,
-    usage_count: parseInt(q.usage_count, 10),
-  }));
-
-  // Fetch ignored pairs
-  const ignoredResult = await query(
-    `SELECT question_id_1, question_id_2 FROM ignored_duplicate_pairs`
-  );
-
-  // Build a Set of ignored pair keys for fast lookup
-  const ignoredPairs = new Set();
-  for (const row of ignoredResult.rows) {
-    // Store both directions for easy lookup
-    ignoredPairs.add(`${row.question_id_1}-${row.question_id_2}`);
-    ignoredPairs.add(`${row.question_id_2}-${row.question_id_1}`);
-  }
-
-  // Find duplicate groups
-  let groups = findDuplicateGroups(questions, thresholdNum);
-
-  // Filter out groups that contain only ignored pairs
-  groups = groups.map(group => {
-    // Filter questions in each group to remove ignored pairs
-    const filteredQuestions = [];
-    const baseQuestion = group.questions[0];
-    filteredQuestions.push(baseQuestion);
-
-    for (let i = 1; i < group.questions.length; i++) {
-      const q = group.questions[i];
-      const pairKey = `${Math.min(baseQuestion.id, q.id)}-${Math.max(baseQuestion.id, q.id)}`;
-      if (!ignoredPairs.has(pairKey)) {
-        filteredQuestions.push(q);
-      }
-    }
-
-    return {
-      ...group,
-      questions: filteredQuestions,
-    };
-  }).filter(group => group.questions.length > 1); // Only keep groups with 2+ questions
+  const { groups, totalQuestions } = await findAllDuplicateGroups({ threshold: thresholdNum });
 
   res.json({
     success: true,
     groups: groups.slice(0, parseInt(limit, 10)),
     totalGroups: groups.length,
-    totalQuestions: questions.length,
+    totalQuestions,
   });
 }
 
