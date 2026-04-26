@@ -66,7 +66,10 @@ router.post('/register-player',
  * Body: { username, password }
  * Returns: { success, token, user, expires_at }
  */
-router.post('/register-guest', asyncHandler(authController.registerGuest));
+router.post('/register-guest',
+  validateBody({ password: { required: true, validator: validatePassword } }),
+  asyncHandler(authController.registerGuest)
+);
 
 /**
  * Get current authenticated user
