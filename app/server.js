@@ -34,7 +34,8 @@ import { roomService } from './src/services/room.service.js';
 import { sessionService } from './src/services/session.service.js';
 import { quizService } from './src/services/quiz.service.js';
 import { autoModeService } from './src/services/autoMode.service.js';
-import { isDisplayNameBanned, initializeAdminPassword } from './src/services/bootstrap.service.js';
+import { initializeAdminPassword } from './src/services/startup.service.js';
+import { isDisplayNameBanned } from './src/services/player.service.js';
 
 // --------------------
 // Helper: Auto-detect local IP
