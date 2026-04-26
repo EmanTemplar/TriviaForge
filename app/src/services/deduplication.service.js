@@ -100,6 +100,7 @@ export async function checkForDuplicates(questionText, options = {}) {
 
   const existingQuestions = normalizeRows(questionsResult.rows)
 
+  // excludeId passed as defence-in-depth; DB query already excludes this row
   const similarQuestions = findSimilarQuestions(
     questionText,
     existingQuestions,

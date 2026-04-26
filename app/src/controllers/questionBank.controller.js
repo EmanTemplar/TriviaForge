@@ -853,7 +853,7 @@ export async function createQuizFromSelection(req, res) {
  *   - threshold: Optional similarity threshold (default: 0.8)
  */
 export async function checkDuplicates(req, res) {
-  const { questionText, excludeId, threshold = 0.8 } = req.body;
+  const { questionText, excludeId, threshold } = req.body;
 
   if (!questionText?.trim()) {
     throw new BadRequestError('Question text is required');
@@ -891,7 +891,7 @@ export async function checkDuplicates(req, res) {
  *   - threshold: Optional similarity threshold (default: 0.8)
  */
 export async function checkDuplicatesBatch(req, res) {
-  const { questions, threshold = 0.8 } = req.body;
+  const { questions, threshold } = req.body;
 
   if (!Array.isArray(questions) || questions.length === 0) {
     throw new BadRequestError('Questions array is required');
