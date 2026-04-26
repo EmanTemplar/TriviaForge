@@ -12,6 +12,7 @@ import { Router } from 'express';
 import * as authController from '../controllers/auth.controller.js';
 import { requireAuth, requireAdmin, requireRootAdmin } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { validateBody, validateUsername, validatePassword } from '../utils/validators.js';
 
 const router = Router();
 
@@ -53,7 +54,10 @@ router.post('/logout', requireAuth, asyncHandler(authController.logout));
  *
  * Note: Uses registrationLimiter and doubleCsrfProtection middleware (applied in server.js)
  */
-router.post('/register-player', asyncHandler(authController.registerPlayer));
+router.post('/register-player',
+  validateBody({ password: { required: true, validator: validatePassword } }),
+  asyncHandler(authController.registerPlayer)
+);
 
 /**
  * Register guest (alias for register-player, backward compatibility)
@@ -89,7 +93,10 @@ router.post('/check-username', asyncHandler(authController.checkUsername));
  * Body: { username, password }
  * Returns: { success, token, user }
  */
-router.post('/set-new-password', asyncHandler(authController.setNewPassword));
+router.post('/set-new-password',
+  validateBody({ password: { required: true, validator: validatePassword } }),
+  asyncHandler(authController.setNewPassword)
+);
 
 /**
  * Verify player token (for auto-login)
@@ -126,7 +133,13 @@ router.get('/admins', requireRootAdmin, asyncHandler(authController.listAdmins))
  * Body: { username, password, email? }
  * Returns: { admin }
  */
-router.post('/create-admin', requireRootAdmin, asyncHandler(authController.createAdmin));
+router.post('/create-admin', requireRootAdmin,
+  validateBody({
+    username: { required: true, validator: validateUsername },
+    password: { required: true, validator: validatePassword },
+  }),
+  asyncHandler(authController.createAdmin)
+);
 
 /**
  * Delete an admin account (root admin only)
@@ -155,7 +168,10 @@ router.put('/update-email', requireAdmin, asyncHandler(authController.updateAdmi
  * Body: { currentPassword, newPassword }
  * Returns: { success }
  */
-router.put('/change-password', requireAdmin, asyncHandler(authController.changeAdminPassword));
+router.put('/change-password', requireAdmin,
+  validateBody({ newPassword: { required: true, validator: validatePassword } }),
+  asyncHandler(authController.changeAdminPassword)
+);
 
 /**
  * Reset another admin's password (root admin only)
