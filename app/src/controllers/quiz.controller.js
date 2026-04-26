@@ -515,7 +515,6 @@ export async function uploadImage(req, res, next) {
       filename: req.file.filename,
     });
   } catch (err) {
-    console.error('Error uploading image:', err);
     next(err);
   }
 }
@@ -950,7 +949,6 @@ export async function importQuiz(req, res, next) {
       client.release();
     }
   } catch (err) {
-    console.error('Error importing quiz:', err);
     next(err);
   }
 }
