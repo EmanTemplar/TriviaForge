@@ -14,7 +14,6 @@ import { query, getClient, transaction } from '../config/database.js';
 import {
   NotFoundError,
   BadRequestError,
-  DatabaseError,
 } from '../utils/errors.js';
 import { sendSuccess } from '../utils/responses.js';
 
@@ -280,8 +279,7 @@ export async function createQuiz(req, res, next) {
     });
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('Error creating quiz:', err);
-    next(new DatabaseError('Failed to create quiz', err));
+    next(err);
   } finally {
     client.release();
   }
@@ -457,8 +455,7 @@ export async function updateQuiz(req, res, next) {
     });
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('Error updating quiz:', err);
-    next(new DatabaseError('Failed to update quiz', err));
+    next(err);
   } finally {
     client.release();
   }
@@ -729,8 +726,7 @@ export async function downloadTemplate(req, res, next) {
     );
     res.send(buffer);
   } catch (err) {
-    console.error('Error generating template:', err);
-    next(new DatabaseError('Failed to generate template', err));
+    next(err);
   }
 }
 
@@ -948,9 +944,8 @@ export async function importQuiz(req, res, next) {
         },
       });
     } catch (dbErr) {
-      console.error('❌ Database error:', dbErr);
       await client.query('ROLLBACK');
-      throw new DatabaseError('Failed to save quiz to database', dbErr);
+      throw dbErr;
     } finally {
       client.release();
     }
