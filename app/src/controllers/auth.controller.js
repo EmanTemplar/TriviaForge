@@ -23,11 +23,6 @@ import {
   ConflictError,
 } from '../utils/errors.js';
 import { sendSuccess } from '../utils/responses.js';
-import {
-  validateUsername,
-  validatePassword,
-  throwIfInvalid,
-} from '../utils/validators.js';
 import * as totpService from '../services/totp.service.js';
 
 // Debug logging (controlled by DEBUG_MODE or NODE_ENV)
@@ -274,8 +269,6 @@ export async function registerPlayer(req, res, next) {
       throw new BadRequestError('Username and password required');
     }
 
-    throwIfInvalid(validatePassword(password));
-
     // Check if username exists as guest
     const result = await query(
       'SELECT id, account_type, password_hash FROM users WHERE username = $1',
@@ -449,8 +442,6 @@ export async function setNewPassword(req, res, next) {
       throw new BadRequestError('Username and password required');
     }
 
-    throwIfInvalid(validatePassword(password));
-
     // Find user
     const result = await query(
       'SELECT id, username, password_hash, account_type FROM users WHERE username = $1',
@@ -590,9 +581,6 @@ export async function createAdmin(req, res, next) {
     if (!username || !password) {
       throw new BadRequestError('Username and password required');
     }
-
-    throwIfInvalid(validateUsername(username));
-    throwIfInvalid(validatePassword(password));
 
     // Check if username already exists
     const existingUser = await query(
@@ -813,8 +801,6 @@ export async function changeAdminPassword(req, res, next) {
     if (!currentPassword || !newPassword) {
       throw new BadRequestError('Current password and new password are required');
     }
-
-    throwIfInvalid(validatePassword(newPassword));
 
     // Get current password hash
     const result = await query(
