@@ -6,7 +6,6 @@
  */
 
 import { query } from '../config/database.js';
-import { env } from '../config/environment.js';
 
 export async function initializeAdminPassword() {
   if (!process.env.ADMIN_PASSWORD) {
@@ -35,7 +34,7 @@ export async function initializeAdminPassword() {
 
       // Import bcrypt dynamically
       const bcrypt = await import('bcrypt');
-      const passwordHash = await bcrypt.hash(env.adminPassword, 10);
+      const passwordHash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
 
       await query(
         'UPDATE users SET password_hash = $1 WHERE username = $2',
