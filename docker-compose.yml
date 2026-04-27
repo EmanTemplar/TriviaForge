@@ -18,13 +18,13 @@ services:
     restart: unless-stopped
   app:
     # LOCAL DEVELOPMENT: Build from local Dockerfile
-    build:
-        context: ./app
-        dockerfile: Dockerfile
-    image: triviaforge:local
+    # build:
+    #     context: ./app
+    #     dockerfile: Dockerfile
+    # image: triviaforge:local
 
     # PRODUCTION/DOCKER HUB: Comment above and uncomment below
-    #image: emancodetemplar/triviaforge:latest
+    image: emancodetemplar/triviaforge:latest
 
     container_name: triviagame-app
     ports:
