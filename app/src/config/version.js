@@ -4,9 +4,9 @@
  * Update this file to change version across the entire application
  */
 
-export const VERSION = '5.11.1'
-export const VERSION_NAME = 'Dependency Security & Vite 8 Upgrade'
-export const RELEASE_DATE = '2026-04-19'
+export const VERSION = '5.11.2'
+export const VERSION_NAME = 'Service Layer Refactor & Auth Hardening'
+export const RELEASE_DATE = '2026-04-27'
 
 export default {
   VERSION,
